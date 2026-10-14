@@ -1,6 +1,6 @@
-# LINEA Digital Art Training Prototype
+# PA6ma Digital Art Training Prototype
 
-LINEA is implemented here as a client-only React/Vite prototype. It uses localStorage to simulate user state, lesson progress, saved artwork, exercise submissions, and analytics. There is no server or SQL dependency in this version.
+PA6ma is implemented here as a client-only React/Vite prototype. It uses localStorage to simulate user state, lesson progress, saved artwork, exercise submissions, and analytics. There is no server or SQL dependency in this version.
 
 ## Run
 
