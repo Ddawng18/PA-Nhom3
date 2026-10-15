@@ -27,6 +27,7 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 
 ### Dữ liệu và kiểm tra
 
+- **SupaBase**: lưu trữ database.
 - **localStorage**: mô phỏng trạng thái tài khoản, tiến độ học, khóa học yêu
   thích, bài nộp và dữ liệu phân tích trong phiên bản prototype.
 - **Zod**: kiểm tra và xác thực dữ liệu đầu vào.
