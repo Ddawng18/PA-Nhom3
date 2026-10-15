@@ -6,13 +6,13 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 
 ## Thành viên nhóm
 
-| STT | Họ và tên | MSSV | Vai trò |
-| ---: | --- | --- | --- |
-| 1 | Trần Đại Phát | 31241026754 | Project Manager / Scrum Master |
-| 2 | Nguyễn Huỳnh Đăng | 31241026574 | Product Owner / BA |
-| 3 | Lê Công Bảo | 31241027834 | Developer - Frontend |
-| 4 | Bành Phát Thịnh | 31241022944 | Developer - Backend / QA |
-| 5 | Nguyễn Lâm Sỹ Phú | 31241020835 | Tech Lead / DevOps |
+| STT | Họ và tên | Tên github | MSSV | Vai trò |
+| ---: | --- | --- | --- | --- |
+| 1 | Trần Đại Phát | loiz123 | 31241026754 | Project Manager / Scrum Master |
+| 2 | Nguyễn Huỳnh Đăng | Ddawng18 | 31241026574 | Product Owner / BA |
+| 3 | Lê Công Bảo | congbao2006 | 31241027834 | Developer - Frontend |
+| 4 | Bành Phát Thịnh | Phát Thịnh | 31241022944 | Developer - Backend / QA |
+| 5 | Nguyễn Lâm Sỹ Phú | Phunguyen11-02 | 31241020835 | Tech Lead / DevOps |
 
 ## Công nghệ dự kiến sử dụng
 
