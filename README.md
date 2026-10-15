@@ -1,4 +1,4 @@
-# LINEA - Nền tảng học Digital Art
+# PA6ma - Nền tảng học Digital Art
 
 LINEA là nền tảng hỗ trợ học Digital Art, nơi người dùng có thể khám phá
 khóa học, theo dõi tiến độ học tập, thực hành bài tập và trao đổi với cộng
