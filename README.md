@@ -23,7 +23,7 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 - **Vite**: môi trường phát triển và công cụ build frontend.
 - **React Router**: quản lý điều hướng giữa các trang.
 - **Lucide React**: thư viện icon cho giao diện.
-- **CSS**: định dạng giao diện và responsive layout.
+- **HTML,CSS**: định dạng giao diện và responsive layout.
 
 ### Dữ liệu và kiểm tra
 
