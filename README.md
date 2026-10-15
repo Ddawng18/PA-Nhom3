@@ -14,7 +14,7 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 | 4 | Bành Phát Thịnh | 31241022944 | Developer - Backend / QA |
 | 5 | Nguyễn Lâm Sỹ Phú | 31241020835 | Tech Lead / DevOps |
 
-## Công nghệ sử dụng
+## Công nghệ dự kiến sử dụng
 
 ### Frontend
 
