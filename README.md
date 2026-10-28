@@ -24,6 +24,7 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 - **React Router**: quản lý điều hướng giữa các trang.
 - **Lucide React**: thư viện icon cho giao diện.
 - **HTML,CSS**: định dạng giao diện và responsive layout.
+- **Vercel**: deploy dự án lên Internet.
 
 ### Dữ liệu và kiểm tra
 
