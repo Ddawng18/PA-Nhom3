@@ -26,6 +26,10 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 - **HTML,CSS**: định dạng giao diện và responsive layout.
 - **Vercel**: deploy dự án lên Internet.
 
+### Backend
+
+- **C#**: ngôn ngữ lập trình.
+
 ### Dữ liệu và kiểm tra
 
 - **SupaBase**: lưu trữ database.
