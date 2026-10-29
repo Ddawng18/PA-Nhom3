@@ -10,8 +10,8 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 | ---: | --- | --- | --- | --- |
 | 1 | Trần Đại Phát | loiz123 | 31241026754 | Project Manager / Scrum Master |
 | 2 | Nguyễn Huỳnh Đăng | Ddawng18 | 31241026574 | Product Owner / BA |
-| 3 | Lê Công Bảo | congbao2006 | 31241027834 | Developer - Frontend |
-| 4 | Bành Phát Thịnh | Phát Thịnh | 31241022944 | Developer - Backend / QA |
+| 3 | Lê Công Bảo | congbao2006 | 31241027834 | Developer - Backend / QA |
+| 4 | Bành Phát Thịnh | Phát Thịnh | 31241022944 | Developer -  Frontend |
 | 5 | Nguyễn Lâm Sỹ Phú | Phunguyen11-02 | 31241020835 | Tech Lead / DevOps |
 
 ## Công nghệ dự kiến sử dụng
