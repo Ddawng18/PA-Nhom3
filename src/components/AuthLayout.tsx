@@ -2,7 +2,9 @@ import { useEffect, type ReactNode } from "react";
 import { Heart, Search } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
-import "../styles/register.css";
+import "../styles/global.css";
+import "../styles/layout.css";
+import "../styles/auth-form.css";
 
 type AuthLayoutProps = {
   authLink: { to: string; label: string };

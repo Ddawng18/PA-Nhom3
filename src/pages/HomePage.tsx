@@ -2,6 +2,7 @@ import { useState } from "react";
 import AuthLayout from "../components/AuthLayout";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
+import "../styles/home.css";
 
 export default function HomePage() {
   const [message, setMessage] = useState<string | null>(null);

@@ -1,0 +1,23 @@
+/* Login page-specific styles */
+.forgot-password-link {
+  justify-self: center;
+  margin-top: -3px;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.new-account-label {
+  margin: -3px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.create-account-button {
+  margin-top: -6px;
+}
+
+.login-google-action {
+  margin-top: 16px;
+}

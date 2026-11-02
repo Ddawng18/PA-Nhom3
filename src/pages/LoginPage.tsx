@@ -2,6 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import LoginForm from "../components/LoginForm";
 import { useAuth } from "../auth/useAuth";
+import "../styles/login.css";
 
 export default function LoginPage() {
   const { session, loading } = useAuth();
