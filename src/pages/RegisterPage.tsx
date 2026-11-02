@@ -2,6 +2,7 @@ import { Navigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import RegisterForm from "../components/RegisterForm";
 import { useAuth } from "../auth/useAuth";
+import "../styles/register.css";
 
 export default function RegisterPage() {
   const { session, loading } = useAuth();
