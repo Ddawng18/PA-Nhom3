@@ -3,5 +3,6 @@ dist/
 .env
 .env.*
 !.env.example
+.env.local
 server/.data/
 .DS_Store
