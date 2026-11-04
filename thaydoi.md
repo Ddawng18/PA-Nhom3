@@ -28,4 +28,4 @@ Cập nhật: 04/11/2026. Đây là kết quả kiểm tra và thay đổi trong
 4. **Vercel:** dự án chưa kết nối được repository GitHub; cần cấp quyền repository cho Vercel và kết nối để tự deploy khi push. Cần cấu hình và triển khai API riêng nếu nhóm chọn dùng backend ASP.NET.
 5. **Quản lý Sprint:** nhóm xác nhận các thẻ phân tích đang In Progress/In Review, cập nhật kết quả thực tế, link minh chứng, issue, báo cáo Sprint và đối chiếu ProjectLibre/Gantt. Trạng thái Trello tại thời điểm kiểm tra: 3/18 task WBS Done, 15 chưa Done; hai thẻ QA và review theo dõi thêm.
 
-Các thay đổi sau commit `6707ccf`, gồm migration đổi tên, sửa mã, test và file này, hiện chỉ có trong workspace và chưa được push hoặc deploy.
+Các thay đổi tích hợp được push lên nhánh `Thinh-dev` từ commit `69f6f95`. Frontend cần deploy lại sau khi cập nhật; backend chưa có hosting, nên chưa có API production để cấu hình cho Vercel.
