@@ -4,14 +4,14 @@
 
 1. Tạo project tại [supabase.com](https://supabase.com/) và chọn vùng phù hợp.
 2. Trong **Project Settings → API**, lấy **Project URL** và khóa public **anon** (có thể được ghi là `publishable` trong dashboard mới).
-3. Tạo file `.env.local` ở thư mục gốc từ `.env.example`, sau đó điền:
+3. Tạo file `.env` ở thư mục gốc từ `.env.example`, sau đó điền:
 
    ```dotenv
    VITE_SUPABASE_URL=https://<project-ref>.supabase.co
    VITE_SUPABASE_ANON_KEY=<public-anon-key>
    ```
 
-   Chỉ dùng anon/publishable key trong ứng dụng trình duyệt. **Không dùng `service_role` key** vì key đó có quyền quản trị và sẽ bị lộ khi đóng gói frontend. `.env.local` đã được Git ignore.
+   Chỉ dùng anon/publishable key trong ứng dụng trình duyệt. **Không dùng `service_role` key** vì key đó có quyền quản trị và sẽ bị lộ khi đóng gói frontend. `.env` đã được Git ignore.
 
 ## 2. Bật đăng nhập Google
 
@@ -44,3 +44,40 @@ Trong **Project → Settings → Environment Variables**, thêm `VITE_SUPABASE_U
 Chạy nội dung [`../supabase/schema.sql`](../supabase/schema.sql) trong **Supabase SQL Editor**. Schema bật RLS, cho người dùng chỉ đọc/cập nhật hồ sơ của mình và giới hạn quyền cập nhật client vào `display_name`, `avatar_url`; `role` chỉ được thiết lập bởi hệ thống.
 
 Sau khi cấu hình, kiểm tra đăng ký email, xác nhận email, Google OAuth, đăng nhập, quên mật khẩu và đăng xuất trên cả localhost và domain production.
+
+## 5. Trạng thái project hiện tại và kiểm tra nhanh
+
+Các lệnh dưới đây chỉ dùng khóa public (publishable/anon), không dùng
+`service_role`:
+
+```powershell
+$base = "https://pscjbvjcprvzfkawflql.supabase.co"
+$key  = "<VITE_SUPABASE_ANON_KEY>"
+$headers = @{ apikey = $key }
+
+# Email/password provider: trả invalid_credentials với tài khoản sai,
+# nghĩa là endpoint đăng nhập Supabase hoạt động.
+Invoke-RestMethod -Method Post "$base/auth/v1/token?grant_type=password" `
+  -Headers $headers -ContentType "application/json" `
+  -Body '{"email":"nonexistent@example.com","password":"WrongPass123!"}'
+
+# Google provider: nếu chưa bật sẽ trả
+# "Unsupported provider: provider is not enabled".
+Invoke-RestMethod "$base/auth/v1/authorize?provider=google&redirect_to=http%3A%2F%2Flocalhost%3A5173%2Fauth%2Fcallback" `
+  -Headers $headers
+```
+
+Trạng thái đã kiểm tra:
+
+- Email/password: **bật**, endpoint trả `invalid_credentials` với mật khẩu sai.
+- Google: **chưa bật** (`external.google = false`). Cần làm mục 2 ở trên
+  (Google Cloud OAuth Client + bật provider trong Supabase) thì nút
+  "Tiếp tục với Google" mới chuyển hướng được.
+- `mailer_autoconfirm = false`: sau khi đăng ký, người dùng phải mở email xác
+  nhận trước khi đăng nhập.
+- **Site URL** đang trống: cần đặt `http://localhost:5173` (và domain production)
+  trong **Authentication → URL Configuration**, đồng thời thêm
+  `http://localhost:5173/auth/callback` vào **Redirect URLs**. Nếu thiếu, OAuth
+  Google sẽ báo lỗi redirect.
+- Frontend kiểm tra `/auth/v1/settings` trước khi gọi Google; nếu provider chưa
+  bật, giao diện hiển thị thông báo tiếng Việt thay vì chuyển hướng lỗi.

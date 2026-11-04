@@ -6,3 +6,12 @@ dist/
 .env.local
 server/.data/
 .DS_Store
+
+# .NET build output and local databases
+server/**/bin/
+server/**/obj/
+server/.nuget-local/
+*.db
+*.db-shm
+*.db-wal
+TestResults/

@@ -1,0 +1,40 @@
+@host = http://localhost:4174
+
+### Health check
+GET {{host}}/api/health
+
+### Register a student
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "student@example.com",
+  "displayName": "Học viên Demo",
+  "password": "MatKhau123!"
+}
+
+### Login
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "student@example.com",
+  "password": "MatKhau123!"
+}
+
+### Current profile
+GET {{host}}/api/auth/me
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Student-only endpoint
+GET {{host}}/api/student/assignments
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Teacher endpoint (expect 403 with a student token)
+GET {{host}}/api/teacher/courses
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Admin endpoint (expect 403 with a student token)
+GET {{host}}/api/admin/users
+Authorization: Bearer {{login.response.body.$.accessToken}}
