@@ -28,7 +28,7 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 
 ### Backend
 
-- **C#**: ngôn ngữ lập trình.
+- **C# / ASP.NET Core Web API**: API xác thực, JWT, phân quyền và kết nối CSDL.
 
 ### Dữ liệu và kiểm tra
 
@@ -100,10 +100,30 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 
 ## Cài đặt và chạy dự án
 
+> **Thành viên mới**: làm theo [`docs/development-setup.md`](docs/development-setup.md)
+> để tạo `.env`, sinh `JWT_KEY`, chọn SQLite hoặc Supabase an toàn và không commit secret.
+
+Frontend (đăng nhập/đăng ký/Google qua Supabase):
+
 ```bash
 npm install
 npm run dev
 ```
+
+Cấu hình Supabase cho frontend theo [`docs/supabase-setup.md`](docs/supabase-setup.md).
+Hiện tại email/password đã hoạt động; provider Google cần được bật trong Supabase
+Dashboard trước khi nút "Tiếp tục với Google" có thể chuyển hướng.
+
+Backend xác thực ASP.NET Core (xem chi tiết trong [`server/README.md`](server/README.md)):
+
+```powershell
+# Đặt JWT_KEY (tối thiểu 32 byte) trong .env hoặc biến môi trường.
+# Đặt SUPABASE_DB_URL để backend dùng Supabase Postgres; để trống thì dùng SQLite.
+dotnet run --project server/Linea.Api
+```
+
+API chạy tại `http://localhost:4174`; lần chạy đầu áp dụng migration lên Supabase
+(nếu có `SUPABASE_DB_URL`) hoặc tạo SQLite `server/Linea.Api/linea-dev.db`.
 
 ## Kiểm tra dự án
 
@@ -111,4 +131,5 @@ npm run dev
 npm run build
 npm run test
 npm run lint
+dotnet run --project server/Linea.Api.Tests
 ```

@@ -65,6 +65,11 @@ describe("getAuthErrorMessage", () => {
     );
   });
 
+  it("maps Google provider and OAuth callback errors", () => {
+    expect(getAuthErrorMessage("Unsupported provider: provider is not enabled")).toContain("Google");
+    expect(getAuthErrorMessage("access_denied")).toBe("Bạn đã hủy đăng nhập Google.");
+  });
+
   it("returns a friendly fallback for unknown errors", () => {
     expect(getAuthErrorMessage("unexpected error")).toBe("Đã có lỗi xảy ra. Vui lòng thử lại sau.");
   });
