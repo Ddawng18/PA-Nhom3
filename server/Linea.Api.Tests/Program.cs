@@ -8,6 +8,12 @@ using System.Text;
 using System.Text.Json;
 using Linea.Api.Data;
 using Linea.Api.Services;
+using Linea.Api.Security;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -138,6 +144,7 @@ internal static class Program
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
         startInfo.Environment["ASPNETCORE_URLS"] = $"http://127.0.0.1:{port}";
         startInfo.Environment["JWT_KEY"] = TestJwtKey;
+        startInfo.Environment["AUTH_MODE"] = "legacy";
         startInfo.Environment["JWT_ISSUER"] = "linea-api-tests";
         startInfo.Environment["JWT_AUDIENCE"] = "linea-client-tests";
         startInfo.Environment["DB_CONNECTION"] = $"Data Source={dbPath}";
@@ -185,6 +192,17 @@ internal static class Program
     }
 }
 
+internal sealed class FakeSupabaseHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        => Task.FromResult(respond(request));
+}
+
+internal sealed class FakeClientFactory(Func<HttpRequestMessage, HttpResponseMessage> respond) : IHttpClientFactory
+{
+    public HttpClient CreateClient(string name) => new(new FakeSupabaseHandler(respond));
+}
+
 internal sealed class SmokeSuite(HttpClient client, string dbPath)
 {
     private const string DefaultPassword = "MatKhau123!";
@@ -213,11 +231,15 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath)
             ("login rejects a wrong password", WrongPasswordAsync),
             ("login rejects an unknown email", UnknownEmailAsync),
             ("protected endpoint rejects a missing token", MissingTokenAsync),
+            ("Supabase account endpoint rejects a missing token", SupabaseMissingTokenAsync),
             ("protected endpoint rejects a malformed token", BadTokenAsync),
             ("current profile returns sanitized data", MeAsync),
             ("student is denied teacher and admin endpoints", StudentRbacAsync),
             ("student cannot change roles or lock accounts", StudentCannotMutateAccountsAsync),
             ("admin lists accounts without leaking secrets", AdminListAsync),
+            ("admin rejects invalid and numeric roles", InvalidRoleAsync),
+            ("Supabase verification uses the verified identity and its profile", SupabaseVerificationAsync),
+            ("Supabase authentication enforces profile roles", SupabaseAuthorizationAsync),
             ("teacher role is enforced immediately after re-login", PromoteAndTeacherRbacAsync),
             ("admin can access admin and teacher endpoints", AdminRbacAsync),
             ("admin lock blocks login and invalidates existing tokens", LockFlowAsync),
@@ -461,6 +483,77 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath)
         Expect(body.Contains(_studentEmail!, StringComparison.Ordinal), "student is missing from the admin list");
     }
 
+    private static async Task SupabaseAuthorizationAsync()
+    {
+        var id = Guid.NewGuid();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["SUPABASE_URL"] = "https://supabase.example", ["SUPABASE_PUBLISHABLE_KEY"] = "public-key"
+        }).Build());
+        services.AddSingleton<IHttpClientFactory>(new FakeClientFactory(request =>
+            request.RequestUri!.AbsolutePath == "/auth/v1/user"
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { id }) }
+                : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { new { id, display_name = "Test", role = "student" } }) }));
+        services.AddAuthentication("Supabase").AddScheme<AuthenticationSchemeOptions, SupabaseAuthenticationHandler>("Supabase", _ => { });
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("student", policy => policy.RequireRole("student"));
+            options.AddPolicy("admin", policy => policy.RequireRole("admin"));
+        });
+        using var provider = services.BuildServiceProvider();
+        var context = new DefaultHttpContext { RequestServices = provider };
+        context.Request.Headers.Authorization = "Bearer signed-in-token";
+        var authentication = await context.AuthenticateAsync("Supabase");
+        Expect(authentication.Succeeded && authentication.Principal is not null, "Supabase authentication failed");
+        var auth = provider.GetRequiredService<IAuthorizationService>();
+        Expect((await auth.AuthorizeAsync(authentication.Principal!, null, "student")).Succeeded, "student denied");
+        Expect(!(await auth.AuthorizeAsync(authentication.Principal!, null, "admin")).Succeeded, "student gained admin access");
+    }
+
+    private async Task SupabaseMissingTokenAsync()
+    {
+        var (status, body) = await SendAsync(HttpMethod.Get, "/api/account/me");
+        Expect(status == HttpStatusCode.Unauthorized, $"expected 401, got {(int)status}: {body}");
+    }
+
+    private static async Task SupabaseVerificationAsync()
+    {
+        var userId = Guid.NewGuid();
+        using var fake = new HttpClient(new FakeSupabaseHandler(request =>
+        {
+            Expect(request.Headers.Authorization?.Parameter == "valid-token", "missing user bearer token");
+            Expect(request.Headers.Contains("apikey"), "missing publishable key");
+            if (request.RequestUri!.AbsolutePath == "/auth/v1/user")
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = userId }) };
+            Expect(request.RequestUri.Query.Contains(userId.ToString(), StringComparison.OrdinalIgnoreCase), "profile query does not use verified id");
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { new { id = userId, display_name = "Test", role = "teacher" } }) };
+        })) { BaseAddress = new Uri("https://supabase.example/") };
+        var result = await new SupabaseAccountService(fake, "public-key").GetAccountAsync("valid-token", default);
+        Expect(result.Account?.Id == userId && result.Account.Role == "teacher", "verified profile was not returned");
+
+        using var rejected = new HttpClient(new FakeSupabaseHandler(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized)))
+            { BaseAddress = new Uri("https://supabase.example/") };
+        var invalid = await new SupabaseAccountService(rejected, "public-key").GetAccountAsync("invalid-token", default);
+        Expect(invalid.Account is null && !invalid.Unavailable, "invalid token was not rejected");
+
+        using var failed = new HttpClient(new FakeSupabaseHandler(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)))
+            { BaseAddress = new Uri("https://supabase.example/") };
+        var unavailable = await new SupabaseAccountService(failed, "public-key").GetAccountAsync("token", default);
+        Expect(unavailable.Account is null && unavailable.Unavailable, "upstream failure was not reported");
+    }
+
+    private async Task InvalidRoleAsync()
+    {
+        foreach (var role in new[] { "999", "0", "unknown" })
+        {
+            var (status, body) = await SendAsync(HttpMethod.Patch,
+                $"/api/admin/users/{_studentId}/role", new { role }, _adminToken);
+            Expect(status == HttpStatusCode.BadRequest, $"role {role} returned {(int)status}: {body}");
+        }
+    }
+
     private async Task PromoteAndTeacherRbacAsync()
     {
         var (promoteStatus, promoteBody) = await SendAsync(
@@ -469,6 +562,9 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath)
             new { role = "teacher" },
             _adminToken);
         Expect(promoteStatus == HttpStatusCode.NoContent, $"expected 204, got {(int)promoteStatus}: {promoteBody}");
+
+        var (staleStatus, _) = await SendAsync(HttpMethod.Get, "/api/student/assignments", token: _studentToken);
+        Expect(staleStatus == HttpStatusCode.Unauthorized, $"old token after role change returned {(int)staleStatus}");
 
         var (loginStatus, loginBody) = await SendAsync(HttpMethod.Post, "/api/auth/login", new
         {
@@ -488,6 +584,17 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath)
         Expect(teacherStatus == HttpStatusCode.OK, $"teacher endpoint returned {(int)teacherStatus}");
         Expect(adminStatus == HttpStatusCode.Forbidden, $"admin endpoint returned {(int)adminStatus}");
         Expect(studentStatus == HttpStatusCode.Forbidden, $"student endpoint returned {(int)studentStatus}");
+
+        var (demoteStatus, demoteBody) = await SendAsync(
+            HttpMethod.Patch, $"/api/admin/users/{_studentId}/role", new { role = "student" }, _adminToken);
+        Expect(demoteStatus == HttpStatusCode.NoContent, $"expected 204, got {(int)demoteStatus}: {demoteBody}");
+        var (staleTeacherStatus, _) = await SendAsync(HttpMethod.Get, "/api/teacher/courses", token: _promotedToken);
+        Expect(staleTeacherStatus == HttpStatusCode.Unauthorized, $"demoted teacher token returned {(int)staleTeacherStatus}");
+
+        // Restore the teacher role for the later account-lock test.
+        var (restoreStatus, restoreBody) = await SendAsync(
+            HttpMethod.Patch, $"/api/admin/users/{_studentId}/role", new { role = "teacher" }, _adminToken);
+        Expect(restoreStatus == HttpStatusCode.NoContent, $"expected 204, got {(int)restoreStatus}: {restoreBody}");
     }
 
     private async Task AdminRbacAsync()

@@ -26,6 +26,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       setSession(data.session);
       setLoading(false);
+    }).catch(() => {
+      if (!active) return;
+      setSession(null);
+      setLoading(false);
     });
 
     const {

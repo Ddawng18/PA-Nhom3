@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using Linea.Api.Data;
@@ -18,6 +19,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
+builder.Services.AddHttpClient();
 
 var supabaseDbUrl = builder.Configuration["SUPABASE_DB_URL"];
 if (!string.IsNullOrWhiteSpace(supabaseDbUrl))
@@ -39,12 +41,15 @@ else
     builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(sqliteBuilder.ToString()));
 }
 
+var useLegacyAuth = builder.Environment.IsDevelopment() && builder.Configuration["AUTH_MODE"] == "legacy";
 var jwtKey = builder.Configuration["JWT_KEY"];
-if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32)
+if (useLegacyAuth && (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32))
 {
     throw new InvalidOperationException(
         "JWT_KEY is missing or shorter than 32 bytes. Set JWT_KEY in the environment before starting the API.");
 }
+if (string.IsNullOrWhiteSpace(jwtKey))
+    jwtKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
 
 var jwtOptions = new JwtOptions
 {
@@ -61,7 +66,8 @@ builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
 
 builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddAuthentication(useLegacyAuth ? JwtBearerDefaults.AuthenticationScheme : "Supabase")
+    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, SupabaseAuthenticationHandler>("Supabase", _ => { })
     .AddJwtBearer(options =>
     {
         options.MapInboundClaims = false;
@@ -97,6 +103,13 @@ builder.Services
                 if (user is null || user.IsLocked)
                 {
                     context.Fail("The account is unavailable or locked.");
+                    return;
+                }
+
+                var tokenRole = context.Principal?.FindFirstValue("role");
+                if (!string.Equals(tokenRole, user.Role.ToString(), StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Fail("The account role has changed. Sign in again.");
                 }
             },
             OnChallenge = async context =>
@@ -163,8 +176,51 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapOpenApi();
 
-app.MapGet("/api/health", async (AppDbContext db, CancellationToken cancellationToken) =>
+// This endpoint uses Supabase Auth directly; the older /api/auth endpoints use
+// a separate legacy account store and are not interchangeable with it.
+app.MapGet("/api/account/me", async (HttpRequest request, IConfiguration configuration,
+    IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
+    if (!AuthenticationHeaderValue.TryParse(request.Headers.Authorization, out var header) ||
+        !string.Equals(header.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase) ||
+        string.IsNullOrWhiteSpace(header.Parameter)) return Results.Unauthorized();
+
+    var projectUrl = configuration["SUPABASE_URL"];
+    var publicKey = configuration["SUPABASE_PUBLISHABLE_KEY"];
+    if (!Uri.TryCreate(projectUrl?.TrimEnd('/') + "/", UriKind.Absolute, out var uri) ||
+        uri.Scheme != Uri.UriSchemeHttps || string.IsNullOrWhiteSpace(publicKey))
+        return Results.Problem("Chưa cấu hình kết nối Supabase cho API.", statusCode: 503);
+
+    var client = clients.CreateClient("supabase-account");
+    client.BaseAddress = uri;
+    var result = await new SupabaseAccountService(client, publicKey).GetAccountAsync(header.Parameter, cancellationToken);
+    if (result.Unavailable) return Results.Problem("Không thể xác minh tài khoản lúc này.", statusCode: 503);
+    return result.Account is null ? Results.Unauthorized() : Results.Ok(result.Account);
+});
+
+app.MapGet("/api/health", async (AppDbContext db, IConfiguration configuration, IHttpClientFactory clients, CancellationToken cancellationToken) =>
+{
+    if (!useLegacyAuth)
+    {
+        var url = configuration["SUPABASE_URL"];
+        var key = configuration["SUPABASE_PUBLISHABLE_KEY"];
+        if (!Uri.TryCreate(url?.TrimEnd('/') + "/auth/v1/settings", UriKind.Absolute, out var uri) ||
+            uri.Scheme != Uri.UriSchemeHttps || string.IsNullOrWhiteSpace(key))
+            return Results.Problem("Chưa cấu hình Supabase.", statusCode: 503);
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add("apikey", key);
+            using var response = await clients.CreateClient().SendAsync(request, cancellationToken);
+            return response.IsSuccessStatusCode
+                ? Results.Ok(new { status = "ok", auth = "connected" })
+                : Results.Problem("Không thể kết nối Supabase Auth.", statusCode: 503);
+        }
+        catch (HttpRequestException)
+        {
+            return Results.Problem("Không thể kết nối Supabase Auth.", statusCode: 503);
+        }
+    }
     var connected = await db.Database.CanConnectAsync(cancellationToken);
     return connected
         ? Results.Ok(new { status = "ok", database = "connected" })
