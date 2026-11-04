@@ -2,6 +2,24 @@ export function getAuthErrorMessage(message?: string): string {
   const normalizedMessage = message?.toLowerCase() ?? "";
 
   if (
+    normalizedMessage.includes("provider is not enabled") ||
+    normalizedMessage.includes("unsupported provider")
+  ) {
+    return "Đăng nhập Google chưa được bật trong Supabase. Vui lòng bật provider Google.";
+  }
+  if (normalizedMessage.includes("access_denied") || normalizedMessage.includes("access denied")) {
+    return "Bạn đã hủy đăng nhập Google.";
+  }
+  if (
+    normalizedMessage.includes("redirect") &&
+    (normalizedMessage.includes("url") || normalizedMessage.includes("uri"))
+  ) {
+    return "URL chuyển hướng chưa được cấu hình trong Supabase.";
+  }
+  if (normalizedMessage.includes("invalid api key") || normalizedMessage.includes("no api key")) {
+    return "Cấu hình Supabase không hợp lệ. Vui lòng kiểm tra VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY.";
+  }
+  if (
     normalizedMessage.includes("invalid login credentials") ||
     normalizedMessage.includes("invalid email or password")
   ) {

@@ -15,3 +15,19 @@ export const supabase = isSupabaseConfigured
       },
     })
   : null;
+
+export async function getGoogleProviderStatus(): Promise<boolean | null> {
+  if (!isSupabaseConfigured) return false;
+
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/settings`, {
+      headers: { apikey: supabaseAnonKey },
+    });
+    if (!response.ok) return null;
+
+    const settings = await response.json();
+    return Boolean(settings?.external?.google);
+  } catch {
+    return null;
+  }
+}
