@@ -11,7 +11,8 @@ Cập nhật: 04/11/2026. Đây là kết quả kiểm tra và thay đổi trong
 - Frontend thoát trạng thái chờ nếu việc khôi phục phiên Supabase phát sinh lỗi.
 - Nhóm chọn Supabase Auth làm nguồn xác thực. Đã thêm `GET /api/account/me`: API gửi bearer token tới Supabase Auth để xác minh, sau đó đọc `nguoi_dung` bằng token của người dùng và RLS; vai trò lấy từ CSDL, không lấy từ metadata do người dùng sửa. Trang hồ sơ gọi API và hiển thị vai trò khi `VITE_API_URL` được cấu hình.
 - Backend mặc định dùng Supabase Auth cho các route có phân quyền student/teacher/admin. Các thao tác quản trị `users` cũ trả 501 vì vẫn trỏ vào bảng tài khoản JWT riêng; các endpoint đăng ký/đăng nhập cũ trả 410 và frontend dùng Supabase Auth. Chế độ JWT cũ chỉ bật trong Development với `AUTH_MODE=legacy`. Đã chuẩn bị `server/Dockerfile` cho hosting .NET, chưa kiểm thử image vì máy không có Docker.
-- Đã chuẩn bị `render.yaml` cho một web service Docker gói Free tại Singapore, health check `/api/health`. Cần tài khoản Render, quyền đọc repo GitHub và publishable/anon key của Supabase để tạo dịch vụ; không dùng service role key.
+- Đã chuẩn bị `render.yaml` cho một web service Docker gói Free tại Singapore, health check `/api/health`. Dịch vụ hiện tại được tạo bằng Render CLI, dùng Dockerfile gốc và publishable/anon key; không dùng service role key.
+- Backend đã triển khai trên Render Free tại https://linea-api-7f2q.onrender.com, theo dõi nhánh `Thinh-dev`; cấu hình `VITE_API_URL` trên Vercel và triển khai lại frontend. Đã xác nhận health trả 200, route học viên thiếu token trả 401, token sai trả 401, CORS cho website trả 204 và bundle frontend chứa đúng địa chỉ API.
 
 ## Kết quả kiểm thử tại máy
 
@@ -23,10 +24,10 @@ Cập nhật: 04/11/2026. Đây là kết quả kiểm tra và thay đổi trong
 
 ## Cần hoàn tất / xác nhận
 
-1. **Hoàn tất tích hợp:** endpoint `/api/account/me` và phân quyền student/teacher dùng Supabase Auth. Chức năng admin quản lý tài khoản Supabase chưa triển khai; API bài tập/khóa học hiện trả dữ liệu mẫu. Chưa triển khai API hay cấu hình `VITE_API_URL` trên Vercel; cần kiểm thử đầu cuối bằng tài khoản thật.
+1. **Hoàn tất tích hợp:** endpoint `/api/account/me` và phân quyền student/teacher dùng Supabase Auth. Chức năng admin quản lý tài khoản Supabase chưa triển khai; API bài tập/khóa học hiện trả dữ liệu mẫu. Backend đã triển khai và URL đã cấu hình trên Vercel; cần kiểm thử đầu cuối bằng tài khoản thật.
 2. **QA và review:** kiểm tra đăng ký hợp lệ, email trùng, dữ liệu sai, đăng nhập đúng/sai, quyền của từng vai trò và tài khoản khóa; ghi kết quả và minh chứng. Cần người khác tác giả review code. Trello: https://trello.com/c/r2o0Ve8w, https://trello.com/c/lr6LabAE, https://trello.com/c/dxwrVxop.
 3. **Schema:** `nguoi_dung` còn các cột `id`, `display_name`, `avatar_url`, `role`; chưa đầy đủ/đúng tên cột theo Data Dictionary. 13 bảng mới bật RLS và chưa cho client truy cập: cần chính sách theo chức năng trước khi ứng dụng dùng trực tiếp. `users` và `__EFMigrationsHistory` là hai bảng backend riêng.
-4. **Vercel:** dự án chưa kết nối được repository GitHub; cần cấp quyền repository cho Vercel và kết nối để tự deploy khi push. Cần cấu hình và triển khai API riêng nếu nhóm chọn dùng backend ASP.NET.
+4. **Vercel:** dự án chưa kết nối được repository GitHub; cần cấp quyền repository cho Vercel và kết nối để tự deploy khi push. Backend Render đã bật tự deploy theo nhánh `Thinh-dev`.
 5. **Quản lý Sprint:** nhóm xác nhận các thẻ phân tích đang In Progress/In Review, cập nhật kết quả thực tế, link minh chứng, issue, báo cáo Sprint và đối chiếu ProjectLibre/Gantt. Trạng thái Trello tại thời điểm kiểm tra: 3/18 task WBS Done, 15 chưa Done; hai thẻ QA và review theo dõi thêm.
 
-Các thay đổi tích hợp được push lên nhánh `Thinh-dev` từ commit `69f6f95`. Frontend đã deploy lại trên Vercel và `/login` trả HTTP 200; backend chưa có hosting, nên chưa có API production để cấu hình cho Vercel.
+Các thay đổi tích hợp được push lên nhánh `Thinh-dev` từ commit `69f6f95`. Frontend và backend đã triển khai; kiểm thử đăng nhập và phân quyền với người dùng thật vẫn cần thực hiện.
