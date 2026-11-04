@@ -39,9 +39,10 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 - **Vitest**: viết và chạy unit test.
 - **ESLint**: kiểm tra chất lượng và quy chuẩn mã nguồn.
 
-> Phiên bản hiện tại là prototype React/Vite chạy phía client. Các chức năng
-> backend, cơ sở dữ liệu thật, thanh toán và xác thực tài khoản thực tế sẽ được
-> tích hợp trong các giai đoạn tiếp theo.
+> Hiện đã có đăng ký, đăng nhập qua Supabase Auth, backend kiểm tra vai trò và
+> trang hồ sơ/cài đặt. Các API bài tập và khóa học vẫn trả dữ liệu mẫu; chức
+> năng quản lý tài khoản Supabase của admin chưa triển khai. Danh sách bên dưới
+> là chức năng dự kiến, không phải tất cả đã hoàn thành.
 
 ## Chức năng dự kiến
 
@@ -100,36 +101,95 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 
 ## Cài đặt và chạy dự án
 
-> **Thành viên mới**: làm theo [`docs/development-setup.md`](docs/development-setup.md)
-> để tạo `.env`, sinh `JWT_KEY`, chọn SQLite hoặc Supabase an toàn và không commit secret.
+Các lệnh dưới đây chạy tại thư mục gốc repository, ví dụ `D:\QLDA\PA-Nhom3`.
+Cần cài **Node.js 20.19+ hoặc 22.12+** (để chạy Vite 7) và **.NET SDK 9**
+kèm ASP.NET Core Runtime 9. Kiểm tra bằng `node --version`, `npm --version`
+và `dotnet --list-runtimes`.
 
-Frontend (đăng nhập/đăng ký/Google qua Supabase):
-
-```bash
-npm install
-npm run dev
-```
-
-Cấu hình Supabase cho frontend theo [`docs/supabase-setup.md`](docs/supabase-setup.md).
-Hiện tại email/password đã hoạt động; provider Google cần được bật trong Supabase
-Dashboard trước khi nút "Tiếp tục với Google" có thể chuyển hướng.
-
-Backend xác thực ASP.NET Core (xem chi tiết trong [`server/README.md`](server/README.md)):
+### 1. Lấy mã và cài thư viện
 
 ```powershell
-# Đặt JWT_KEY (tối thiểu 32 byte) trong .env hoặc biến môi trường.
-# Đặt SUPABASE_DB_URL để backend dùng Supabase Postgres; để trống thì dùng SQLite.
+git clone https://github.com/Ddawng18/PA-Nhom3.git
+cd PA-Nhom3
+git switch Thinh-dev
+npm ci
+dotnet restore server/Linea.slnx
+```
+
+Nếu đã có repository, chạy `git switch Thinh-dev` rồi `git pull --ff-only` thay
+cho `git clone`. Trên PowerShell, nếu `npm` bị chặn bởi execution policy,
+thay `npm` bằng `npm.cmd` trong các lệnh.
+
+### 2. Cấu hình môi trường
+
+Tạo `.env` từ file mẫu nếu chưa có, sau đó mở file và điền khóa công khai:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Lấy **Project URL** và **anon/publishable key** tại Supabase Dashboard →
+**Project Settings → API Keys**, rồi đặt các giá trị tương ứng trong `.env`:
+
+```dotenv
+VITE_SUPABASE_URL=https://pscjbvjcprvzfkawflql.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon-hoac-publishable-key>
+VITE_API_URL=http://localhost:4174
+SUPABASE_URL=https://pscjbvjcprvzfkawflql.supabase.co
+SUPABASE_PUBLISHABLE_KEY=<anon-hoac-publishable-key>
+CLIENT_ORIGIN=http://localhost:5173
+SUPABASE_DB_URL=
+```
+
+`VITE_API_URL` là địa chỉ backend frontend gọi để lấy vai trò. Nếu chỉ muốn
+chạy frontend, có thể để trống biến này; chức năng gọi API và hiển thị vai trò
+qua backend sẽ không hoạt động. Không commit `.env` hoặc đưa `service_role`,
+secret key hay mật khẩu CSDL vào biến `VITE_`.
+
+Để `SUPABASE_DB_URL`, `SEED_ADMIN_EMAIL` và `SEED_ADMIN_PASSWORD` trống khi
+chạy theo hướng dẫn này. Backend mặc định xác thực bằng Supabase Auth; không cần
+`JWT_KEY` cho luồng này. Đăng nhập Google và URL callback cần được cấu hình
+trong Supabase; việc gửi email xác nhận phụ thuộc cấu hình email của dự án.
+
+### 3. Chạy backend
+
+Mở terminal thứ nhất tại thư mục gốc:
+
+```powershell
 dotnet run --project server/Linea.Api
 ```
 
-API chạy tại `http://localhost:4174`; lần chạy đầu áp dụng migration lên Supabase
-(nếu có `SUPABASE_DB_URL`) hoặc tạo SQLite `server/Linea.Api/linea-dev.db`.
+API mặc định chạy tại `http://localhost:4174`. Mở
+`http://localhost:4174/api/health` để kiểm tra kết nối Supabase Auth. Khi chạy
+Development, backend áp dụng EF migration cho SQLite cục bộ; không điền
+`SUPABASE_DB_URL` nếu không chủ động muốn dùng database chung. Nếu dùng backend
+đang deploy thay vì local, đặt `VITE_API_URL=https://linea-api-7f2q.onrender.com`
+và lưu ý CORS backend hiện chỉ cho phép origin website production.
+
+### 4. Chạy frontend
+
+Mở terminal thứ hai tại thư mục gốc:
+
+```powershell
+npm run dev
+```
+
+Truy cập `http://localhost:5173`. Đăng ký hoặc đăng nhập bằng tài khoản thử;
+sau khi đăng nhập, trang cài đặt hiển thị vai trò nếu API local đang chạy và
+được cấu hình đúng. Nếu Vite chuyển sang cổng khác vì 5173 đang bận, cập nhật
+`CLIENT_ORIGIN` trong `.env` theo origin thực tế rồi khởi động lại backend.
 
 ## Kiểm tra dự án
 
-```bash
+```powershell
 npm run build
 npm run test
 npm run lint
 dotnet run --project server/Linea.Api.Tests
 ```
+
+Test backend tạo database SQLite tạm và chạy chế độ JWT cũ để kiểm tra; không
+ghi vào Supabase thật. Với máy chỉ cài .NET 10, có thể chạy thử bằng
+`$env:DOTNET_ROLL_FORWARD='Major'` trước lệnh test, nhưng nên cài .NET 9 để
+kiểm thử đúng runtime. Xem thêm [`server/README.md`](server/README.md) và
+[`thaydoi.md`](thaydoi.md) để biết phạm vi và các phần còn thiếu.
