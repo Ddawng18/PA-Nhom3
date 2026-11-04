@@ -176,6 +176,12 @@ sau khi đăng nhập, trang cài đặt hiển thị vai trò nếu API local �
 được cấu hình đúng. Nếu Vite chuyển sang cổng khác vì 5173 đang bận, cập nhật
 `CLIENT_ORIGIN` trong `.env` theo origin thực tế rồi khởi động lại backend.
 
+## Triển khai miễn phí
+
+Phương án: **Vercel** (frontend) + **Render** (backend ASP.NET Core) + **Supabase**
+(Postgres/Auth). Hướng dẫn chi tiết trong [`docs/deployment.md`](docs/deployment.md).
+Dự án **chưa được triển khai**, nên chưa có URL thử.
+
 ## Kiểm tra dự án
 
 ```powershell
