@@ -9,6 +9,7 @@ export type AuthContextValue = {
   loading: boolean;
   configured: boolean;
   signInWithEmail: (input: { email: string; password: string }) => Promise<AuthResult>;
+  signInWithGoogle: () => Promise<AuthResult>;
   signUpWithEmail: (input: {
     email: string;
     password: string;
