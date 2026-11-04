@@ -15,6 +15,7 @@ export type AuthContextValue = {
     password: string;
     displayName: string;
   }) => Promise<AuthResult>;
+  resendConfirmation: (email: string) => Promise<AuthResult>;
   resetPassword: (email: string) => Promise<AuthResult>;
   updatePassword: (newPassword: string) => Promise<AuthResult>;
   signOut: () => Promise<AuthResult>;
