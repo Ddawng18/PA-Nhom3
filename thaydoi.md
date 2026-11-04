@@ -11,6 +11,7 @@ Cập nhật: 04/11/2026. Đây là kết quả kiểm tra và thay đổi trong
 - Frontend thoát trạng thái chờ nếu việc khôi phục phiên Supabase phát sinh lỗi.
 - Nhóm chọn Supabase Auth làm nguồn xác thực. Đã thêm `GET /api/account/me`: API gửi bearer token tới Supabase Auth để xác minh, sau đó đọc `nguoi_dung` bằng token của người dùng và RLS; vai trò lấy từ CSDL, không lấy từ metadata do người dùng sửa. Trang hồ sơ gọi API và hiển thị vai trò khi `VITE_API_URL` được cấu hình.
 - Backend mặc định dùng Supabase Auth cho các route có phân quyền student/teacher/admin. Các thao tác quản trị `users` cũ trả 501 vì vẫn trỏ vào bảng tài khoản JWT riêng; các endpoint đăng ký/đăng nhập cũ trả 410 và frontend dùng Supabase Auth. Chế độ JWT cũ chỉ bật trong Development với `AUTH_MODE=legacy`. Đã chuẩn bị `server/Dockerfile` cho hosting .NET, chưa kiểm thử image vì máy không có Docker.
+- Đã chuẩn bị `render.yaml` cho một web service Docker gói Free tại Singapore, health check `/api/health`. Cần tài khoản Render, quyền đọc repo GitHub và publishable/anon key của Supabase để tạo dịch vụ; không dùng service role key.
 
 ## Kết quả kiểm thử tại máy
 
