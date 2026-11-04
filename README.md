@@ -95,9 +95,6 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
       đề.
     - Cho phép người dùng tham gia và chia sẻ sản phẩm.
 
-12. **Chatbot hỗ trợ**
-    - Trả lời các câu hỏi thường gặp về khóa học và nền tảng.
-    - Hỗ trợ người dùng tìm kiếm nội dung học phù hợp.
 
 ## Cài đặt và chạy dự án
 
