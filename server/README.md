@@ -132,7 +132,7 @@ Không endpoint nào trả `password` hay `passwordHash`.
 | API xác thực tài khoản, kiểm tra hash và tài khoản khóa | `AuthController.Login` xác thực BCrypt, trả `401` chung khi sai, `423` khi khóa; `Program.OnTokenValidated` kiểm tra lại tài khoản mỗi request. |
 | Phân quyền server cho student/teacher/admin, từ chối trái quyền | Policy trong `AuthPolicies` và `Program`; `[Authorize(Policy = ...)]` trên các controller; test `403` cho student/teacher. |
 | Test đúng/sai mật khẩu, khóa, thiếu token, trái quyền | Các test `login accepts/rejects`, `locked account`, `missing/malformed token`, `student cannot change roles or lock accounts`, RBAC. |
-| Schema/migration cho tài khoản và vai trò ban đầu | `Migrations/20261104000000_InitialCreate.cs` tạo bảng `users` với `Role`, `IsLocked`, unique `Email`; `UserRole` mặc định `Student`; admin seed qua biến môi trường. |
+| Schema/migration cho tài khoản và vai trò ban đầu | `Migrations/20261104000000_InitialCreate.cs` tạo bảng `users` với `Role`, `IsLocked`, unique `Email`; migration `20261104010000_MakePasswordHashRequired` bắt buộc `PasswordHash`; `UserRole` mặc định `Student`; admin seed qua biến môi trường. |
 | Backend kết nối CSDL và đọc/ghi trong dev | `Program` dùng Supabase Postgres khi có `SUPABASE_DB_URL`, SQLite khi để trống; migration chạy khi Development; đã kiểm tra đăng ký/đọc/đổi role/khóa thật trên Supabase. |
 | Cấu hình qua biến môi trường, hướng dẫn, bằng chứng, không lộ thông tin | `.env.example` chỉ chứa placeholder; `server/README.md` có hướng dẫn chạy/kiểm thử; `.gitignore` chặn `.env`, `*.db`, `bin/obj`; không có khóa thật trong source. |
 
@@ -240,9 +240,9 @@ Cột `PasswordHash` không được trả qua API và bảng `users` không cho
 ## Ghi chú tích hợp
 
 - Backend dùng Supabase Postgres khi `SUPABASE_DB_URL` có giá trị; nếu để trống
-  thì dùng SQLite để dev/test nhanh. Migration `InitialCreate` là provider-neutral,
-  tạo bảng `users` với unique index cho `Email`, `Role` mặc định `Student` và
-  `IsLocked`.
+  thì dùng SQLite để dev/test nhanh. Migration provider-neutral tạo bảng `users`
+  với unique index cho `Email`, `Role` mặc định `Student`, `PasswordHash` bắt buộc
+  và `IsLocked`.
 - Bảng `users` của backend tách biệt với `profiles` mà frontend dùng qua Supabase
   Auth; migration backend không sửa schema `profiles`.
 - Frontend hiện dùng Supabase Auth trực tiếp; backend này là API độc lập, sẵn sàng

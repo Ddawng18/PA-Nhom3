@@ -20,7 +20,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         user.HasIndex(item => item.Email).IsUnique();
 
         user.Property(item => item.DisplayName).HasMaxLength(100);
-        user.Property(item => item.PasswordHash).HasMaxLength(255);
+        user.Property(item => item.PasswordHash)
+            .HasMaxLength(255)
+            .IsRequired();
 
         user.Property(item => item.Role)
             .HasConversion<string>()
