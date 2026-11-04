@@ -16,7 +16,9 @@ public sealed class AuthController(
     AppDbContext db,
     IPasswordHasher passwordHasher,
     ITokenService tokenService,
-    ILogger<AuthController> logger) : ControllerBase
+    ILogger<AuthController> logger,
+    IWebHostEnvironment environment,
+    IConfiguration configuration) : ControllerBase
 {
     private static readonly string DummyHash =
         BCrypt.Net.BCrypt.HashPassword("timing-equalization-only", 11);
@@ -27,6 +29,8 @@ public sealed class AuthController(
         [FromBody] RegisterRequest request,
         CancellationToken cancellationToken)
     {
+        if (!environment.IsDevelopment() || configuration["AUTH_MODE"] != "legacy")
+            return StatusCode(410, "Vui lòng đăng ký bằng Supabase Auth.");
         AddPasswordPolicyErrors(request.Password);
         if (string.IsNullOrWhiteSpace(request.DisplayName))
         {
@@ -73,6 +77,8 @@ public sealed class AuthController(
         [FromBody] LoginRequest request,
         CancellationToken cancellationToken)
     {
+        if (!environment.IsDevelopment() || configuration["AUTH_MODE"] != "legacy")
+            return StatusCode(410, "Vui lòng đăng nhập bằng Supabase Auth.");
         if (!ModelState.IsValid)
         {
             return ValidationProblem(ModelState);
@@ -115,6 +121,8 @@ public sealed class AuthController(
     [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult<UserResponse>> Me(CancellationToken cancellationToken)
     {
+        if (!environment.IsDevelopment() || configuration["AUTH_MODE"] != "legacy")
+            return StatusCode(410, "Vui lòng sử dụng /api/account/me.");
         if (!User.TryGetUserId(out var userId))
         {
             return UnauthorizedProblem("Phiên đăng nhập không hợp lệ.");

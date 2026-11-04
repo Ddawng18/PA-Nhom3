@@ -1,5 +1,12 @@
 # LINEA Backend API (ASP.NET Core)
 
+> Cập nhật Sprint 4: mặc định backend xác thực bằng Supabase Auth; các API
+> student/teacher dùng vai trò lấy từ `nguoi_dung`. API quản lý tài khoản admin
+> cũ trả 501 để tránh sửa bảng `users` không liên quan. Các endpoint đăng nhập
+> cũ trả 410; frontend đăng nhập trực tiếp với Supabase. Các phần mô tả JWT
+> và SQLite bên dưới chỉ áp dụng chế độ kiểm thử cũ `AUTH_MODE=legacy` trong
+> môi trường Development, không áp dụng production.
+
 Backend xác thực cho nền tảng LINEA. Project độc lập với frontend Vite và nằm trong
 `server/`.
 
@@ -63,6 +70,22 @@ $lines = Get-Content .env | ForEach-Object {
 Frontend hiện tại đăng nhập qua Supabase Auth. Backend này là API độc lập; nếu
 client chuyển sang dùng backend, gọi `/api/auth/*` và gửi
 `Authorization: Bearer <JWT>`.
+
+### Tích hợp Supabase Auth đang triển khai
+
+`GET /api/account/me` nhận bearer access token Supabase, xác minh token với Auth
+và đọc `id`, `display_name`, `role` từ bảng `nguoi_dung` qua Data API với RLS.
+Cấu hình `SUPABASE_URL` và `SUPABASE_PUBLISHABLE_KEY` ở backend; đặt
+`VITE_API_URL` thành origin của backend ở frontend và thêm origin frontend vào
+`CLIENT_ORIGIN`. Không dùng service role key. Endpoint trả 401 khi token/hồ sơ
+không hợp lệ và 503 nếu thiếu cấu hình hoặc Supabase không sẵn sàng.
+
+Trong cấu hình mặc định, `/api/student` và `/api/teacher` nhận token Supabase
+và kiểm tra vai trò từ hồ sơ. Các endpoint quản lý `/api/admin/users` chưa được
+chuyển sang Supabase và trả 501 sau khi kiểm tra quyền admin. `JWT_KEY` chỉ cần
+cho kiểm thử chế độ cũ. Muốn chạy container, build từ thư mục gốc bằng
+`docker build -f server/Dockerfile .`, đặt `SUPABASE_URL`,
+`SUPABASE_PUBLISHABLE_KEY`, `CLIENT_ORIGIN` và cổng 8080 trên hosting.
 
 ## Chạy backend
 
@@ -231,6 +254,9 @@ Cột `PasswordHash` không được trả qua API và bảng `users` không cho
 - JWT ký HS256, kiểm tra issuer/audience/lifetime, thời gian lệch 30 giây.
 - Mỗi request có JWT đều kiểm tra lại tài khoản trong CSDL: user bị xóa hoặc bị
   khóa sẽ bị từ chối ngay, không chờ token hết hạn.
+- Nếu vai trò hiện tại khác vai trò trong JWT, API từ chối token; người dùng cần
+  đăng nhập lại để nhận quyền mới. Phép kiểm tra này không thu hồi vĩnh viễn token
+  nếu vai trò sau đó được đổi trở lại giá trị ban đầu.
 - Vai trò lấy từ token do server ký; client không thể tự gửi role khi đăng ký.
 - Trên Supabase, migration bật RLS cho bảng `users` và thu hồi quyền
   `SELECT` của `anon`/`authenticated`; chỉ role backend (`postgres`) truy cập được.

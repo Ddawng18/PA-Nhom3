@@ -11,7 +11,7 @@ namespace Linea.Api.Controllers;
 [ApiController]
 [Route("api/admin")]
 [Authorize(Policy = AuthPolicies.AdminOnly)]
-public sealed class AdminController(AppDbContext db) : ControllerBase
+public sealed class AdminController(AppDbContext db, IWebHostEnvironment environment, IConfiguration configuration) : ControllerBase
 {
     [HttpGet("users")]
     [ProducesResponseType<IReadOnlyList<UserResponse>>(StatusCodes.Status200OK)]
@@ -19,6 +19,8 @@ public sealed class AdminController(AppDbContext db) : ControllerBase
         [FromQuery] int take = 50,
         CancellationToken cancellationToken = default)
     {
+        if (!environment.IsDevelopment() || configuration["AUTH_MODE"] != "legacy")
+            return StatusCode(501, "Quản lý tài khoản Supabase chưa được triển khai.");
         var limit = Math.Clamp(take, 1, 200);
         var users = await db.Users
             .AsNoTracking()
@@ -37,6 +39,8 @@ public sealed class AdminController(AppDbContext db) : ControllerBase
         [FromBody] UpdateLockRequest request,
         CancellationToken cancellationToken)
     {
+        if (!environment.IsDevelopment() || configuration["AUTH_MODE"] != "legacy")
+            return StatusCode(501, "Quản lý tài khoản Supabase chưa được triển khai.");
         var user = await db.Users.SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
         if (user is null)
         {
@@ -64,7 +68,11 @@ public sealed class AdminController(AppDbContext db) : ControllerBase
         [FromBody] UpdateRoleRequest request,
         CancellationToken cancellationToken)
     {
-        if (!Enum.TryParse<UserRole>(request.Role, ignoreCase: true, out var role))
+        if (!environment.IsDevelopment() || configuration["AUTH_MODE"] != "legacy")
+            return StatusCode(501, "Quản lý tài khoản Supabase chưa được triển khai.");
+        if (!Enum.TryParse<UserRole>(request.Role, ignoreCase: true, out var role) ||
+            !Enum.IsDefined(role) ||
+            !string.Equals(request.Role, role.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             ModelState.AddModelError(nameof(request.Role), "Vai trò phải là student, teacher hoặc admin.");
             return ValidationProblem(ModelState);

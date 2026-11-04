@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
   Bell,
@@ -18,6 +18,7 @@ import type { User } from "@supabase/supabase-js";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
+import { fetchVerifiedAccount, type VerifiedAccount } from "../lib/account";
 import "../styles/settings.css";
 
 type ToggleSettingProps = {
@@ -61,20 +62,32 @@ function getInitials(name: string): string {
 }
 
 export default function SettingsPage() {
-  const { user, signOut } = useAuth();
+  const { user, session, signOut } = useAuth();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState(user ? getDisplayName(user) : "");
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [verifiedAccount, setVerifiedAccount] = useState<VerifiedAccount | null>(null);
   const [notifications, setNotifications] = useState({
     daily: true,
     weekly: false,
     streak: true,
   });
 
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL;
+    if (!apiUrl || !session?.access_token) return;
+    const controller = new AbortController();
+    fetchVerifiedAccount(apiUrl, session.access_token, controller.signal)
+      .then((account) => setVerifiedAccount(account))
+      .catch(() => { if (!controller.signal.aborted) setVerifiedAccount(null); });
+    return () => controller.abort();
+  }, [session?.access_token]);
+
   if (!user) return null;
 
   const userDisplayName = getDisplayName(user);
+  const verifiedRole = verifiedAccount?.id === user.id ? verifiedAccount.role : null;
   const initials = getInitials(userDisplayName);
 
   async function handleSignOut() {
@@ -106,6 +119,7 @@ export default function SettingsPage() {
               <p className="settings-eyebrow">TÀI KHOẢN CỦA BẠN</p>
               <h1>Hồ sơ &amp; Cài đặt</h1>
               <p>Quản lý thông tin cá nhân, sở thích học tập và các thiết lập của tài khoản.</p>
+              {verifiedRole && <p>Vai trò: {{ student: "Học viên", teacher: "Giáo viên", admin: "Quản trị viên" }[verifiedRole]}</p>}
             </div>
             <div className="settings-heading-actions">
               <span className="avatar avatar-heading" aria-hidden="true">{initials}</span>
