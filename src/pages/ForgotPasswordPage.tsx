@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import { emailSchemaForReset } from "../auth/schemas";
+import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
 
 export default function ForgotPasswordPage() {
@@ -23,13 +24,13 @@ export default function ForgotPasswordPage() {
     setIsSubmitting(true);
     try {
       const result = await resetPassword(email);
-      if (result.error && !configured) {
+      if (result.error) {
         setMessage(result.error);
       } else {
         setMessage("Nếu email tồn tại, liên kết đặt lại đã được gửi.");
       }
-    } catch {
-      setMessage("Nếu email tồn tại, liên kết đặt lại đã được gửi.");
+    } catch (error) {
+      setMessage(getAuthErrorMessage(error instanceof Error ? error.message : undefined));
     } finally {
       setIsSubmitting(false);
     }
@@ -60,12 +61,17 @@ export default function ForgotPasswordPage() {
             />
             {emailError && <p className="field-error" id="reset-email-error">{emailError}</p>}
           </div>
+          {!configured && (
+            <p className="form-message form-message-error" role="alert">
+              Ứng dụng chưa được cấu hình Supabase. Vui lòng thử lại sau.
+            </p>
+          )}
           {message && (
             <p className={`form-message ${configured ? "form-message-info" : "form-message-error"}`} role="status">
               {message}
             </p>
           )}
-          <button className="submit-button" type="submit" disabled={isSubmitting}>
+          <button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
             {isSubmitting ? "Đang xử lý..." : "Gửi liên kết đặt lại"}
           </button>
         </form>
