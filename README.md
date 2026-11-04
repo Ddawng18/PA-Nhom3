@@ -125,6 +125,12 @@ dotnet run --project server/Linea.Api
 API chạy tại `http://localhost:4174`; lần chạy đầu áp dụng migration lên Supabase
 (nếu có `SUPABASE_DB_URL`) hoặc tạo SQLite `server/Linea.Api/linea-dev.db`.
 
+## Triển khai miễn phí
+
+Phương án: **Vercel** (frontend) + **Render** (backend ASP.NET Core) + **Supabase**
+(Postgres/Auth). Hướng dẫn chi tiết trong [`docs/deployment.md`](docs/deployment.md).
+Dự án **chưa được triển khai**, nên chưa có URL thử.
+
 ## Kiểm tra dự án
 
 ```bash

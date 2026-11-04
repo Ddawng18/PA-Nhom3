@@ -44,6 +44,7 @@ của nhóm — không qua Git/chat/issue.
 | `JWT_EXPIRY_MINUTES` | Không | Mặc định `60`. |
 | `SUPABASE_DB_URL` | Không | Connection string PostgreSQL của Supabase, chỉ dùng server-side. Có giá trị thì backend dùng Supabase; để trống thì dùng SQLite. Không đặt tiền tố `VITE_` và không commit. |
 | `DB_CONNECTION` | Không | Chuỗi SQLite fallback, mặc định `Data Source=linea-dev.db`. |
+| `RUN_MIGRATIONS` | Không | Đặt `true` trên hosting để chạy migration khi khởi động (lần deploy đầu). Development luôn chạy migration. |
 | `CLIENT_ORIGIN` | Không | Origin được CORS, mặc định `http://localhost:5173`. |
 | `SEED_ADMIN_EMAIL` | Không | Tạo admin đầu tiên khi CSDL chưa có tài khoản này. |
 | `SEED_ADMIN_PASSWORD` | Không | Mật khẩu admin đầu tiên. Nên xóa sau lần chạy đầu. |
@@ -65,6 +66,9 @@ client chuyển sang dùng backend, gọi `/api/auth/*` và gửi
 `Authorization: Bearer <JWT>`.
 
 ## Chạy backend
+
+Phương án hosting miễn phí (Vercel + Render + Supabase) và các biến môi trường
+production nằm trong [`../docs/deployment.md`](../docs/deployment.md).
 
 ```powershell
 dotnet run --project server/Linea.Api

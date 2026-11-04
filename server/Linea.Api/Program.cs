@@ -171,7 +171,13 @@ app.MapGet("/api/health", async (AppDbContext db, CancellationToken cancellation
         : Results.Problem("Không thể kết nối cơ sở dữ liệu.", statusCode: StatusCodes.Status503ServiceUnavailable);
 });
 
-if (app.Environment.IsDevelopment())
+var runMigrations = app.Environment.IsDevelopment() ||
+    string.Equals(
+        builder.Configuration["RUN_MIGRATIONS"],
+        "true",
+        StringComparison.OrdinalIgnoreCase);
+
+if (runMigrations)
 {
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
