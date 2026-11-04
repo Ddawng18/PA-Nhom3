@@ -14,6 +14,7 @@ Cập nhật: 04/11/2026. Đây là kết quả kiểm tra và thay đổi trong
 - Đã chuẩn bị `render.yaml` cho một web service Docker gói Free tại Singapore, health check `/api/health`. Dịch vụ hiện tại được tạo bằng Render CLI, dùng Dockerfile gốc và publishable/anon key; không dùng service role key.
 - Backend đã triển khai trên Render Free tại https://linea-api-7f2q.onrender.com, theo dõi nhánh `Thinh-dev`; cấu hình `VITE_API_URL` trên Vercel và triển khai lại frontend. Đã xác nhận health trả 200, route học viên thiếu token trả 401, token sai trả 401, CORS cho website trả 204 và bundle frontend chứa đúng địa chỉ API.
 - Điều chỉnh thông báo đăng ký để không khẳng định email đã được gửi khi Supabase trả phản hồi chung cho tài khoản đã tồn tại; thêm nút yêu cầu gửi lại email xác nhận khi cần. Đã kiểm tra tài khoản người dùng báo lỗi đã xác nhận và từng đăng nhập thành công. Lệnh gửi lại chỉ thực hiện khi người dùng nhấn nút; việc nhận thư còn phụ thuộc dịch vụ email Supabase/SMTP.
+- Nối nút “Tiếp tục với Google” ở trang đăng ký với Supabase Auth, có trạng thái chờ và báo lỗi. Test trình duyệt xác nhận nút tạo yêu cầu OAuth cùng URL callback; chưa kiểm thử hoàn tất đăng nhập với tài khoản Google thật.
 
 ## Kết quả kiểm thử tại máy
 
