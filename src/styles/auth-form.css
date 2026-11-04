@@ -140,22 +140,6 @@
   text-align: center;
 }
 
-.form-divider {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  color: var(--color-muted);
-  font-size: 11px;
-}
-
-.form-divider::before,
-.form-divider::after {
-  height: 1px;
-  flex: 1;
-  background: var(--color-border);
-  content: "";
-}
-
 .google-button {
   margin-top: -1px;
   border: 1px solid var(--color-border);
@@ -174,6 +158,22 @@
   background: conic-gradient(from -45deg, #4285f4 0 25%, #34a853 25% 48%, #fbbc05 48% 70%, #ea4335 70% 100%);
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.form-divider {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.form-divider::before,
+.form-divider::after {
+  height: 1px;
+  flex: 1;
+  background: var(--color-border);
+  content: "";
 }
 
 .submit-button:disabled,
