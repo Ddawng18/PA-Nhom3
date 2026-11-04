@@ -131,6 +131,11 @@ Phương án: **Vercel** (frontend) + **Render** (backend ASP.NET Core) + **Supa
 (Postgres/Auth). Hướng dẫn chi tiết trong [`docs/deployment.md`](docs/deployment.md).
 Dự án **chưa được triển khai**, nên chưa có URL thử.
 
+## Bằng chứng kiểm tra
+
+Bằng chứng chi tiết (test, API, CSDL, bảo mật) nằm trong
+[`docs/evidence.md`](docs/evidence.md). Trạng thái PR review được ghi rõ trong đó.
+
 ## Kiểm tra dự án
 
 ```bash
