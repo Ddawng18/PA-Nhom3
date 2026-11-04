@@ -20,7 +20,7 @@ public partial class InitialCreate : Migration
                 Id = table.Column<Guid>(nullable: false),
                 Email = table.Column<string>(maxLength: 254, nullable: false),
                 DisplayName = table.Column<string>(maxLength: 100, nullable: true),
-                PasswordHash = table.Column<string>(maxLength: 255, nullable: true),
+                PasswordHash = table.Column<string>(maxLength: 255, nullable: false),
                 Role = table.Column<string>(maxLength: 16, nullable: false, defaultValue: "Student"),
                 IsLocked = table.Column<bool>(nullable: false),
                 CreatedAt = table.Column<DateTimeOffset>(nullable: false),

@@ -31,6 +31,7 @@ internal sealed class AppDbContextModelSnapshot : ModelSnapshot
             builder.Property<bool>("IsLocked");
 
             builder.Property<string>("PasswordHash")
+                .IsRequired()
                 .HasMaxLength(255);
 
             builder.Property<string>("Role")

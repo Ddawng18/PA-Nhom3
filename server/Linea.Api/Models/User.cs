@@ -8,7 +8,7 @@ public sealed class User
 
     public string? DisplayName { get; set; }
 
-    public string? PasswordHash { get; set; }
+    public required string PasswordHash { get; set; }
 
     public UserRole Role { get; set; } = UserRole.Student;
 
