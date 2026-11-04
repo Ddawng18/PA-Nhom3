@@ -1,0 +1,248 @@
+/* Shared page layout, header, hero, and footer */
+.register-page {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  background: var(--color-page-bg);
+}
+
+.site-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 64px;
+  flex: 0 0 64px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6.67%;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.header-brand-group,
+.header-nav,
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.header-brand-group {
+  gap: 34px;
+}
+
+.wordmark {
+  color: var(--color-primary);
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+.header-nav {
+  gap: 26px;
+}
+
+.header-nav a {
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.search-field {
+  position: absolute;
+  left: 50%;
+  display: flex;
+  width: 220px;
+  height: 38px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 13px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--color-soft-bg);
+  color: var(--color-muted);
+}
+
+.search-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.search-field input::placeholder {
+  color: var(--color-muted);
+  opacity: 1;
+}
+
+.header-actions {
+  gap: 22px;
+}
+
+.icon-button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.login-link {
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.register-main {
+  display: grid;
+  width: 100%;
+  max-width: 1440px;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(390px, 450px);
+  align-items: start;
+  gap: clamp(70px, 11vw, 160px);
+  margin: 0 auto;
+  padding: 28px 6.67% 36px;
+}
+
+.hero-text {
+  align-self: start;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  line-height: 1.5;
+}
+
+.hero-text h2 {
+  margin: 16px 0 0;
+  color: var(--color-text);
+  font-size: clamp(40px, 3.35vw, 48px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+}
+
+.site-footer a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.site-footer {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 6.67%;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.site-footer nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.site-footer a {
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .register-main {
+    max-width: 480px;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 32px;
+    padding: 32px 24px 40px;
+  }
+
+  .hero-text h2 {
+    margin-top: 10px;
+    font-size: 32px;
+  }
+
+  .site-header {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+
+  .site-footer {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+}
+
+@media (max-width: 600px) {
+  .site-header {
+    height: 60px;
+    flex-basis: 60px;
+  }
+
+  .header-brand-group {
+    gap: 0;
+  }
+
+  .header-nav {
+    display: none;
+  }
+
+  .search-field {
+    position: static;
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+    padding: 0;
+    transform: none;
+    background: transparent;
+  }
+
+  .search-field input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  .header-actions {
+    gap: 10px;
+  }
+
+  .login-link {
+    font-size: 13px;
+  }
+
+  .register-main {
+    gap: 32px;
+    padding: 32px 24px 40px;
+  }
+
+  .site-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+    padding: 15px 22px 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .site-footer nav {
+    gap: 5px;
+    font-size: 10px;
+  }
+}

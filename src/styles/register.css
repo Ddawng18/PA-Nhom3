@@ -1,0 +1,12 @@
+/* Registration page-specific styles */
+.existing-account a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.existing-account {
+  margin: 20px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-align: center;
+}
