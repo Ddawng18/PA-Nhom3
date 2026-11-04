@@ -165,6 +165,8 @@ Không endpoint nào trả `password` hay `passwordHash`.
 
 ## Kiểm thử
 
+Bằng chứng tổng hợp cho reviewer: [`../docs/evidence.md`](../docs/evidence.md).
+
 Harness tự build API, chạy API trên cổng tạm với CSDL SQLite tạm, gọi HTTP thật,
 kiểm tra response và đọc lại bảng `users`, sau đó dọn process/CSDL. Harness luôn
 đặt `SUPABASE_DB_URL` rỗng để không ghi vào Supabase thật. Không cần package test
