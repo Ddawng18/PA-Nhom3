@@ -10,9 +10,10 @@ type FieldErrors = Partial<Record<"email" | "password", string>>;
 export default function LoginForm() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const { signInWithEmail, configured } = useAuth();
+  const { signInWithEmail, signInWithGoogle, configured } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -52,6 +53,22 @@ export default function LoginForm() {
       setMessage(getAuthErrorMessage(error instanceof Error ? error.message : undefined));
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    if (isGoogleSubmitting) return;
+    setIsGoogleSubmitting(true);
+    setMessage(null);
+    try {
+      const result = await signInWithGoogle();
+      if (result.error) {
+        setMessage(result.error);
+      }
+    } catch (error) {
+      setMessage(getAuthErrorMessage(error instanceof Error ? error.message : undefined));
+    } finally {
+      setIsGoogleSubmitting(false);
     }
   }
 
@@ -137,9 +154,14 @@ export default function LoginForm() {
           <span>hoặc</span>
         </div>
 
-        <button className="google-button" type="button">
+        <button
+          className="google-button"
+          type="button"
+          disabled={isGoogleSubmitting || !configured}
+          onClick={handleGoogleSignIn}
+        >
           <span className="google-mark" aria-hidden="true">G</span>
-          Tiếp tục với Google
+          {isGoogleSubmitting ? "Đang chuyển hướng..." : "Tiếp tục với Google"}
         </button>
 
         <p className="new-account-label">Chưa có tài khoản?</p>
