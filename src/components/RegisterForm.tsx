@@ -31,7 +31,8 @@ export default function RegisterForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
-  const { signUpWithEmail, resendConfirmation, configured } = useAuth();
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const { signUpWithEmail, signInWithGoogle, resendConfirmation, configured } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -90,6 +91,20 @@ export default function RegisterForm() {
       setMessage({ type: "error", text: getAuthErrorMessage(error instanceof Error ? error.message : undefined) });
     } finally {
       setIsResending(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    if (isGoogleSubmitting) return;
+    setIsGoogleSubmitting(true);
+    setMessage(null);
+    try {
+      const result = await signInWithGoogle();
+      if (result.error) setMessage({ type: "error", text: result.error });
+    } catch (error) {
+      setMessage({ type: "error", text: getAuthErrorMessage(error instanceof Error ? error.message : undefined) });
+    } finally {
+      setIsGoogleSubmitting(false);
     }
   }
 
@@ -227,9 +242,9 @@ export default function RegisterForm() {
           <span>hoặc</span>
         </div>
 
-        <button className="google-button" type="button">
+        <button className="google-button" type="button" disabled={isGoogleSubmitting || !configured} onClick={handleGoogleSignIn}>
           <span className="google-mark" aria-hidden="true">G</span>
-          Tiếp tục với Google
+          {isGoogleSubmitting ? "Đang chuyển hướng..." : "Tiếp tục với Google"}
         </button>
       </form>
 
