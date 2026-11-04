@@ -1,24 +1,4 @@
 /* Registration page-specific styles */
-.terms-check {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin-top: 1px;
-  color: var(--color-text);
-  font-size: 11px;
-  line-height: 1.55;
-  cursor: pointer;
-}
-
-.terms-check input {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
-  margin: 1px 0 0;
-  accent-color: var(--color-primary);
-}
-
-.terms-check a,
 .existing-account a {
   color: var(--color-primary);
   font-weight: 600;

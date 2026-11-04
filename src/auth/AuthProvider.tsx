@@ -53,17 +53,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         needsEmailConfirmation: !error && !data.session,
       };
     },
-    signInWithGoogle: async () => {
-      if (!supabase) return unavailable();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: { prompt: "select_account" },
-        },
-      });
-      return { error: error ? getAuthErrorMessage(error.message) : null };
-    },
     resetPassword: async (email) => {
       if (!supabase) return unavailable();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {

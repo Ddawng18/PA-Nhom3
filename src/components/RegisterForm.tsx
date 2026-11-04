@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { registerSchema } from "../auth/schemas";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
 
-type FieldErrors = Partial<Record<"displayName" | "email" | "password" | "acceptedTerms", string>>;
+type FieldErrors = Partial<Record<"displayName" | "email" | "password" | "confirmPassword", string>>;
 
 function getFieldErrors(values: unknown): FieldErrors {
   const result = registerSchema.safeParse(values);
@@ -14,7 +14,7 @@ function getFieldErrors(values: unknown): FieldErrors {
   return result.error.issues.reduce<FieldErrors>((errors, issue) => {
     const field = issue.path[0];
     if (
-      (field === "displayName" || field === "email" || field === "password" || field === "acceptedTerms") &&
+      (field === "displayName" || field === "email" || field === "password" || field === "confirmPassword") &&
       !errors[field]
     ) {
       errors[field] = issue.message;
@@ -25,12 +25,12 @@ function getFieldErrors(values: unknown): FieldErrors {
 
 export default function RegisterForm() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "info"; text: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const { signUpWithEmail, signInWithGoogle } = useAuth();
+  const { signUpWithEmail, configured } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,7 +40,7 @@ export default function RegisterForm() {
       displayName: String(formData.get("display-name") ?? ""),
       email: String(formData.get("email") ?? ""),
       password: String(formData.get("password") ?? ""),
-      acceptedTerms: formData.get("terms") === "on",
+      confirmPassword: String(formData.get("confirm-password") ?? ""),
     };
     const errors = getFieldErrors(values);
     setFieldErrors(errors);
@@ -62,26 +62,8 @@ export default function RegisterForm() {
           text: "Đã gửi email xác nhận. Vui lòng kiểm tra hộp thư để tiếp tục.",
         });
       } else {
-        const from = (location.state as { from?: string } | null)?.from;
-        navigate(from || "/", { replace: true });
+        navigate("/settings", { replace: true });
       }
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: getAuthErrorMessage(error instanceof Error ? error.message : undefined),
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleGoogleSignIn() {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    setMessage(null);
-    try {
-      const result = await signInWithGoogle();
-      if (result.error) setMessage({ type: "error", text: result.error });
     } catch (error) {
       setMessage({
         type: "error",
@@ -167,37 +149,52 @@ export default function RegisterForm() {
             <p className="field-error" id="register-password-error">{fieldErrors.password}</p>
           ) : (
             <p className="field-hint" id="password-hint">
-              Ít nhất 8 ký tự, gồm chữ hoa, chữ thường và số.
+              Mật khẩu cần có ít nhất 8 ký tự.
             </p>
           )}
         </div>
 
-        <div>
-          <label className="terms-check" htmlFor="terms">
+        <div className="form-field password-field">
+          <label htmlFor="confirm-password">Xác nhận mật khẩu *</label>
+          <div className="password-input-wrap">
             <input
-              id="terms"
-              name="terms"
-              type="checkbox"
-              defaultChecked
-              aria-invalid={Boolean(fieldErrors.acceptedTerms)}
-              aria-describedby={fieldErrors.acceptedTerms ? "terms-error" : undefined}
+              id="confirm-password"
+              name="confirm-password"
+              type={isConfirmationVisible ? "text" : "password"}
+              autoComplete="new-password"
+              aria-invalid={Boolean(fieldErrors.confirmPassword)}
+              aria-describedby={fieldErrors.confirmPassword ? "confirm-password-error" : undefined}
             />
-            <span>
-              Tôi đồng ý với <a href="#">Điều khoản sử dụng</a> và{" "}
-              <a href="#">Chính sách quyền riêng tư</a> của LINEA.
-            </span>
-          </label>
-          {fieldErrors.acceptedTerms && (
-            <p className="field-error" id="terms-error">{fieldErrors.acceptedTerms}</p>
+            <button
+              className="password-toggle"
+              type="button"
+              aria-label={isConfirmationVisible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              aria-pressed={isConfirmationVisible}
+              onClick={() => setIsConfirmationVisible((visible) => !visible)}
+            >
+              {isConfirmationVisible ? (
+                <EyeOff aria-hidden="true" size={18} />
+              ) : (
+                <Eye aria-hidden="true" size={18} />
+              )}
+            </button>
+          </div>
+          {fieldErrors.confirmPassword && (
+            <p className="field-error" id="confirm-password-error">{fieldErrors.confirmPassword}</p>
           )}
         </div>
 
+        {!configured && (
+          <p className="form-message form-message-error" role="alert">
+            Ứng dụng chưa được cấu hình Supabase. Vui lòng thử lại sau.
+          </p>
+        )}
         {message && (
           <p className={`form-message form-message-${message.type}`} role={message.type === "error" ? "alert" : "status"}>
             {message.text}
           </p>
         )}
-        <button className="submit-button" type="submit" disabled={isSubmitting}>
+        <button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
           {isSubmitting ? "Đang xử lý..." : "Tạo tài khoản & tiếp tục"}
         </button>
         <p className="next-step">Bước tiếp theo: quay lại ghi danh khóa học đã chọn.</p>
@@ -206,7 +203,7 @@ export default function RegisterForm() {
           <span>hoặc</span>
         </div>
 
-        <button className="google-button" type="button" disabled={isSubmitting} onClick={handleGoogleSignIn}>
+        <button className="google-button" type="button">
           <span className="google-mark" aria-hidden="true">G</span>
           Tiếp tục với Google
         </button>

@@ -14,7 +14,6 @@ export type AuthContextValue = {
     password: string;
     displayName: string;
   }) => Promise<AuthResult>;
-  signInWithGoogle: () => Promise<AuthResult>;
   resetPassword: (email: string) => Promise<AuthResult>;
   updatePassword: (newPassword: string) => Promise<AuthResult>;
   signOut: () => Promise<AuthResult>;

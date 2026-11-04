@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { loginSchema } from "../auth/schemas";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
@@ -12,20 +12,8 @@ export default function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const { signInWithEmail, signInWithGoogle } = useAuth();
+  const { signInWithEmail, configured } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  function getReturnTo() {
-    const state = location.state;
-    if (typeof state === "object" && state !== null && "from" in state) {
-      const from = state.from;
-      if (typeof from === "string" && from.startsWith("/") && !from.startsWith("//")) {
-        return from;
-      }
-    }
-    return "/";
-  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,22 +46,8 @@ export default function LoginForm() {
       if (result.error) {
         setMessage(result.error);
       } else {
-        navigate(getReturnTo(), { replace: true });
+        navigate("/settings", { replace: true });
       }
-    } catch (error) {
-      setMessage(getAuthErrorMessage(error instanceof Error ? error.message : undefined));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleGoogleSignIn() {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    setMessage(null);
-    try {
-      const result = await signInWithGoogle();
-      if (result.error) setMessage(result.error);
     } catch (error) {
       setMessage(getAuthErrorMessage(error instanceof Error ? error.message : undefined));
     } finally {
@@ -142,14 +116,17 @@ export default function LoginForm() {
           {fieldErrors.password ? (
             <p className="field-error" id="login-password-error">{fieldErrors.password}</p>
           ) : (
-            <p className="field-hint" id="login-password-hint">
-              Ít nhất 8 ký tự, gồm chữ hoa, chữ thường và số.
-            </p>
+            <p className="field-hint" id="login-password-hint">Vui lòng nhập mật khẩu của bạn.</p>
           )}
         </div>
 
+        {!configured && (
+          <p className="form-message form-message-error" role="alert">
+            Ứng dụng chưa được cấu hình Supabase. Vui lòng thử lại sau.
+          </p>
+        )}
         {message && <p className="form-message form-message-error" role="alert">{message}</p>}
-        <button className="submit-button" type="submit" disabled={isSubmitting}>
+        <button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
           {isSubmitting ? "Đang xử lý..." : "Đăng nhập"}
         </button>
         <p className="next-step">Bước tiếp theo: quay lại ghi danh khóa học đã chọn.</p>
@@ -160,18 +137,16 @@ export default function LoginForm() {
           <span>hoặc</span>
         </div>
 
-        <p className="new-account-label">Chưa có tài khoản?</p>
-        <Link className="google-button create-account-button" to="/register">
-          Tạo tài khoản mới
-        </Link>
-      </form>
-
-      <div className="login-google-action">
-        <button className="google-button" type="button" disabled={isSubmitting} onClick={handleGoogleSignIn}>
+        <button className="google-button" type="button">
           <span className="google-mark" aria-hidden="true">G</span>
           Tiếp tục với Google
         </button>
-      </div>
+
+        <p className="new-account-label">Chưa có tài khoản?</p>
+        <Link className="create-account-button" to="/register">
+          Tạo tài khoản mới
+        </Link>
+      </form>
     </section>
   );
 }

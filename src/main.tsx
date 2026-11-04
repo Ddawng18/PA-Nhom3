@@ -5,10 +5,10 @@ import AuthProvider from "./auth/AuthProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import SettingsPage from "./pages/SettingsPage";
 
 function App() {
   return (
@@ -29,9 +29,13 @@ function App() {
           />
           <Route
             path="/"
+            element={<Navigate to="/settings" replace />}
+          />
+          <Route
+            path="/settings"
             element={
               <ProtectedRoute>
-                <HomePage />
+                <SettingsPage />
               </ProtectedRoute>
             }
           />

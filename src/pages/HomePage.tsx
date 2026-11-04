@@ -2,12 +2,14 @@ import { useState } from "react";
 import AuthLayout from "../components/AuthLayout";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
+import { useNavigate } from "react-router-dom";
 import "../styles/home.css";
 
 export default function HomePage() {
   const [message, setMessage] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const displayName = user?.user_metadata.display_name;
   const avatarUrl = user?.user_metadata.avatar_url;
 
@@ -17,7 +19,11 @@ export default function HomePage() {
     setMessage(null);
     try {
       const result = await signOut();
-      if (result.error) setMessage(result.error);
+      if (result.error) {
+        setMessage(result.error);
+      } else {
+        navigate("/login", { replace: true });
+      }
     } catch (error) {
       setMessage(getAuthErrorMessage(error instanceof Error ? error.message : undefined));
     } finally {

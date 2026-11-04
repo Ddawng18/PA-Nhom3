@@ -13,21 +13,32 @@ describe("loginSchema", () => {
 });
 
 describe("registerSchema", () => {
-  it("requires a name, a complex password, and accepted terms", () => {
+  it("requires a name, a password of at least eight characters, and matching confirmation", () => {
     expect(
       registerSchema.safeParse({
         displayName: "Linh",
         email: "linh@example.com",
-        password: "Drawing8",
-        acceptedTerms: true,
+        password: "password",
+        confirmPassword: "password",
       }).success
     ).toBe(true);
     expect(
       registerSchema.safeParse({
-        displayName: "L",
+        displayName: "",
         email: "linh@example.com",
-        password: "drawing",
-        acceptedTerms: false,
+        password: "short",
+        confirmPassword: "different",
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects a password confirmation that does not match", () => {
+    expect(
+      registerSchema.safeParse({
+        displayName: "Linh",
+        email: "linh@example.com",
+        password: "password",
+        confirmPassword: "different",
       }).success
     ).toBe(false);
   });
@@ -43,6 +54,15 @@ describe("getAuthErrorMessage", () => {
       "Email chưa được xác nhận. Hãy kiểm tra hộp thư."
     );
     expect(getAuthErrorMessage("User already registered")).toBe("Email này đã được đăng ký.");
+  });
+
+  it("maps rate-limit and network errors", () => {
+    expect(getAuthErrorMessage("Email rate limit exceeded")).toBe(
+      "Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau."
+    );
+    expect(getAuthErrorMessage("Failed to fetch")).toBe(
+      "Không thể kết nối mạng. Vui lòng kiểm tra kết nối và thử lại."
+    );
   });
 
   it("returns a friendly fallback for unknown errors", () => {

@@ -9,7 +9,7 @@ export default function ResetPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "info"; text: string } | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const { updatePassword } = useAuth();
+  const { updatePassword, configured } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -61,12 +61,17 @@ export default function ResetPasswordPage() {
             />
             {passwordError && <p className="field-error" id="new-password-error">{passwordError}</p>}
           </div>
+          {!configured && (
+            <p className="form-message form-message-error" role="alert">
+              Ứng dụng chưa được cấu hình Supabase. Vui lòng thử lại sau.
+            </p>
+          )}
           {message && (
             <p className={`form-message form-message-${message.type}`} role={message.type === "error" ? "alert" : "status"}>
               {message.text}
             </p>
           )}
-          <button className="submit-button" type="submit" disabled={isSubmitting}>
+          <button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
             {isSubmitting ? "Đang xử lý..." : "Cập nhật mật khẩu"}
           </button>
         </form>
