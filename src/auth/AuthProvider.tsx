@@ -93,6 +93,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         needsEmailConfirmation: !error && !data.session,
       };
     },
+    resendConfirmation: async (email) => {
+      if (!supabase) return unavailable();
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      return { error: error ? getAuthErrorMessage(error.message) : null };
+    },
     resetPassword: async (email) => {
       if (!supabase) return unavailable();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {

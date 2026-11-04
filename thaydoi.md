@@ -13,6 +13,7 @@ Cập nhật: 04/11/2026. Đây là kết quả kiểm tra và thay đổi trong
 - Backend mặc định dùng Supabase Auth cho các route có phân quyền student/teacher/admin. Các thao tác quản trị `users` cũ trả 501 vì vẫn trỏ vào bảng tài khoản JWT riêng; các endpoint đăng ký/đăng nhập cũ trả 410 và frontend dùng Supabase Auth. Chế độ JWT cũ chỉ bật trong Development với `AUTH_MODE=legacy`. Đã chuẩn bị `server/Dockerfile` cho hosting .NET, chưa kiểm thử image vì máy không có Docker.
 - Đã chuẩn bị `render.yaml` cho một web service Docker gói Free tại Singapore, health check `/api/health`. Dịch vụ hiện tại được tạo bằng Render CLI, dùng Dockerfile gốc và publishable/anon key; không dùng service role key.
 - Backend đã triển khai trên Render Free tại https://linea-api-7f2q.onrender.com, theo dõi nhánh `Thinh-dev`; cấu hình `VITE_API_URL` trên Vercel và triển khai lại frontend. Đã xác nhận health trả 200, route học viên thiếu token trả 401, token sai trả 401, CORS cho website trả 204 và bundle frontend chứa đúng địa chỉ API.
+- Điều chỉnh thông báo đăng ký để không khẳng định email đã được gửi khi Supabase trả phản hồi chung cho tài khoản đã tồn tại; thêm nút yêu cầu gửi lại email xác nhận khi cần. Đã kiểm tra tài khoản người dùng báo lỗi đã xác nhận và từng đăng nhập thành công. Lệnh gửi lại chỉ thực hiện khi người dùng nhấn nút; việc nhận thư còn phụ thuộc dịch vụ email Supabase/SMTP.
 
 ## Kết quả kiểm thử tại máy
 
