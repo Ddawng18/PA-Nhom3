@@ -59,6 +59,7 @@ builder.Services.AddSingleton(jwtOptions);
 
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
+builder.Services.AddScoped<ICourseService, CourseService>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
