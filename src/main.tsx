@@ -3,12 +3,15 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AuthProvider from "./auth/AuthProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
+import TeacherRoleGuard from "./components/TeacherRoleGuard";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import LoginPage from "./pages/LoginPage";
+import MyCoursesPage from "./pages/MyCoursesPage";
 import RegisterPage from "./pages/RegisterPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SettingsPage from "./pages/SettingsPage";
+import TeacherCourseFormPage from "./pages/TeacherCourseFormPage";
 
 function App() {
   return (
@@ -36,6 +39,34 @@ function App() {
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-courses"
+            element={
+              <ProtectedRoute>
+                <MyCoursesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/courses/new"
+            element={
+              <ProtectedRoute>
+                <TeacherRoleGuard>
+                  <TeacherCourseFormPage />
+                </TeacherRoleGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/courses/:courseId/edit"
+            element={
+              <ProtectedRoute>
+                <TeacherRoleGuard>
+                  <TeacherCourseFormPage />
+                </TeacherRoleGuard>
               </ProtectedRoute>
             }
           />

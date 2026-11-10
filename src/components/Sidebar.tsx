@@ -8,6 +8,7 @@ import {
   Settings,
   Sparkles,
 } from "lucide-react";
+import { NavLink } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 
 type SidebarProps = {
@@ -17,13 +18,13 @@ type SidebarProps = {
 };
 
 const navigationItems = [
-  { label: "Tổng quan", icon: LayoutDashboard },
-  { label: "Khóa học của tôi", icon: BookOpen },
-  { label: "Studio", icon: PenTool },
-  { label: "Bài luyện tập", icon: Sparkles },
-  { label: "Tiến độ", icon: ChartNoAxesColumnIncreasing },
-  { label: "Tác phẩm", icon: FolderHeart },
-  { label: "Cài đặt", icon: Settings, active: true },
+  { label: "Tổng quan", icon: LayoutDashboard, to: null },
+  { label: "Khóa học của tôi", icon: BookOpen, to: "/my-courses" },
+  { label: "Studio", icon: PenTool, to: null },
+  { label: "Bài luyện tập", icon: Sparkles, to: null },
+  { label: "Tiến độ", icon: ChartNoAxesColumnIncreasing, to: null },
+  { label: "Tác phẩm", icon: FolderHeart, to: null },
+  { label: "Cài đặt", icon: Settings, to: "/settings" },
 ];
 
 export default function Sidebar({ user, displayName, initials }: SidebarProps) {
@@ -35,16 +36,23 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
       </a>
 
       <nav className="settings-navigation" aria-label="Điều hướng chính">
-        {navigationItems.map(({ label, icon: Icon, active }) => (
-          <button
-            className={`settings-nav-item${active ? " active" : ""}`}
-            type="button"
-            aria-current={active ? "page" : undefined}
-            key={label}
-          >
-            <Icon aria-hidden="true" size={18} />
-            <span>{label}</span>
-          </button>
+        {navigationItems.map(({ label, icon: Icon, to }) => (
+          to ? (
+            <NavLink
+              className={({ isActive }) => `settings-nav-item${isActive ? " active" : ""}`}
+              to={to}
+              key={label}
+              end
+            >
+              <Icon aria-hidden="true" size={18} />
+              <span>{label}</span>
+            </NavLink>
+          ) : (
+            <button className="settings-nav-item" type="button" key={label}>
+              <Icon aria-hidden="true" size={18} />
+              <span>{label}</span>
+            </button>
+          )
         ))}
       </nav>
 
