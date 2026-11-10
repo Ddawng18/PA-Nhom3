@@ -2,7 +2,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getAuthErrorMessage } from "./errors";
 import { AuthContext, type AuthContextValue, type AuthResult } from "./authContext";
-import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import {
+  getGoogleProviderStatus,
+  isSupabaseConfigured,
+  supabase,
+} from "../lib/supabase";
 
 const configurationError = "Ứng dụng chưa được cấu hình Supabase. Vui lòng thử lại sau.";
 
@@ -16,6 +20,18 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let active = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setSession(data.session);
+      setLoading(false);
+    }).catch(() => {
+      if (!active) return;
+      setSession(null);
+      setLoading(false);
+    });
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
@@ -23,7 +39,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const unavailable = (): AuthResult => ({ error: configurationError });
@@ -36,6 +55,27 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     signInWithEmail: async ({ email, password }) => {
       if (!supabase) return unavailable();
       const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { error: error ? getAuthErrorMessage(error.message) : null };
+    },
+    signInWithGoogle: async () => {
+      if (!supabase) return unavailable();
+
+      const googleEnabled = await getGoogleProviderStatus();
+      if (googleEnabled === false) {
+        return {
+          error:
+            "Đăng nhập Google chưa được bật trong Supabase. Vui lòng bật provider Google trong dashboard.",
+        };
+      }
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: { prompt: "select_account" },
+        },
+      });
+
       return { error: error ? getAuthErrorMessage(error.message) : null };
     },
     signUpWithEmail: async ({ email, password, displayName }) => {
@@ -52,6 +92,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         error: error ? getAuthErrorMessage(error.message) : null,
         needsEmailConfirmation: !error && !data.session,
       };
+    },
+    resendConfirmation: async (email) => {
+      if (!supabase) return unavailable();
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      return { error: error ? getAuthErrorMessage(error.message) : null };
     },
     resetPassword: async (email) => {
       if (!supabase) return unavailable();

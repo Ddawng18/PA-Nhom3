@@ -29,7 +29,10 @@ export default function RegisterForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "info"; text: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const { signUpWithEmail, configured } = useAuth();
+  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const { signUpWithEmail, signInWithGoogle, resendConfirmation, configured } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -45,6 +48,7 @@ export default function RegisterForm() {
     const errors = getFieldErrors(values);
     setFieldErrors(errors);
     setMessage(null);
+    setConfirmationEmail(null);
     if (Object.keys(errors).length > 0) return;
 
     setIsSubmitting(true);
@@ -57,9 +61,10 @@ export default function RegisterForm() {
       if (result.error) {
         setMessage({ type: "error", text: result.error });
       } else if (result.needsEmailConfirmation) {
+        setConfirmationEmail(values.email.trim());
         setMessage({
           type: "info",
-          text: "Đã gửi email xác nhận. Vui lòng kiểm tra hộp thư để tiếp tục.",
+          text: "Nếu tài khoản cần xác nhận, hãy kiểm tra hộp thư và mục thư rác. Nếu chưa nhận được, bạn có thể yêu cầu gửi lại.",
         });
       } else {
         navigate("/settings", { replace: true });
@@ -71,6 +76,35 @@ export default function RegisterForm() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleResend() {
+    if (!confirmationEmail || isResending) return;
+    setIsResending(true);
+    try {
+      const result = await resendConfirmation(confirmationEmail);
+      setMessage(result.error
+        ? { type: "error", text: result.error }
+        : { type: "info", text: "Nếu tài khoản cần xác nhận, hãy kiểm tra hộp thư và mục thư rác sau ít phút." });
+    } catch (error) {
+      setMessage({ type: "error", text: getAuthErrorMessage(error instanceof Error ? error.message : undefined) });
+    } finally {
+      setIsResending(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    if (isGoogleSubmitting) return;
+    setIsGoogleSubmitting(true);
+    setMessage(null);
+    try {
+      const result = await signInWithGoogle();
+      if (result.error) setMessage({ type: "error", text: result.error });
+    } catch (error) {
+      setMessage({ type: "error", text: getAuthErrorMessage(error instanceof Error ? error.message : undefined) });
+    } finally {
+      setIsGoogleSubmitting(false);
     }
   }
 
@@ -194,6 +228,11 @@ export default function RegisterForm() {
             {message.text}
           </p>
         )}
+        {confirmationEmail && (
+          <button className="button button-outline" type="button" disabled={isResending} onClick={handleResend}>
+            {isResending ? "Đang xử lý..." : "Gửi lại email xác nhận"}
+          </button>
+        )}
         <button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
           {isSubmitting ? "Đang xử lý..." : "Tạo tài khoản & tiếp tục"}
         </button>
@@ -203,9 +242,9 @@ export default function RegisterForm() {
           <span>hoặc</span>
         </div>
 
-        <button className="google-button" type="button">
+        <button className="google-button" type="button" disabled={isGoogleSubmitting || !configured} onClick={handleGoogleSignIn}>
           <span className="google-mark" aria-hidden="true">G</span>
-          Tiếp tục với Google
+          {isGoogleSubmitting ? "Đang chuyển hướng..." : "Tiếp tục với Google"}
         </button>
       </form>
 

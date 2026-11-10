@@ -9,11 +9,13 @@ export type AuthContextValue = {
   loading: boolean;
   configured: boolean;
   signInWithEmail: (input: { email: string; password: string }) => Promise<AuthResult>;
+  signInWithGoogle: () => Promise<AuthResult>;
   signUpWithEmail: (input: {
     email: string;
     password: string;
     displayName: string;
   }) => Promise<AuthResult>;
+  resendConfirmation: (email: string) => Promise<AuthResult>;
   resetPassword: (email: string) => Promise<AuthResult>;
   updatePassword: (newPassword: string) => Promise<AuthResult>;
   signOut: () => Promise<AuthResult>;
