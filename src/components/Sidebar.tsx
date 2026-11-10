@@ -7,8 +7,9 @@ import {
   PenTool,
   Settings,
   Sparkles,
+  Users,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 
 type SidebarProps = {
@@ -18,22 +19,23 @@ type SidebarProps = {
 };
 
 const navigationItems = [
-  { label: "Tổng quan", icon: LayoutDashboard, to: null },
+  { label: "Tổng quan", icon: LayoutDashboard, to: "/dashboard" },
   { label: "Khóa học của tôi", icon: BookOpen, to: "/my-courses" },
   { label: "Studio", icon: PenTool, to: null },
   { label: "Bài luyện tập", icon: Sparkles, to: null },
   { label: "Tiến độ", icon: ChartNoAxesColumnIncreasing, to: null },
   { label: "Tác phẩm", icon: FolderHeart, to: null },
+  { label: "Cộng đồng", icon: Users, to: null },
   { label: "Cài đặt", icon: Settings, to: "/settings" },
 ];
 
 export default function Sidebar({ user, displayName, initials }: SidebarProps) {
   return (
     <aside className="settings-sidebar">
-      <a className="settings-brand" href="/settings" aria-label="LINEA - Hồ sơ và cài đặt">
+      <Link className="settings-brand" to="/dashboard" aria-label="LINEA - Tổng quan">
         <span className="settings-brand-name">LINEA</span>
         <span className="settings-brand-caption">Không gian học sáng tạo</span>
-      </a>
+      </Link>
 
       <nav className="settings-navigation" aria-label="Điều hướng chính">
         {navigationItems.map(({ label, icon: Icon, to }) => (

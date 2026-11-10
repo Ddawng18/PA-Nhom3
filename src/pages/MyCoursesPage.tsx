@@ -73,9 +73,9 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
               <p>Một hành trình mới đang chờ nét vẽ đầu tiên của bạn.</p>
             </div>
             <div className="settings-heading-actions">
-              <button className="button button-outline my-courses-bell" type="button" aria-label="Thông báo">
+              <Link className="button button-outline my-courses-bell" to="/notifications" aria-label="Thông báo">
                 <Bell aria-hidden="true" size={18} />
-              </button>
+              </Link>
             </div>
           </header>
           <nav className="settings-tabs" aria-label="Lọc khóa học">
@@ -229,9 +229,9 @@ function TeacherCourses({ user, displayName }: { user: User; displayName: string
               <p>Một hành trình mới đang chờ nét vẽ đầu tiên của bạn.</p>
             </div>
             <div className="settings-heading-actions">
-              <button className="button button-outline my-courses-bell" type="button" aria-label="Thông báo">
+              <Link className="button button-outline my-courses-bell" to="/notifications" aria-label="Thông báo">
                 <Bell aria-hidden="true" size={18} />
-              </button>
+              </Link>
             </div>
           </header>
           <div className="teacher-course-toolbar">
