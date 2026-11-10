@@ -140,7 +140,6 @@ export default function SettingsPage() {
           <nav className="settings-tabs" aria-label="Các mục cài đặt">
             <button className="settings-tab active" type="button" aria-current="page">Hồ sơ</button>
             <button className="settings-tab" type="button">Ưa thích học tập</button>
-            <button className="settings-tab" type="button">Thông báo</button>
             <button className="settings-tab" type="button">Bảo mật</button>
             <button className="settings-tab" type="button">Lịch sử mua hàng</button>
           </nav>

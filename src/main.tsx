@@ -6,8 +6,10 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import TeacherRoleGuard from "./components/TeacherRoleGuard";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import MyCoursesPage from "./pages/MyCoursesPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import RegisterPage from "./pages/RegisterPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -32,7 +34,15 @@ function App() {
           />
           <Route
             path="/"
-            element={<Navigate to="/settings" replace />}
+            element={<Navigate to="/dashboard" replace />}
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/settings"
@@ -47,6 +57,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyCoursesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <NotificationsPage />
               </ProtectedRoute>
             }
           />
