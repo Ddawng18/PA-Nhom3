@@ -1,0 +1,839 @@
+.dash-page {
+  --dash-primary: #355c3a;
+  --dash-accent: #a8d96c;
+  --dash-highlight: #ffd66b;
+  --dash-text: #26332b;
+  --dash-secondary: #727b72;
+  --dash-border: #e4e9dd;
+  --dash-surface: #fff;
+  --dash-pale: #d8f0b0;
+  --dash-drawing: #f3f5ec;
+  overflow-x: clip;
+  color: var(--dash-text);
+}
+
+.dash-page .settings-main {
+  padding: 40px 36px 54px;
+}
+
+.dash-content {
+  width: min(100%, 1104px);
+  min-width: 0;
+  margin: 0 auto;
+}
+
+.dash-header {
+  display: flex;
+  min-height: 67px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.dash-heading-copy {
+  min-width: 0;
+}
+
+.dash-heading-copy h1 {
+  margin: 0;
+  color: var(--dash-text);
+  font-size: clamp(24px, 2.4vw, 34px);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 1.2;
+}
+
+.dash-heading-copy p {
+  margin: 7px 0 0;
+  color: var(--dash-secondary);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.dash-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.dash-avatar,
+.dash-icon-button {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.dash-avatar {
+  width: 48px;
+  height: 48px;
+  background: var(--dash-pale);
+  color: var(--dash-primary);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.dash-icon-button {
+  width: 42px;
+  height: 42px;
+  color: var(--dash-primary);
+}
+
+.dash-icon-button:hover {
+  background: var(--dash-drawing);
+}
+
+.dash-top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 420fr) minmax(0, 260fr) minmax(0, 360fr);
+  gap: 20px;
+  margin-top: 28px;
+}
+
+.dash-card {
+  min-width: 0;
+  border: 1px solid var(--dash-border);
+  border-radius: 20px;
+  background: var(--dash-surface);
+}
+
+.dash-practice-card {
+  display: flex;
+  min-height: 340px;
+  flex-direction: column;
+  padding: 24px;
+  border-color: transparent;
+  background: var(--dash-pale);
+}
+
+.dash-eyebrow {
+  margin: 0;
+  color: var(--dash-primary);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+}
+
+.dash-practice-card h2 {
+  max-width: 340px;
+  margin: 16px 0 0;
+  color: var(--dash-text);
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.dash-practice-description {
+  margin: 11px 0 0;
+  color: var(--dash-secondary);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.dash-line-preview {
+  display: flex;
+  height: 48px;
+  align-items: center;
+  justify-content: space-around;
+  gap: 14px;
+  margin-top: 15px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--dash-drawing);
+}
+
+.dash-line-group {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+}
+
+.dash-line-group i {
+  display: block;
+  width: 85%;
+  height: 1px;
+  border-radius: 1px;
+  background: var(--dash-secondary);
+  opacity: 0.68;
+}
+
+.dash-line-group:nth-child(2) i:nth-child(2) {
+  width: 72%;
+}
+
+.dash-line-group:nth-child(3) i:nth-child(3) {
+  width: 65%;
+}
+
+.dash-primary-button,
+.dash-secondary-button {
+  display: inline-flex;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 650;
+  cursor: not-allowed;
+}
+
+.dash-primary-button {
+  width: 100%;
+  margin-top: auto;
+  background: var(--dash-primary);
+  color: #fff;
+}
+
+.dash-primary-button:hover {
+  background: #294d31;
+}
+
+.dash-inspiration-card {
+  position: relative;
+  min-height: 340px;
+  overflow: hidden;
+  border-color: transparent;
+  background: linear-gradient(145deg, #d8f0b0, #a8d96c);
+}
+
+.dash-inspiration-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dash-inspiration-card::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 150px;
+  background: linear-gradient(transparent, rgb(20 30 22 / 78%));
+  content: "";
+}
+
+.dash-inspiration-copy {
+  position: absolute;
+  z-index: 1;
+  inset: auto 0 0;
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+  color: #fff;
+}
+
+.dash-inspiration-copy p,
+.dash-inspiration-copy h2 {
+  margin: 0;
+}
+
+.dash-inspiration-copy p:first-child {
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.dash-inspiration-copy h2 {
+  font-size: 17px;
+  font-weight: 750;
+}
+
+.dash-inspiration-copy p:nth-of-type(2),
+.dash-inspiration-action {
+  font-size: 13px;
+}
+
+.dash-inspiration-action {
+  justify-self: start;
+  margin: 3px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  cursor: not-allowed;
+}
+
+.dash-continue-card {
+  display: flex;
+  min-height: 340px;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.dash-continue-card > h2,
+.dash-current-course h2,
+.dash-recent-heading h2 {
+  margin: 0;
+  color: var(--dash-text);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.dash-continue-link {
+  display: flex;
+  min-height: 208px;
+  flex-direction: column;
+  overflow: hidden;
+  margin-top: 13px;
+  border: 1px solid var(--dash-border);
+  border-radius: 16px;
+  color: inherit;
+}
+
+.dash-continue-link:hover {
+  border-color: #b6cba8;
+}
+
+.dash-course-art {
+  position: relative;
+  display: block;
+  flex: 0 0 90px;
+  overflow: hidden;
+  background: var(--dash-drawing);
+}
+
+.dash-course-art-circle {
+  position: absolute;
+  top: 20px;
+  left: 18%;
+  width: 50px;
+  height: 50px;
+  border: 2px solid #8a9b82;
+  border-radius: 50%;
+}
+
+.dash-course-art-path {
+  position: absolute;
+  top: 39px;
+  left: 38%;
+  width: 42%;
+  height: 2px;
+  transform: rotate(-15deg);
+  background: #7d8d78;
+}
+
+.dash-course-art-shape {
+  position: absolute;
+  top: 20px;
+  right: 15%;
+  width: 42px;
+  height: 50px;
+  border: 2px solid #a2ad96;
+  border-radius: 45% 45% 20% 20%;
+  transform: rotate(12deg);
+}
+
+.dash-course-details {
+  display: grid;
+  gap: 6px;
+  padding: 11px 12px;
+}
+
+.dash-course-details > strong {
+  overflow: hidden;
+  color: var(--dash-text);
+  font-size: 15px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-course-details > span:nth-child(2),
+.dash-course-note {
+  color: var(--dash-secondary);
+  font-size: 11px;
+}
+
+.dash-progress-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  color: var(--dash-secondary);
+  font-size: 11px;
+}
+
+.dash-progress-track,
+.dash-current-progress {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--dash-border);
+}
+
+.dash-progress-track > span,
+.dash-current-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--dash-accent);
+}
+
+.dash-course-note {
+  font-size: 10px;
+}
+
+.dash-level-chip {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  align-self: flex-start;
+  margin-top: 10px;
+  padding: 0 12px;
+  border-radius: 99px;
+  background: var(--dash-pale);
+  color: var(--dash-primary);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.dash-course-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 4px;
+  color: var(--dash-secondary);
+  font-size: 13px;
+}
+
+.dash-course-empty p {
+  margin: 0;
+}
+
+.dash-course-empty a {
+  color: var(--dash-primary);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dash-data-error {
+  margin: 14px 0 0;
+  color: #9c3434;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dash-stats-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 228fr) minmax(0, 228fr) minmax(0, 228fr) minmax(0, 360fr);
+  align-items: start;
+  gap: 20px;
+  margin-top: 28px;
+}
+
+.dash-stat-card {
+  display: flex;
+  min-height: 159px;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 21px 24px;
+}
+
+.dash-stat-card > svg {
+  color: var(--dash-primary);
+}
+
+.dash-stat-card > strong {
+  margin-top: 8px;
+  color: var(--dash-text);
+  font-size: 40px;
+  font-weight: 750;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.dash-stat-card > span {
+  margin-top: 7px;
+  color: var(--dash-secondary);
+  font-size: 14px;
+}
+
+.dash-stat-card .dash-data-error {
+  font-size: 11px;
+}
+
+.dash-current-course {
+  min-height: 205px;
+  padding: 20px;
+}
+
+.dash-current-course-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dash-current-course-heading h2 {
+  font-size: 17px;
+}
+
+.dash-current-course-heading .dash-level-chip {
+  flex: 0 0 auto;
+  min-height: 25px;
+  margin: 0;
+  padding-inline: 10px;
+  font-size: 10px;
+}
+
+.dash-current-course-title {
+  display: block;
+  overflow: hidden;
+  margin-top: 13px;
+  color: var(--dash-text);
+  font-size: 15px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-current-course-meta {
+  margin: 5px 0 12px;
+  color: var(--dash-secondary);
+  font-size: 12px;
+}
+
+.dash-current-course-counts {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--dash-secondary);
+  font-size: 11px;
+}
+
+.dash-current-progress {
+  height: 7px;
+}
+
+.dash-current-empty {
+  min-height: 125px;
+}
+
+.dash-action-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.dash-action-row .dash-primary-button {
+  width: 110px;
+  margin: 0;
+}
+
+.dash-secondary-button {
+  width: 113px;
+  border-color: var(--dash-border);
+  background: var(--dash-surface);
+  color: var(--dash-primary);
+}
+
+.dash-recent-card {
+  margin-top: 28px;
+  padding: 24px;
+}
+
+.dash-recent-heading p {
+  margin: 7px 0 0;
+  color: var(--dash-secondary);
+  font-size: 14px;
+}
+
+.dash-recent-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 18px;
+}
+
+.dash-work-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--dash-border);
+  border-radius: 14px;
+  background: var(--dash-surface);
+}
+
+.dash-work-art {
+  position: relative;
+  display: grid;
+  height: 159px;
+  overflow: hidden;
+  place-items: center;
+  background: var(--dash-drawing);
+}
+
+.dash-weight-lines {
+  display: grid;
+  width: 64%;
+  gap: 10px;
+}
+
+.dash-weight-lines i {
+  display: block;
+  height: 1px;
+  border-radius: 99px;
+  background: #59695b;
+}
+
+.dash-weight-lines i:nth-child(2) {
+  height: 2px;
+}
+
+.dash-weight-lines i:nth-child(3) {
+  height: 3px;
+}
+
+.dash-weight-lines i:nth-child(4) {
+  height: 4px;
+}
+
+.dash-weight-lines i:nth-child(5) {
+  height: 6px;
+}
+
+.dash-weight-lines i:nth-child(6) {
+  height: 8px;
+}
+
+.dash-basic-shapes {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.dash-basic-shapes i {
+  display: block;
+  width: 38px;
+  height: 38px;
+  border: 2px solid #81917e;
+}
+
+.dash-basic-shapes i:nth-child(2) {
+  border-radius: 50%;
+}
+
+.dash-basic-shapes i:nth-child(3) {
+  width: 35px;
+  height: 35px;
+  transform: rotate(45deg);
+}
+
+.dash-work-art-figure-study {
+  background: linear-gradient(140deg, #f3f5ec, #e5ecd9);
+}
+
+.dash-figure-shape {
+  width: 57px;
+  height: 112px;
+  border: 2px solid #8b9986;
+  border-radius: 45% 45% 25% 25%;
+  transform: rotate(-8deg);
+}
+
+.dash-work-copy {
+  min-height: 52px;
+  padding: 8px 12px;
+}
+
+.dash-work-copy h3,
+.dash-work-copy p {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-work-copy h3 {
+  color: var(--dash-text);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.dash-work-copy p {
+  margin-top: 4px;
+  color: var(--dash-secondary);
+  font-size: 11px;
+}
+
+.dash-recent-note {
+  margin: 14px 0 0;
+  color: var(--dash-secondary);
+  font-size: 12px;
+}
+
+.dash-status {
+  margin: 0;
+  padding: 24px 0;
+  color: var(--dash-secondary);
+  font-size: 14px;
+}
+
+@media (max-width: 1199px) and (min-width: 900px) {
+  .dash-top-grid {
+    grid-template-columns: minmax(0, 420fr) minmax(0, 360fr);
+    grid-template-areas:
+      "practice continue"
+      "inspiration inspiration";
+  }
+
+  .dash-practice-card {
+    grid-area: practice;
+  }
+
+  .dash-inspiration-card {
+    grid-area: inspiration;
+    min-height: 300px;
+  }
+
+  .dash-continue-card {
+    grid-area: continue;
+  }
+
+  .dash-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 899px) {
+  .dash-page .settings-main {
+    padding: 30px 24px 44px;
+  }
+
+  .dash-top-grid,
+  .dash-stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dash-top-grid {
+    grid-template-areas: none;
+  }
+
+  .dash-practice-card,
+  .dash-inspiration-card,
+  .dash-continue-card {
+    grid-area: auto;
+    min-height: 300px;
+  }
+
+  .dash-stats-grid {
+    gap: 14px;
+  }
+
+  .dash-stat-card {
+    min-height: 150px;
+  }
+}
+
+@media (max-width: 680px) {
+  .dash-page .settings-main {
+    padding: 24px 16px 36px;
+  }
+
+  .dash-header {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .dash-heading-copy h1 {
+    font-size: clamp(22px, 6vw, 28px);
+  }
+
+  .dash-heading-copy p {
+    font-size: 13px;
+  }
+
+  .dash-header-actions {
+    gap: 6px;
+  }
+
+  .dash-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 12px;
+  }
+
+  .dash-icon-button {
+    width: 36px;
+    height: 40px;
+  }
+
+  .dash-icon-button svg {
+    width: 20px;
+  }
+
+  .dash-top-grid,
+  .dash-stats-grid {
+    margin-top: 22px;
+  }
+
+  .dash-practice-card,
+  .dash-continue-card,
+  .dash-recent-card {
+    padding: 20px;
+  }
+
+  .dash-practice-card h2 {
+    font-size: 27px;
+  }
+
+  .dash-action-row,
+  .dash-recent-card {
+    margin-top: 22px;
+  }
+
+  .dash-recent-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .dash-work-art {
+    height: 170px;
+  }
+}
+
+@media (max-width: 420px) {
+  .dash-page .settings-main {
+    padding-inline: 13px;
+  }
+
+  .dash-heading-copy h1 {
+    font-size: 21px;
+  }
+
+  .dash-heading-copy p {
+    font-size: 12px;
+  }
+
+  .dash-header-actions {
+    gap: 2px;
+  }
+
+  .dash-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .dash-icon-button {
+    width: 32px;
+  }
+
+  .dash-practice-card,
+  .dash-continue-card,
+  .dash-recent-card {
+    padding: 17px;
+  }
+
+  .dash-practice-card h2 {
+    font-size: 25px;
+  }
+}
