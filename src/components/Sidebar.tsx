@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
+import { useUserRole } from "../hooks/useUserRole";
 
 type SidebarProps = {
   user: User;
@@ -30,6 +31,11 @@ const navigationItems = [
 ];
 
 export default function Sidebar({ user, displayName, initials }: SidebarProps) {
+  const { role } = useUserRole();
+  const adminNavigationItem = role === "admin"
+    ? { label: "Quản trị viên", icon: Users, to: "/admin/teachers" }
+    : null;
+
   return (
     <aside className="settings-sidebar">
       <Link className="settings-brand" to="/dashboard" aria-label="LINEA - Tổng quan">
@@ -38,7 +44,7 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
       </Link>
 
       <nav className="settings-navigation" aria-label="Điều hướng chính">
-        {navigationItems.map(({ label, icon: Icon, to }) => (
+        {[...navigationItems, ...(adminNavigationItem ? [adminNavigationItem] : [])].map(({ label, icon: Icon, to }) => (
           to ? (
             <NavLink
               className={({ isActive }) => `settings-nav-item${isActive ? " active" : ""}`}

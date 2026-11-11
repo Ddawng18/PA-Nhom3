@@ -3,8 +3,10 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AuthProvider from "./auth/AuthProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoleGuard from "./components/AdminRoleGuard";
 import TeacherRoleGuard from "./components/TeacherRoleGuard";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
+import AdminTeacherApprovalPage from "./pages/AdminTeacherApprovalPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
@@ -41,6 +43,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/teachers"
+            element={
+              <ProtectedRoute>
+                <AdminRoleGuard>
+                  <AdminTeacherApprovalPage />
+                </AdminRoleGuard>
               </ProtectedRoute>
             }
           />

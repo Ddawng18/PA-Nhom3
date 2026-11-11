@@ -65,6 +65,8 @@ function getInitials(name: string): string {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase();
 }
 
+const roleLabels = { student: "H?c vi?n", teacher: "Gi?o vi?n", admin: "Qu?n tr? vi?n" } as const;
+
 export default function SettingsPage() {
   const { user, session, signOut } = useAuth();
   const navigate = useNavigate();
@@ -226,6 +228,10 @@ export default function SettingsPage() {
                   <label className="settings-field">
                     <span>Địa chỉ email</span>
                     <input type="email" value={user.email ?? ""} readOnly />
+                  </label>
+                  <label className="settings-field">
+                    <span>Vai tr? t?i kho?n</span>
+                    <input type="text" value={roleState.role ? roleLabels[roleState.role] : roleState.loading ? "?ang t?i..." : "Ch?a x?c ??nh"} readOnly aria-busy={roleState.loading} />
                   </label>
                   <label className="settings-field">
                     <span>Mục tiêu hàng ngày</span>
