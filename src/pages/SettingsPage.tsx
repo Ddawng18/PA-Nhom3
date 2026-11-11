@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
+import { useUserRole } from "../hooks/useUserRole";
 import Sidebar from "../components/Sidebar";
 import { fetchVerifiedAccount, type VerifiedAccount } from "../lib/account";
 import "../styles/settings.css";
@@ -61,8 +62,15 @@ function getInitials(name: string): string {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase();
 }
 
+const roleLabels = {
+  student: "Học viên",
+  teacher: "Giáo viên",
+  admin: "Quản trị viên",
+} as const;
+
 export default function SettingsPage() {
   const { user, session, signOut } = useAuth();
+  const roleState = useUserRole();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState(user ? getDisplayName(user) : "");
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -88,6 +96,7 @@ export default function SettingsPage() {
 
   const userDisplayName = getDisplayName(user);
   const verifiedRole = verifiedAccount?.id === user.id ? verifiedAccount.role : null;
+  const role = verifiedRole ?? roleState.role;
   const initials = getInitials(userDisplayName);
 
   async function handleSignOut() {
@@ -119,7 +128,7 @@ export default function SettingsPage() {
               <p className="settings-eyebrow">TÀI KHOẢN CỦA BẠN</p>
               <h1>Hồ sơ &amp; Cài đặt</h1>
               <p>Quản lý thông tin cá nhân, sở thích học tập và các thiết lập của tài khoản.</p>
-              {verifiedRole && <p>Vai trò: {{ student: "Học viên", teacher: "Giáo viên", admin: "Quản trị viên" }[verifiedRole]}</p>}
+              {role && <p>Vai trò: {roleLabels[role]}</p>}
             </div>
             <div className="settings-heading-actions">
               <span className="avatar avatar-heading" aria-hidden="true">{initials}</span>
@@ -140,7 +149,6 @@ export default function SettingsPage() {
           <nav className="settings-tabs" aria-label="Các mục cài đặt">
             <button className="settings-tab active" type="button" aria-current="page">Hồ sơ</button>
             <button className="settings-tab" type="button">Ưa thích học tập</button>
-            <button className="settings-tab" type="button">Thông báo</button>
             <button className="settings-tab" type="button">Bảo mật</button>
             <button className="settings-tab" type="button">Lịch sử mua hàng</button>
           </nav>
@@ -169,6 +177,15 @@ export default function SettingsPage() {
                   <label className="settings-field">
                     <span>Địa chỉ email</span>
                     <input type="email" value={user.email ?? ""} readOnly />
+                  </label>
+                  <label className="settings-field">
+                    <span>Vai trò tài khoản</span>
+                    <input
+                      type="text"
+                      value={role ? roleLabels[role] : roleState.loading ? "Đang tải..." : "Chưa xác định"}
+                      readOnly
+                      aria-busy={roleState.loading}
+                    />
                   </label>
                   <label className="settings-field">
                     <span>Mục tiêu hàng ngày</span>
