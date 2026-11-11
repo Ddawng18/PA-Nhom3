@@ -43,6 +43,10 @@ git ls-files .env   # phải rỗng
 public) từ **Supabase → Settings → API Keys** hoặc password manager của nhóm.
 Không đưa `service_role` vào frontend.
 
+Để dùng các chức năng quản trị cần API backend, đặt `VITE_API_URL` thành
+`http://localhost:4174` khi phát triển cục bộ hoặc URL HTTPS của backend khi triển
+khai. Để trống biến này thì chức năng duyệt sẽ báo máy chủ chưa được cấu hình.
+
 ## 4. Chọn CSDL cho backend
 
 ### Cách mặc định (khuyến nghị cho thành viên mới)
