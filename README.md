@@ -39,10 +39,13 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 - **Vitest**: viết và chạy unit test.
 - **ESLint**: kiểm tra chất lượng và quy chuẩn mã nguồn.
 
-> Hiện đã có đăng ký, đăng nhập qua Supabase Auth, backend kiểm tra vai trò và
-> trang hồ sơ/cài đặt. Các API bài tập và khóa học vẫn trả dữ liệu mẫu; chức
-> năng quản lý tài khoản Supabase của admin chưa triển khai. Danh sách bên dưới
-> là chức năng dự kiến, không phải tất cả đã hoàn thành.
+> Repo gồm frontend React/Vite và backend ASP.NET Core trong `server/`. Backend
+> hiện có đăng ký/đăng nhập JWT, phân quyền student/teacher/admin và API hồ sơ
+> giáo viên (gửi, upload ảnh riêng tư, duyệt/từ chối/yêu cầu bổ sung, email,
+> signed URL 5 phút, Supabase Storage hoặc local fallback, lưu lịch sử và thông
+> báo). Một số API bài tập/khóa học vẫn có thể trả dữ liệu mẫu; xem
+> [`docs/teacher-profile-api.md`](docs/teacher-profile-api.md) để biết hợp đồng
+> API và kết quả kiểm thử hồ sơ giáo viên.
 
 ## Chức năng dự kiến
 
@@ -178,6 +181,17 @@ Truy cập `http://localhost:5173`. Đăng ký hoặc đăng nhập bằng tài 
 sau khi đăng nhập, trang cài đặt hiển thị vai trò nếu API local đang chạy và
 được cấu hình đúng. Nếu Vite chuyển sang cổng khác vì 5173 đang bận, cập nhật
 `CLIENT_ORIGIN` trong `.env` theo origin thực tế rồi khởi động lại backend.
+
+## Triển khai miễn phí
+
+Phương án: **Vercel** (frontend) + **Render** (backend ASP.NET Core) + **Supabase**
+(Postgres/Auth). Hướng dẫn chi tiết trong [`docs/deployment.md`](docs/deployment.md).
+Dự án **chưa được triển khai**, nên chưa có URL thử.
+
+## Bằng chứng kiểm tra
+
+Bằng chứng chi tiết (test, API, CSDL, bảo mật) nằm trong
+[`docs/evidence.md`](docs/evidence.md). Trạng thái PR review được ghi rõ trong đó.
 
 ## Kiểm tra dự án
 
