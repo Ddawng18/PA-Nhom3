@@ -28,7 +28,7 @@ export default function ResetPasswordPage() {
         setMessage({ type: "error", text: result.error });
       } else {
         setMessage({ type: "info", text: "Mật khẩu đã được cập nhật." });
-        window.setTimeout(() => navigate("/", { replace: true }), 1200);
+        window.setTimeout(() => navigate("/dashboard", { replace: true }), 1200);
       }
     } catch (error) {
       setMessage({

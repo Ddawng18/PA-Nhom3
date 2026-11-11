@@ -19,7 +19,7 @@ export default function LoginPage() {
       state.from.startsWith("/") &&
       !state.from.startsWith("//")
         ? state.from
-        : "/settings";
+        : "/dashboard";
     return <Navigate to={from} replace />;
   }
 
