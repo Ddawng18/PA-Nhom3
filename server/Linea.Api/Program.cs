@@ -64,6 +64,20 @@ builder.Services.AddSingleton(jwtOptions);
 
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
+builder.Services.AddSingleton<SignedUrlService>();
+builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+builder.Services.AddSingleton<IPortfolioStorage>(services =>
+{
+    var configuration = services.GetRequiredService<IConfiguration>();
+    if (!string.IsNullOrWhiteSpace(configuration["SUPABASE_SERVICE_ROLE_KEY"]) &&
+        !string.IsNullOrWhiteSpace(configuration["SUPABASE_URL"]))
+    {
+        return ActivatorUtilities.CreateInstance<SupabasePortfolioStorage>(services);
+    }
+
+    return ActivatorUtilities.CreateInstance<LocalPortfolioStorage>(services);
+});
+builder.Services.AddScoped<AccountDirectory>();
 
 builder.Services
     .AddAuthentication(useLegacyAuth ? JwtBearerDefaults.AuthenticationScheme : "Supabase")
@@ -227,7 +241,13 @@ app.MapGet("/api/health", async (AppDbContext db, IConfiguration configuration, 
         : Results.Problem("Không thể kết nối cơ sở dữ liệu.", statusCode: StatusCodes.Status503ServiceUnavailable);
 });
 
-if (app.Environment.IsDevelopment())
+var runMigrations = app.Environment.IsDevelopment() ||
+    string.Equals(
+        builder.Configuration["RUN_MIGRATIONS"],
+        "true",
+        StringComparison.OrdinalIgnoreCase);
+
+if (runMigrations)
 {
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

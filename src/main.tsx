@@ -3,18 +3,27 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AuthProvider from "./auth/AuthProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoleGuard from "./components/AdminRoleGuard";
+import TeacherRoleGuard from "./components/TeacherRoleGuard";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
+import AdminTeacherApprovalPage from "./pages/AdminTeacherApprovalPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
+import MyCoursesPage from "./pages/MyCoursesPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import RegisterPage from "./pages/RegisterPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SettingsPage from "./pages/SettingsPage";
+import TeacherCourseFormPage from "./pages/TeacherCourseFormPage";
+import TeacherOnboardingPage from "./pages/TeacherOnboardingPage";
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          <Route path="/teacher/onboarding" element={<ProtectedRoute><TeacherOnboardingPage /></ProtectedRoute>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
@@ -29,13 +38,67 @@ function App() {
           />
           <Route
             path="/"
-            element={<Navigate to="/settings" replace />}
+            element={<Navigate to="/dashboard" replace />}
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/teachers"
+            element={
+              <ProtectedRoute>
+                <AdminRoleGuard>
+                  <AdminTeacherApprovalPage />
+                </AdminRoleGuard>
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/settings"
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-courses"
+            element={
+              <ProtectedRoute>
+                <MyCoursesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <NotificationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/courses/new"
+            element={
+              <ProtectedRoute>
+                <TeacherRoleGuard>
+                  <TeacherCourseFormPage />
+                </TeacherRoleGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/courses/:courseId/edit"
+            element={
+              <ProtectedRoute>
+                <TeacherRoleGuard>
+                  <TeacherCourseFormPage />
+                </TeacherRoleGuard>
               </ProtectedRoute>
             }
           />

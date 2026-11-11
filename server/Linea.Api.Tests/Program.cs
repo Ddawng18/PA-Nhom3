@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Linea.Api.Data;
+using Linea.Api.Models;
 using Linea.Api.Services;
 using Linea.Api.Security;
 using Microsoft.AspNetCore.Authentication;
@@ -14,6 +15,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,11 +32,13 @@ internal static class Program
     {
         var apiProject = FindApiProject();
         var dbPath = Path.Combine(Path.GetTempPath(), $"linea-smoke-{Guid.NewGuid():N}.db");
+        var docsPath = Path.Combine(Path.GetTempPath(), $"linea-teacher-docs-{Guid.NewGuid():N}");
+        var emailPath = Path.Combine(Path.GetTempPath(), $"linea-email-{Guid.NewGuid():N}");
         var port = GetFreePort();
         var baseUrl = $"http://127.0.0.1:{port}";
         var logs = new StringBuilder();
 
-        using var apiProcess = StartApi(apiProject, port, dbPath);
+        using var apiProcess = StartApi(apiProject, port, dbPath, docsPath, emailPath);
         apiProcess.OutputDataReceived += (_, args) =>
         {
             if (args.Data is not null)
@@ -67,7 +71,7 @@ internal static class Program
                 return 1;
             }
 
-            var suite = new SmokeSuite(client, dbPath);
+            var suite = new SmokeSuite(client, dbPath, emailPath);
             return await suite.RunAsync();
         }
         finally
@@ -97,6 +101,24 @@ internal static class Program
                     // Best-effort cleanup.
                 }
             }
+
+            try
+            {
+                if (Directory.Exists(docsPath)) Directory.Delete(docsPath, recursive: true);
+            }
+            catch
+            {
+                // Best-effort cleanup.
+            }
+
+            try
+            {
+                if (Directory.Exists(emailPath)) Directory.Delete(emailPath, recursive: true);
+            }
+            catch
+            {
+                // Best-effort cleanup.
+            }
         }
     }
 
@@ -117,7 +139,7 @@ internal static class Program
         throw new InvalidOperationException("Could not locate server/Linea.Api/Linea.Api.csproj.");
     }
 
-    private static Process StartApi(string apiProject, int port, string dbPath)
+    private static Process StartApi(string apiProject, int port, string dbPath, string docsPath, string emailPath)
     {
         var configuration =
             typeof(Program).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()?.Configuration
@@ -148,7 +170,10 @@ internal static class Program
         startInfo.Environment["JWT_ISSUER"] = "linea-api-tests";
         startInfo.Environment["JWT_AUDIENCE"] = "linea-client-tests";
         startInfo.Environment["DB_CONNECTION"] = $"Data Source={dbPath}";
+        startInfo.Environment["TEACHER_DOCS_PATH"] = docsPath;
+        startInfo.Environment["EMAIL_OUTBOX_PATH"] = emailPath;
         startInfo.Environment["SUPABASE_DB_URL"] = string.Empty;
+        startInfo.Environment["SUPABASE_SERVICE_ROLE_KEY"] = string.Empty;
         startInfo.Environment["CLIENT_ORIGIN"] = "http://localhost:5173";
         startInfo.Environment["SEED_ADMIN_EMAIL"] = AdminEmail;
         startInfo.Environment["SEED_ADMIN_PASSWORD"] = AdminPassword;
@@ -203,7 +228,7 @@ internal sealed class FakeClientFactory(Func<HttpRequestMessage, HttpResponseMes
     public HttpClient CreateClient(string name) => new(new FakeSupabaseHandler(respond));
 }
 
-internal sealed class SmokeSuite(HttpClient client, string dbPath)
+internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailPath)
 {
     private const string DefaultPassword = "MatKhau123!";
     private const string AdminEmail = "admin@linea.local";
@@ -215,6 +240,26 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath)
     private string? _promotedToken;
     private string? _adminToken;
     private string? _adminId;
+    private Guid _firstTeacherStudentId;
+    private string? _firstTeacherStudentEmail;
+    private string? _firstTeacherStudentToken;
+    private string? _firstTeacherToken;
+    private long _firstTeacherProfileId;
+    private long _firstTeacherImageId;
+    private string? _firstTeacherUploadedPath;
+    private Guid _secondTeacherStudentId;
+    private string? _secondTeacherStudentEmail;
+    private string? _secondTeacherStudentToken;
+    private long _secondTeacherProfileId;
+    private string? _secondTeacherUploadedPath;
+    private Guid _changesStudentId;
+    private string? _changesStudentEmail;
+    private string? _changesStudentToken;
+    private long _changesProfileId;
+    private string? _changesUploadedPath;
+
+    private static readonly byte[] TinyPng = Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=");
 
     public async Task<int> RunAsync()
     {
@@ -243,7 +288,19 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath)
             ("teacher role is enforced immediately after re-login", PromoteAndTeacherRbacAsync),
             ("admin can access admin and teacher endpoints", AdminRbacAsync),
             ("admin lock blocks login and invalidates existing tokens", LockFlowAsync),
-            ("admin cannot lock their own account", SelfLockAsync)
+            ("admin cannot lock their own account", SelfLockAsync),
+            ("teacher profile endpoints require authentication and a student role", TeacherProfileAuthGuardAsync),
+            ("student submits a teacher profile and remains a student", StudentSubmitsTeacherProfileAsync),
+            ("pending teacher profile blocks resubmission", PendingProfileBlocksResubmissionAsync),
+            ("admin approves a teacher profile and promotes the account", AdminApprovesTeacherProfileAsync),
+            ("admin rejects a teacher profile and the student resubmits", AdminRejectsAndStudentResubmitsAsync),
+            ("admin requests changes and the student resubmits", AdminRequestsChangesAndStudentResubmitsAsync),
+            ("teacher profile permissions and portfolio privacy are enforced", TeacherProfilePermissionsAsync),
+            ("signed portfolio URLs serve images and reject tampering", SignedPortfolioUrlsAsync),
+            ("Supabase storage builds upload, validation and signed URL requests", SupabaseStorageRequestsAsync),
+            ("portfolio upload rejects invalid type and oversized files", PortfolioUploadValidationAsync),
+            ("course API enforces ownership, validation and draft privacy", CourseAccessAsync),
+            ("course review updates canonical data, history and notifications atomically", CourseWorkflowAsync)
         };
 
         var passed = 0;
@@ -638,6 +695,854 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath)
             _adminToken);
         Expect(status == HttpStatusCode.BadRequest, $"expected 400, got {(int)status}: {body}");
     }
+
+    private async Task TeacherProfileAuthGuardAsync()
+    {
+        var (anonymousStatus, _) = await SendAsync(HttpMethod.Get, "/api/teacher/profile/me");
+        Expect(anonymousStatus == HttpStatusCode.Unauthorized,
+            $"expected 401 without a token, got {(int)anonymousStatus}");
+
+        var (adminReadStatus, adminReadBody) = await SendAsync(
+            HttpMethod.Get, "/api/teacher/profile/me", token: _adminToken);
+        Expect(adminReadStatus == HttpStatusCode.Forbidden,
+            $"expected 403 for admin profile read, got {(int)adminReadStatus}: {adminReadBody}");
+
+        var (adminSubmitStatus, adminSubmitBody) = await SubmitProfileAsync(
+            _adminToken!,
+            new string('A', 60),
+            new string('B', 20),
+            Array.Empty<string>());
+        Expect(adminSubmitStatus == HttpStatusCode.Forbidden,
+            $"expected 403 for admin submit, got {(int)adminSubmitStatus}: {adminSubmitBody}");
+    }
+
+    private async Task StudentSubmitsTeacherProfileAsync()
+    {
+        var student = await RegisterStudentAsync("teacher-apply");
+        _firstTeacherStudentId = student.Id;
+        _firstTeacherStudentEmail = student.Email;
+        _firstTeacherStudentToken = student.Token;
+
+        var (invalidStatus, invalidBody) = await SubmitProfileAsync(
+            student.Token,
+            "quá ngắn",
+            "ngắn",
+            Array.Empty<string>());
+        Expect(invalidStatus == HttpStatusCode.BadRequest,
+            $"expected 400 for invalid submission, got {(int)invalidStatus}: {invalidBody}");
+        using (var invalidJson = JsonDocument.Parse(invalidBody))
+        {
+            Expect(invalidJson.RootElement.TryGetProperty("errors", out var errors),
+                "validation errors are missing");
+            Expect(errors.TryGetProperty("introduction", out _), "introduction error is missing");
+            Expect(errors.TryGetProperty("experience", out _), "experience error is missing");
+            Expect(errors.TryGetProperty("portfolioFiles", out _), "portfolio error is missing");
+        }
+
+        var (uploadStatus, uploadBody) = await UploadPortfolioAsync(
+            student.Token, TinyPng, "tac-pham.png", "image/png");
+        Expect(uploadStatus == HttpStatusCode.Created,
+            $"expected 201 for upload, got {(int)uploadStatus}: {uploadBody}");
+        using (var uploadJson = JsonDocument.Parse(uploadBody))
+        {
+            _firstTeacherUploadedPath = GetString(uploadJson.RootElement, "filePath");
+        }
+
+        Expect(_firstTeacherUploadedPath!.StartsWith("teacher-docs/", StringComparison.Ordinal),
+            "upload path does not use the private teacher-docs prefix");
+
+        var (submitStatus, submitBody) = await SubmitProfileAsync(
+            student.Token,
+            new string('A', 60),
+            new string('B', 20),
+            new[] { _firstTeacherUploadedPath });
+        Expect(submitStatus == HttpStatusCode.Accepted,
+            $"expected 202, got {(int)submitStatus}: {submitBody}");
+        Expect(EmailCount() > 0, "submission email was not written to the outbox");
+        using (var submitJson = JsonDocument.Parse(submitBody))
+        {
+            _firstTeacherProfileId = submitJson.RootElement.GetProperty("id").GetInt64();
+            Expect(GetString(submitJson.RootElement, "status") == "CHO_DUYET",
+                "submitted profile is not pending");
+        }
+
+        await using var db = CreateDb();
+        var profile = await db.TeacherProfiles
+            .AsNoTracking()
+            .SingleAsync(candidate => candidate.Id == _firstTeacherProfileId);
+        Expect(profile.UserId == student.Id, "profile is linked to the wrong account");
+        Expect(profile.Status == TeacherProfileStatus.ChoDuyet, "pending status was not stored");
+        Expect(profile.ReviewedAt is null, "reviewedAt must be empty while pending");
+        Expect(await db.PortfolioImages.CountAsync(image => image.ProfileId == profile.Id) == 1,
+            "portfolio image was not stored");
+        Expect(await db.StatusHistory.CountAsync(entry =>
+                entry.ObjectType == HistoryObjectTypes.HoSoGiaoVien &&
+                entry.ObjectId == profile.Id.ToString() &&
+                entry.Status == TeacherProfileStatus.ChoDuyet) == 1,
+            "submission history was not written");
+        Expect(await db.Notifications.CountAsync(notification =>
+                notification.UserId == student.Id &&
+                notification.Type == NotificationTypes.HoSoGiaoVien) == 1,
+            "submission notification was not written");
+
+        var (meStatus, meBody) = await SendAsync(HttpMethod.Get, "/api/auth/me", token: student.Token);
+        Expect(meStatus == HttpStatusCode.OK, $"profile check returned {(int)meStatus}: {meBody}");
+        using (var meJson = JsonDocument.Parse(meBody))
+        {
+            Expect(GetString(meJson.RootElement, "role") == "student",
+                "submitting a profile changed the account role");
+        }
+
+        var (myProfileStatus, myProfileBody) = await SendAsync(
+            HttpMethod.Get, "/api/teacher/profile/me", token: student.Token);
+        Expect(myProfileStatus == HttpStatusCode.OK,
+            $"profile read returned {(int)myProfileStatus}: {myProfileBody}");
+        using var myProfileJson = JsonDocument.Parse(myProfileBody);
+        _firstTeacherImageId = FirstPortfolioImageId(myProfileJson.RootElement);
+    }
+
+    private async Task PendingProfileBlocksResubmissionAsync()
+    {
+        var (status, body) = await SubmitProfileAsync(
+            _firstTeacherStudentToken!,
+            new string('A', 60),
+            new string('B', 20),
+            new[] { _firstTeacherUploadedPath! });
+        Expect(status == HttpStatusCode.Conflict,
+            $"expected 409, got {(int)status}: {body}");
+        Expect(Detail(body)?.Contains("chờ kết quả duyệt", StringComparison.Ordinal) == true,
+            "pending profile message is missing");
+    }
+
+    private async Task AdminApprovesTeacherProfileAsync()
+    {
+        var (emptyStatus, emptyBody) = await SendAsync(
+            HttpMethod.Get,
+            "/api/admin/teacher-profiles?status=DA_DUYET",
+            token: _adminToken);
+        Expect(emptyStatus == HttpStatusCode.OK,
+            $"expected 200 for an empty admin queue, got {(int)emptyStatus}: {emptyBody}");
+        using (var emptyJson = JsonDocument.Parse(emptyBody))
+        {
+            Expect(emptyJson.RootElement.GetProperty("items").GetArrayLength() == 0,
+                "empty admin queue returned items");
+            Expect(emptyJson.RootElement.GetProperty("total").GetInt32() == 0,
+                "empty admin queue returned a non-zero total");
+        }
+
+        var query = Uri.EscapeDataString(_firstTeacherStudentEmail!);
+        var (listStatus, listBody) = await SendAsync(
+            HttpMethod.Get,
+            $"/api/admin/teacher-profiles?status=CHO_DUYET&q={query}",
+            token: _adminToken);
+        Expect(listStatus == HttpStatusCode.OK,
+            $"expected 200 for admin list, got {(int)listStatus}: {listBody}");
+        var item = SingleItem(listBody, _firstTeacherProfileId);
+        Expect(GetString(item, "email") == _firstTeacherStudentEmail,
+            "admin queue item does not include the account email");
+        Expect(GetString(item, "displayName") == "Giáo viên thử",
+            "admin queue item does not include the display name");
+
+        var (detailStatus, detailBody) = await SendAsync(
+            HttpMethod.Get, $"/api/admin/teacher-profiles/{_firstTeacherProfileId}", token: _adminToken);
+        Expect(detailStatus == HttpStatusCode.OK,
+            $"expected 200 for admin detail, got {(int)detailStatus}: {detailBody}");
+        using (var detailJson = JsonDocument.Parse(detailBody))
+        {
+            Expect(detailJson.RootElement.GetProperty("portfolioFiles").GetArrayLength() == 1,
+                "admin detail does not include the portfolio image");
+            Expect(detailJson.RootElement.GetProperty("history").GetArrayLength() == 1,
+                "admin detail does not include the submission history");
+        }
+
+        var (approveStatus, approveBody) = await SendAsync(
+            HttpMethod.Post,
+            $"/api/admin/teacher-profiles/{_firstTeacherProfileId}/approve",
+            new { note = "Hồ sơ đầy đủ, ảnh đúng chuyên môn." },
+            _adminToken);
+        Expect(approveStatus == HttpStatusCode.OK,
+            $"expected 200 for approval, got {(int)approveStatus}: {approveBody}");
+        Expect(EmailCount() >= 2, "approval email was not written to the outbox");
+        using (var approveJson = JsonDocument.Parse(approveBody))
+        {
+            Expect(GetString(approveJson.RootElement, "status") == "DA_DUYET",
+                "approval did not return DA_DUYET");
+            Expect(GetString(approveJson.RootElement, "role") == "teacher",
+                "approval did not return the teacher role");
+        }
+
+        await using var db = CreateDb();
+        var profile = await db.TeacherProfiles
+            .AsNoTracking()
+            .SingleAsync(candidate => candidate.Id == _firstTeacherProfileId);
+        Expect(profile.Status == TeacherProfileStatus.DaDuyet, "profile was not approved");
+        Expect(profile.ReviewedAt is not null, "reviewedAt was not set");
+        var user = await db.Users.AsNoTracking().SingleAsync(candidate => candidate.Id == _firstTeacherStudentId);
+        Expect(user.Role == UserRole.Teacher, "account role was not promoted to teacher");
+        Expect(await db.StatusHistory.CountAsync(entry =>
+                entry.ObjectId == profile.Id.ToString() &&
+                entry.Status == TeacherProfileStatus.DaDuyet) == 1,
+            "approval history was not written");
+        Expect(await db.Notifications.CountAsync(notification =>
+                notification.UserId == _firstTeacherStudentId &&
+                notification.Type == NotificationTypes.HoSoGiaoVien) == 2,
+            "approval notification was not written");
+
+        var (oldTokenStatus, oldTokenBody) = await SendAsync(
+            HttpMethod.Get, "/api/auth/me", token: _firstTeacherStudentToken);
+        Expect(oldTokenStatus == HttpStatusCode.Unauthorized,
+            $"old token after approval returned {(int)oldTokenStatus}: {oldTokenBody}");
+
+        var (loginStatus, loginBody) = await SendAsync(HttpMethod.Post, "/api/auth/login", new
+        {
+            email = _firstTeacherStudentEmail,
+            password = DefaultPassword
+        });
+        Expect(loginStatus == HttpStatusCode.OK,
+            $"teacher login returned {(int)loginStatus}: {loginBody}");
+        using (var loginJson = JsonDocument.Parse(loginBody))
+        {
+            _firstTeacherToken = GetString(loginJson.RootElement, "accessToken");
+            Expect(GetString(loginJson.RootElement.GetProperty("user"), "role") == "teacher",
+                "new token does not carry the teacher role");
+        }
+
+        var (teacherProfileStatus, teacherProfileBody) = await SendAsync(
+            HttpMethod.Get, "/api/teacher/profile/me", token: _firstTeacherToken);
+        Expect(teacherProfileStatus == HttpStatusCode.OK,
+            $"approved teacher profile read returned {(int)teacherProfileStatus}: {teacherProfileBody}");
+
+        var (againStatus, againBody) = await SendAsync(
+            HttpMethod.Post,
+            $"/api/admin/teacher-profiles/{_firstTeacherProfileId}/approve",
+            new { },
+            _adminToken);
+        Expect(againStatus == HttpStatusCode.Conflict,
+            $"expected 409 for repeated approval, got {(int)againStatus}: {againBody}");
+
+        var (rejectApprovedStatus, rejectApprovedBody) = await SendAsync(
+            HttpMethod.Post,
+            $"/api/admin/teacher-profiles/{_firstTeacherProfileId}/reject",
+            new { reasonCode = "UNCLEAR_PORTFOLIO", reason = "Ảnh tác phẩm bị mờ, vui lòng tải lại." },
+            _adminToken);
+        Expect(rejectApprovedStatus == HttpStatusCode.Conflict,
+            $"expected 409 for rejecting an approved profile, got {(int)rejectApprovedStatus}: {rejectApprovedBody}");
+    }
+
+    private async Task AdminRejectsAndStudentResubmitsAsync()
+    {
+        var student = await RegisterStudentAsync("teacher-reject");
+        _secondTeacherStudentId = student.Id;
+        _secondTeacherStudentEmail = student.Email;
+        _secondTeacherStudentToken = student.Token;
+
+        var (uploadStatus, uploadBody) = await UploadPortfolioAsync(
+            student.Token, TinyPng, "tac-pham.png", "image/png");
+        Expect(uploadStatus == HttpStatusCode.Created,
+            $"expected 201 for upload, got {(int)uploadStatus}: {uploadBody}");
+        using (var uploadJson = JsonDocument.Parse(uploadBody))
+        {
+            _secondTeacherUploadedPath = GetString(uploadJson.RootElement, "filePath");
+        }
+
+        var (submitStatus, submitBody) = await SubmitProfileAsync(
+            student.Token,
+            new string('C', 60),
+            new string('D', 20),
+            new[] { _secondTeacherUploadedPath });
+        Expect(submitStatus == HttpStatusCode.Accepted,
+            $"expected 202, got {(int)submitStatus}: {submitBody}");
+        using (var submitJson = JsonDocument.Parse(submitBody))
+        {
+            _secondTeacherProfileId = submitJson.RootElement.GetProperty("id").GetInt64();
+        }
+
+        var (invalidCodeStatus, invalidCodeBody) = await SendAsync(
+            HttpMethod.Post,
+            $"/api/admin/teacher-profiles/{_secondTeacherProfileId}/reject",
+            new { reasonCode = "UNKNOWN_CODE", reason = "Ảnh tác phẩm bị mờ, vui lòng tải lại." },
+            _adminToken);
+        Expect(invalidCodeStatus == HttpStatusCode.BadRequest,
+            $"expected 400 for an unknown reason code, got {(int)invalidCodeStatus}: {invalidCodeBody}");
+
+        var (missingReasonStatus, missingReasonBody) = await SendAsync(
+            HttpMethod.Post,
+            $"/api/admin/teacher-profiles/{_secondTeacherProfileId}/reject",
+            new { reasonCode = "UNCLEAR_PORTFOLIO", reason = "mờ" },
+            _adminToken);
+        Expect(missingReasonStatus == HttpStatusCode.BadRequest,
+            $"expected 400 for a short reason, got {(int)missingReasonStatus}: {missingReasonBody}");
+
+        const string reason = "Ảnh tác phẩm bị mờ, vui lòng tải lại ảnh rõ hơn.";
+        var emailBeforeReject = EmailCount();
+        var (rejectStatus, rejectBody) = await SendAsync(
+            HttpMethod.Post,
+            $"/api/admin/teacher-profiles/{_secondTeacherProfileId}/reject",
+            new { reasonCode = "UNCLEAR_PORTFOLIO", reason, internalNote = "Đã kiểm tra ảnh." },
+            _adminToken);
+        Expect(rejectStatus == HttpStatusCode.OK,
+            $"expected 200 for rejection, got {(int)rejectStatus}: {rejectBody}");
+        Expect(EmailCount() > emailBeforeReject, "rejection email was not written to the outbox");
+        using (var rejectJson = JsonDocument.Parse(rejectBody))
+        {
+            Expect(GetString(rejectJson.RootElement, "status") == "TU_CHOI",
+                "rejection did not return TU_CHOI");
+            Expect(GetString(rejectJson.RootElement, "rejectionReason") == reason,
+                "rejection reason was not returned");
+        }
+
+        await using (var db = CreateDb())
+        {
+            var profile = await db.TeacherProfiles
+                .AsNoTracking()
+                .SingleAsync(candidate => candidate.Id == _secondTeacherProfileId);
+            Expect(profile.Status == TeacherProfileStatus.TuChoi, "profile was not rejected");
+            Expect(profile.RejectionReason == reason, "rejection reason was not stored");
+            Expect(profile.ReasonCode == "UNCLEAR_PORTFOLIO", "rejection reason code was not stored");
+            Expect(profile.InternalNote == "Đã kiểm tra ảnh.", "internal note was not stored");
+            Expect(profile.ReviewedAt is not null, "reviewedAt was not set on rejection");
+            var user = await db.Users.AsNoTracking()
+                .SingleAsync(candidate => candidate.Id == _secondTeacherStudentId);
+            Expect(user.Role == UserRole.Student, "rejection changed the account role");
+        }
+
+        var (myProfileStatus, myProfileBody) = await SendAsync(
+            HttpMethod.Get, "/api/teacher/profile/me", token: student.Token);
+        Expect(myProfileStatus == HttpStatusCode.OK,
+            $"rejected profile read returned {(int)myProfileStatus}: {myProfileBody}");
+        using (var myProfileJson = JsonDocument.Parse(myProfileBody))
+        {
+            Expect(GetString(myProfileJson.RootElement, "status") == "TU_CHOI",
+                "student cannot see the rejection status");
+            Expect(GetString(myProfileJson.RootElement, "rejectionReason") == reason,
+                "student cannot see the rejection reason");
+        }
+
+        var (authMeStatus, authMeBody) = await SendAsync(
+            HttpMethod.Get, "/api/auth/me", token: student.Token);
+        Expect(authMeStatus == HttpStatusCode.OK, $"profile check returned {(int)authMeStatus}: {authMeBody}");
+        using (var authMeJson = JsonDocument.Parse(authMeBody))
+        {
+            Expect(GetString(authMeJson.RootElement, "role") == "student",
+                "rejection promoted the account");
+        }
+
+        var emailBeforeResubmit = EmailCount();
+        var (resubmitStatus, resubmitBody) = await SubmitProfileAsync(
+            student.Token,
+            new string('E', 60),
+            new string('F', 20),
+            new[] { _secondTeacherUploadedPath });
+        Expect(resubmitStatus == HttpStatusCode.Accepted,
+            $"expected 202 for resubmission, got {(int)resubmitStatus}: {resubmitBody}");
+        Expect(EmailCount() > emailBeforeResubmit, "resubmission email was not written to the outbox");
+
+        var (afterStatus, afterBody) = await SendAsync(
+            HttpMethod.Get, "/api/teacher/profile/me", token: student.Token);
+        Expect(afterStatus == HttpStatusCode.OK, $"profile read returned {(int)afterStatus}: {afterBody}");
+        using var afterJson = JsonDocument.Parse(afterBody);
+        Expect(GetString(afterJson.RootElement, "status") == "CHO_DUYET",
+            "resubmission did not return the profile to pending");
+        Expect(string.IsNullOrEmpty(GetString(afterJson.RootElement, "rejectionReason")),
+            "resubmission did not clear the current rejection reason");
+        var history = afterJson.RootElement.GetProperty("history");
+        Expect(history.GetArrayLength() == 3,
+            $"expected 3 history entries, got {history.GetArrayLength()}");
+        Expect(history.EnumerateArray().Any(entry => GetString(entry, "reason") == reason),
+            "old rejection reason was not preserved in history");
+    }
+
+    private async Task AdminRequestsChangesAndStudentResubmitsAsync()
+    {
+        var student = await RegisterStudentAsync("teacher-changes");
+        _changesStudentId = student.Id;
+        _changesStudentEmail = student.Email;
+        _changesStudentToken = student.Token;
+
+        var (uploadStatus, uploadBody) = await UploadPortfolioAsync(
+            student.Token, TinyPng, "tac-pham.png", "image/png");
+        Expect(uploadStatus == HttpStatusCode.Created,
+            $"expected 201 for upload, got {(int)uploadStatus}: {uploadBody}");
+        using (var uploadJson = JsonDocument.Parse(uploadBody))
+        {
+            _changesUploadedPath = GetString(uploadJson.RootElement, "filePath");
+        }
+
+        var (submitStatus, submitBody) = await SubmitProfileAsync(
+            student.Token,
+            new string('G', 60),
+            new string('H', 20),
+            new[] { _changesUploadedPath });
+        Expect(submitStatus == HttpStatusCode.Accepted,
+            $"expected 202, got {(int)submitStatus}: {submitBody}");
+        using (var submitJson = JsonDocument.Parse(submitBody))
+        {
+            _changesProfileId = submitJson.RootElement.GetProperty("id").GetInt64();
+        }
+
+        const string reason = "Thiếu ảnh tác phẩm theo chuyên môn đã chọn.";
+        const string internalNote = "Cần kiểm tra lại ảnh.";
+        var emailBefore = EmailCount();
+        var (changesStatus, changesBody) = await SendAsync(
+            HttpMethod.Post,
+            $"/api/admin/teacher-profiles/{_changesProfileId}/request-changes",
+            new
+            {
+                reasonCode = "MISSING_DOCUMENT",
+                reason,
+                fields = new[] { "portfolioFiles" },
+                internalNote
+            },
+            _adminToken);
+        Expect(changesStatus == HttpStatusCode.OK,
+            $"expected 200 for request-changes, got {(int)changesStatus}: {changesBody}");
+        using (var changesJson = JsonDocument.Parse(changesBody))
+        {
+            Expect(GetString(changesJson.RootElement, "status") == "CAN_BO_SUNG",
+                "request-changes did not return CAN_BO_SUNG");
+            Expect(GetString(changesJson.RootElement, "supplementReason") == reason,
+                "request-changes did not return the reason");
+            Expect(changesJson.RootElement.GetProperty("fields").GetArrayLength() == 1,
+                "request-changes did not return fields");
+        }
+
+        Expect(EmailCount() > emailBefore, "request-changes email was not written to the outbox");
+
+        await using (var db = CreateDb())
+        {
+            var profile = await db.TeacherProfiles
+                .AsNoTracking()
+                .SingleAsync(candidate => candidate.Id == _changesProfileId);
+            Expect(profile.Status == TeacherProfileStatus.CanBoSung, "profile is not CAN_BO_SUNG");
+            Expect(profile.SupplementReason == reason, "supplement reason was not stored");
+            Expect(profile.ReasonCode == "MISSING_DOCUMENT", "reason code was not stored separately");
+            Expect(profile.InternalNote == internalNote, "internal note was not stored separately");
+            Expect(profile.FieldsToUpdate?.Contains("portfolioFiles", StringComparison.Ordinal) == true,
+                "fields to update were not stored");
+            Expect(profile.ReviewedAt is not null, "reviewedAt was not set for CAN_BO_SUNG");
+        }
+
+        var (detailStatus, detailBody) = await SendAsync(
+            HttpMethod.Get, $"/api/admin/teacher-profiles/{_changesProfileId}", token: _adminToken);
+        Expect(detailStatus == HttpStatusCode.OK,
+            $"expected 200 for admin detail, got {(int)detailStatus}: {detailBody}");
+        using (var detailJson = JsonDocument.Parse(detailBody))
+        {
+            Expect(GetString(detailJson.RootElement, "internalNote") == internalNote,
+                "admin detail does not include the internal note");
+            Expect(detailJson.RootElement.GetProperty("fields").GetArrayLength() == 1,
+                "admin detail does not include the requested fields");
+        }
+
+        var (meStatus, meBody) = await SendAsync(
+            HttpMethod.Get, "/api/teacher/profile/me", token: student.Token);
+        Expect(meStatus == HttpStatusCode.OK, $"profile read returned {(int)meStatus}: {meBody}");
+        using (var meJson = JsonDocument.Parse(meBody))
+        {
+            Expect(GetString(meJson.RootElement, "status") == "CAN_BO_SUNG",
+                "owner cannot see CAN_BO_SUNG");
+            Expect(GetString(meJson.RootElement, "supplementReason") == reason,
+                "owner cannot see the supplement reason");
+            Expect(meJson.RootElement.GetProperty("fields").GetArrayLength() == 1,
+                "owner cannot see the requested fields");
+            Expect(!meJson.RootElement.TryGetProperty("internalNote", out _),
+                "internal note leaked to the owner");
+        }
+
+        var emailBeforeResubmit = EmailCount();
+        var (resubmitStatus, resubmitBody) = await SubmitProfileAsync(
+            student.Token,
+            new string('I', 60),
+            new string('J', 20),
+            new[] { _changesUploadedPath });
+        Expect(resubmitStatus == HttpStatusCode.Accepted,
+            $"expected 202 for resubmission, got {(int)resubmitStatus}: {resubmitBody}");
+        Expect(EmailCount() > emailBeforeResubmit, "resubmission email was not written to the outbox");
+
+        await using (var db = CreateDb())
+        {
+            var profile = await db.TeacherProfiles
+                .AsNoTracking()
+                .SingleAsync(candidate => candidate.Id == _changesProfileId);
+            Expect(profile.Status == TeacherProfileStatus.ChoDuyet, "profile did not return to pending");
+            Expect(profile.SupplementReason is null, "supplement reason was not cleared");
+            Expect(profile.ReasonCode is null, "reason code was not cleared");
+            Expect(profile.InternalNote is null, "internal note was not cleared");
+            Expect(profile.FieldsToUpdate is null, "fields were not cleared");
+        }
+
+        var (afterStatus, afterBody) = await SendAsync(
+            HttpMethod.Get, "/api/teacher/profile/me", token: student.Token);
+        Expect(afterStatus == HttpStatusCode.OK, $"profile read returned {(int)afterStatus}: {afterBody}");
+        using var afterJson = JsonDocument.Parse(afterBody);
+        Expect(GetString(afterJson.RootElement, "status") == "CHO_DUYET",
+            "resubmission did not return to pending");
+        var history = afterJson.RootElement.GetProperty("history");
+        Expect(history.GetArrayLength() == 3, $"expected 3 history entries, got {history.GetArrayLength()}");
+        var changesEntry = history.EnumerateArray()
+            .First(entry => GetString(entry, "status") == "CAN_BO_SUNG");
+        Expect(GetString(changesEntry, "reason") == reason, "history lost the supplement reason");
+        Expect(GetString(changesEntry, "reasonCode") == "MISSING_DOCUMENT", "history lost the reason code");
+        Expect(changesEntry.GetProperty("fields").GetArrayLength() == 1, "history lost the requested fields");
+    }
+
+    private async Task SignedPortfolioUrlsAsync()
+    {
+        var (status, body) = await SendAsync(
+            HttpMethod.Post,
+            $"/api/teacher/profile/me/portfolio/{_firstTeacherImageId}/signed-url",
+            token: _firstTeacherToken);
+        Expect(status == HttpStatusCode.OK,
+            $"expected 200 for owner signed URL, got {(int)status}: {body}");
+        using var json = JsonDocument.Parse(body);
+        var url = GetString(json.RootElement, "url");
+        Expect(url.StartsWith("/api/teacher-docs/", StringComparison.Ordinal),
+            "signed URL does not point to the document endpoint");
+        Expect(DateTimeOffset.TryParse(GetString(json.RootElement, "expiresAt"), out var expiresAt),
+            "signed URL expiry is missing");
+        var remaining = expiresAt - DateTimeOffset.UtcNow;
+        Expect(remaining > TimeSpan.FromMinutes(4) && remaining < TimeSpan.FromMinutes(6),
+            "signed URL is not valid for about five minutes");
+
+        var (downloadStatus, _) = await SendAsync(HttpMethod.Get, url);
+        Expect(downloadStatus == HttpStatusCode.OK,
+            $"signed URL download returned {(int)downloadStatus}");
+
+        var tampered = url[..^1] + (url[^1] == 'A' ? 'B' : 'A');
+        var (tamperedStatus, _) = await SendAsync(HttpMethod.Get, tampered);
+        Expect(tamperedStatus == HttpStatusCode.Unauthorized,
+            $"tampered signed URL returned {(int)tamperedStatus}");
+
+        var (otherStatus, otherBody) = await SendAsync(
+            HttpMethod.Post,
+            $"/api/teacher/profile/me/portfolio/{_firstTeacherImageId}/signed-url",
+            token: _secondTeacherStudentToken);
+        Expect(otherStatus == HttpStatusCode.NotFound,
+            $"another user got a signed URL: {(int)otherStatus}: {otherBody}");
+
+        var (adminStatus, adminBody) = await SendAsync(
+            HttpMethod.Post,
+            $"/api/admin/teacher-profiles/{_firstTeacherProfileId}/portfolio/{_firstTeacherImageId}/signed-url",
+            token: _adminToken);
+        Expect(adminStatus == HttpStatusCode.OK,
+            $"expected 200 for admin signed URL, got {(int)adminStatus}: {adminBody}");
+        using var adminJson = JsonDocument.Parse(adminBody);
+        var adminUrl = GetString(adminJson.RootElement, "url");
+        var (adminDownloadStatus, _) = await SendAsync(HttpMethod.Get, adminUrl);
+        Expect(adminDownloadStatus == HttpStatusCode.OK,
+            $"admin signed URL download returned {(int)adminDownloadStatus}");
+
+        using var loggerFactory = LoggerFactory.Create(_ => { });
+        var service = new SignedUrlService(
+            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SIGNED_URL_KEY"] = "unit-test-signing-key-with-at-least-32-bytes"
+            }).Build(),
+            loggerFactory.CreateLogger<SignedUrlService>());
+        var expired = service.CreateToken(42, Guid.NewGuid(), DateTimeOffset.UtcNow.AddSeconds(-1));
+        Expect(!service.TryValidate(expired, 42, out _, out _), "expired signed token was accepted");
+    }
+
+    private static async Task SupabaseStorageRequestsAsync()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["SUPABASE_URL"] = "https://supabase.example",
+            ["SUPABASE_SERVICE_ROLE_KEY"] = "service-key",
+            ["SUPABASE_STORAGE_BUCKET"] = "teacher-docs"
+        }).Build();
+
+        var factory = new FakeClientFactory(request =>
+        {
+            Expect(request.Headers.Authorization?.Parameter == "service-key",
+                "storage bearer token is missing");
+            var path = request.RequestUri!.AbsolutePath;
+            if (request.Method == HttpMethod.Post &&
+                path.StartsWith("/storage/v1/object/sign/teacher-docs/", StringComparison.Ordinal))
+            {
+                var body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+                Expect(body.Contains("\"expiresIn\":300", StringComparison.Ordinal),
+                    "signed URL lifetime is not five minutes");
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new
+                    {
+                        signedURL = "/object/sign/teacher-docs/abc.png?token=xyz"
+                    })
+                };
+            }
+
+            if (request.Method == HttpMethod.Post)
+            {
+                Expect(path.StartsWith("/storage/v1/object/teacher-docs/", StringComparison.Ordinal),
+                    "upload path does not use the configured bucket");
+                Expect(
+                    request.Headers.TryGetValues("x-upsert", out var values) && values.Single() == "false",
+                    "x-upsert header is missing");
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(Array.Empty<byte>())
+                };
+            }
+
+            if (request.Method == HttpMethod.Head)
+            {
+                Expect(path.StartsWith("/storage/v1/object/teacher-docs/", StringComparison.Ordinal),
+                    "HEAD path does not use the configured bucket");
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(Array.Empty<byte>())
+                };
+                response.Content.Headers.ContentLength = TinyPng.Length;
+                response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+                return response;
+            }
+
+            if (request.Method == HttpMethod.Get)
+            {
+                Expect(path.StartsWith("/storage/v1/object/teacher-docs/", StringComparison.Ordinal),
+                    "GET path does not use the configured bucket");
+                return new HttpResponseMessage(HttpStatusCode.PartialContent)
+                {
+                    Content = new ByteArrayContent(TinyPng)
+                };
+            }
+
+            throw new InvalidOperationException("Unexpected Supabase Storage request.");
+        });
+
+        using var loggerFactory = LoggerFactory.Create(_ => { });
+        var storage = new SupabasePortfolioStorage(
+            factory,
+            configuration,
+            loggerFactory.CreateLogger<SupabasePortfolioStorage>());
+        using var stream = new MemoryStream(TinyPng);
+        var file = new FormFile(stream, 0, TinyPng.Length, "file", "tac-pham.png")
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = "image/png"
+        };
+
+        var upload = await storage.SaveAsync(file, default);
+        Expect(upload.Success, upload.Message ?? "Supabase upload failed");
+        var path = upload.File!.FilePath;
+        Expect(path.EndsWith(".png", StringComparison.Ordinal), "storage path extension is missing");
+
+        var validation = await storage.ValidateAsync(path, default);
+        Expect(validation.Success, validation.Message ?? "Supabase validation failed");
+
+        var signed = await storage.CreateSignedUrlAsync(
+            1, Guid.NewGuid(), path, TimeSpan.FromMinutes(5), default);
+        Expect(signed is not null, "signed URL was not created");
+        Expect(
+            signed!.Url.StartsWith("https://supabase.example/storage/v1/object/sign/", StringComparison.Ordinal),
+            "signed URL has the wrong base");
+    }
+
+    private async Task TeacherProfilePermissionsAsync()
+    {
+        var (teacherSubmitStatus, teacherSubmitBody) = await SubmitProfileAsync(
+            _firstTeacherToken!,
+            new string('A', 60),
+            new string('B', 20),
+            Array.Empty<string>());
+        Expect(teacherSubmitStatus == HttpStatusCode.Conflict,
+            $"expected 409 for an approved teacher submit, got {(int)teacherSubmitStatus}: {teacherSubmitBody}");
+
+        var (studentAdminStatus, studentAdminBody) = await SendAsync(
+            HttpMethod.Get, "/api/admin/teacher-profiles", token: _secondTeacherStudentToken);
+        Expect(studentAdminStatus == HttpStatusCode.Forbidden,
+            $"expected 403 for a student admin queue request, got {(int)studentAdminStatus}: {studentAdminBody}");
+
+        var (otherDownloadStatus, _) = await SendAsync(
+            HttpMethod.Get,
+            $"/api/teacher/profile/me/portfolio/{_firstTeacherImageId}",
+            token: _secondTeacherStudentToken);
+        Expect(otherDownloadStatus == HttpStatusCode.NotFound,
+            $"another user downloaded a private image: {(int)otherDownloadStatus}");
+
+        var (ownerDownloadStatus, _) = await SendAsync(
+            HttpMethod.Get,
+            $"/api/teacher/profile/me/portfolio/{_firstTeacherImageId}",
+            token: _firstTeacherToken);
+        Expect(ownerDownloadStatus == HttpStatusCode.OK,
+            $"owner download returned {(int)ownerDownloadStatus}");
+
+        var (adminDownloadStatus, adminDownloadBody) = await SendAsync(
+            HttpMethod.Get,
+            $"/api/admin/teacher-profiles/{_firstTeacherProfileId}/portfolio/{_firstTeacherImageId}",
+            token: _adminToken);
+        Expect(adminDownloadStatus == HttpStatusCode.OK,
+            $"admin download returned {(int)adminDownloadStatus}: {adminDownloadBody}");
+    }
+
+    private async Task PortfolioUploadValidationAsync()
+    {
+        var student = await RegisterStudentAsync("teacher-upload");
+
+        var (invalidTypeStatus, invalidTypeBody) = await UploadPortfolioAsync(
+            student.Token,
+            Encoding.UTF8.GetBytes("not an image"),
+            "fake.png",
+            "image/png");
+        Expect((int)invalidTypeStatus == 415,
+            $"expected 415 for an invalid image, got {(int)invalidTypeStatus}: {invalidTypeBody}");
+
+        var oversize = new byte[10 * 1024 * 1024 + 1];
+        TinyPng.CopyTo(oversize, 0);
+        var (oversizeStatus, oversizeBody) = await UploadPortfolioAsync(
+            student.Token, oversize, "big.png", "image/png");
+        Expect((int)oversizeStatus == 413,
+            $"expected 413 for an oversized image, got {(int)oversizeStatus}: {oversizeBody}");
+
+        var (validStatus, validBody) = await UploadPortfolioAsync(
+            student.Token, TinyPng, "ok.png", "image/png");
+        Expect(validStatus == HttpStatusCode.Created,
+            $"expected 201 for a valid image, got {(int)validStatus}: {validBody}");
+    }
+
+    private async Task<(Guid Id, string Email, string Token)> RegisterStudentAsync(string prefix)
+    {
+        var email = $"{prefix}-{Guid.NewGuid():N}@example.com";
+        var (registerStatus, registerBody) = await SendAsync(HttpMethod.Post, "/api/auth/register", new
+        {
+            email,
+            displayName = "Giáo viên thử",
+            password = DefaultPassword
+        });
+        Expect(registerStatus == HttpStatusCode.Created,
+            $"register returned {(int)registerStatus}: {registerBody}");
+        Guid id;
+        using (var registerJson = JsonDocument.Parse(registerBody))
+        {
+            id = Guid.Parse(GetString(registerJson.RootElement, "id"));
+        }
+
+        var (loginStatus, loginBody) = await SendAsync(HttpMethod.Post, "/api/auth/login", new
+        {
+            email,
+            password = DefaultPassword
+        });
+        Expect(loginStatus == HttpStatusCode.OK,
+            $"login returned {(int)loginStatus}: {loginBody}");
+        using var loginJson = JsonDocument.Parse(loginBody);
+        return (id, email, GetString(loginJson.RootElement, "accessToken"));
+    }
+
+    private Task<(HttpStatusCode Status, string Body)> SubmitProfileAsync(
+        string token,
+        string introduction,
+        string experience,
+        IEnumerable<string> portfolioFiles) =>
+        SendAsync(
+            HttpMethod.Post,
+            "/api/teacher/profile/me/submit",
+            new { introduction, experience, portfolioFiles },
+            token);
+
+    private async Task<(HttpStatusCode Status, string Body)> UploadPortfolioAsync(
+        string token,
+        byte[] content,
+        string fileName,
+        string contentType)
+    {
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(content);
+        file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        form.Add(file, "file", fileName);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/teacher/profile/me/portfolio")
+        {
+            Content = form
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        using var response = await client.SendAsync(request);
+        return (response.StatusCode, await response.Content.ReadAsStringAsync());
+    }
+
+    private long _courseId;
+    private object CoursePayload(string title = "Digital art foundation") => new {
+        tieu_de = title, mo_ta = new string('A', 60), cap_do = "CO_BAN", chu_de = "Digital Art",
+        anh_dai_dien = "", ma_giao_vien = Guid.NewGuid(), trang_thai = "DA_DANG"
+    };
+
+    private async Task CourseAccessAsync()
+    {
+        var student = await RegisterStudentAsync("course-student");
+        var (anonymous, _) = await SendAsync(HttpMethod.Post, "/api/courses", CoursePayload());
+        Expect(anonymous == HttpStatusCode.Unauthorized, "anonymous created a course");
+        var (forbidden, _) = await SendAsync(HttpMethod.Post, "/api/courses", CoursePayload(), student.Token);
+        Expect(forbidden == HttpStatusCode.Forbidden, "student created a course");
+        var (invalid, _) = await SendAsync(HttpMethod.Post, "/api/courses", CoursePayload(" "), _firstTeacherToken);
+        Expect(invalid == HttpStatusCode.BadRequest, "blank title accepted");
+        var (created, body) = await SendAsync(HttpMethod.Post, "/api/courses", CoursePayload(), _firstTeacherToken);
+        Expect(created == HttpStatusCode.Created, $"create returned {(int)created}: {body}");
+        using (var json = JsonDocument.Parse(body)) {
+            _courseId = json.RootElement.GetProperty("ma_khoa_hoc").GetInt64();
+            Expect(GetString(json.RootElement, "trang_thai") == "NHAP", "client selected the course status");
+            Expect(GetString(json.RootElement, "ma_giao_vien") == _firstTeacherStudentId.ToString(), "client selected the course owner");
+        }
+        var (hidden, _) = await SendAsync(HttpMethod.Get, $"/api/courses/{_courseId}");
+        Expect(hidden == HttpStatusCode.NotFound, "anonymous read a draft");
+        var (mineStatus, _) = await SendAsync(HttpMethod.Get, "/api/courses?mine=true");
+        Expect(mineStatus == HttpStatusCode.Unauthorized, "anonymous used mine filter");
+        var (listStatus, listBody) = await SendAsync(HttpMethod.Get, "/api/courses?search=FOUNDATION&pageSize=1", token: _firstTeacherToken);
+        Expect(listStatus == HttpStatusCode.OK, $"SQLite search failed: {listBody}");
+        using (var list = JsonDocument.Parse(listBody)) Expect(list.RootElement.GetProperty("totalCount").GetInt32() == 1, "search/pagination lost canonical course");
+        var (otherOwner, _) = await SendAsync(HttpMethod.Put, $"/api/courses/{_courseId}", CoursePayload(), _adminToken);
+        Expect(otherOwner == HttpStatusCode.NotFound, "non-owner edited teacher draft");
+        var (saved, saveBody) = await SendAsync(HttpMethod.Put, $"/api/courses/{_courseId}", CoursePayload("Updated digital art foundation"), _firstTeacherToken);
+        Expect(saved == HttpStatusCode.OK, $"owner update failed: {saveBody}");
+        await using var db = CreateDb();
+        Expect(await db.LearningCourses.AnyAsync(item => item.Id == _courseId && item.Status == "NHAP"), "course was not stored in khoa_hoc");
+        Expect(!await db.Courses.AnyAsync(), "new course was written to legacy courses");
+    }
+
+    private async Task CourseWorkflowAsync()
+    {
+        var (submitted, submitBody) = await SendAsync(HttpMethod.Post, $"/api/courses/{_courseId}/submit", token: _firstTeacherToken);
+        Expect(submitted == HttpStatusCode.OK, $"submit failed: {submitBody}");
+        var (locked, _) = await SendAsync(HttpMethod.Put, $"/api/courses/{_courseId}", CoursePayload(), _firstTeacherToken);
+        Expect(locked == HttpStatusCode.Conflict, "pending course was editable");
+        var (forbidden, _) = await SendAsync(HttpMethod.Post, $"/api/admin/courses/{_courseId}/approve", token: _firstTeacherToken);
+        Expect(forbidden == HttpStatusCode.Forbidden, "teacher approved their course");
+        var (badReason, _) = await SendAsync(HttpMethod.Post, $"/api/admin/courses/{_courseId}/reject", new { reason = "" }, _adminToken);
+        Expect(badReason == HttpStatusCode.BadRequest, "rejection without reason accepted");
+        var (rejected, _) = await SendAsync(HttpMethod.Post, $"/api/admin/courses/{_courseId}/reject", new { reason = "Please expand the course description." }, _adminToken);
+        Expect(rejected == HttpStatusCode.OK, "admin could not return course to draft");
+        var (resubmit, _) = await SendAsync(HttpMethod.Post, $"/api/courses/{_courseId}/submit", token: _firstTeacherToken);
+        Expect(resubmit == HttpStatusCode.OK, "rejected course could not resubmit");
+        var (approved, approveBody) = await SendAsync(HttpMethod.Post, $"/api/admin/courses/{_courseId}/approve", token: _adminToken);
+        Expect(approved == HttpStatusCode.OK, $"approval failed: {approveBody}");
+        var (duplicate, _) = await SendAsync(HttpMethod.Post, $"/api/admin/courses/{_courseId}/approve", token: _adminToken);
+        Expect(duplicate == HttpStatusCode.Conflict, "duplicate approval succeeded");
+        var (published, _) = await SendAsync(HttpMethod.Get, $"/api/courses/{_courseId}");
+        Expect(published == HttpStatusCode.OK, "published course was not public");
+        await using var db = CreateDb();
+        Expect((await db.LearningCourses.SingleAsync(item => item.Id == _courseId)).Status == "DA_DANG", "wrong persisted status");
+        Expect(await db.StatusHistory.CountAsync(item => item.ObjectType == "KHOA_HOC" && item.ObjectId == _courseId.ToString()) == 4, "missing or duplicated course history");
+        Expect(await db.Notifications.CountAsync(item => item.Type == "KHOA_HOC" && item.UserId == _firstTeacherStudentId) == 2, "missing or duplicated course notifications");
+    }
+
+    private static JsonElement SingleItem(string body, long expectedId)
+    {
+        using var json = JsonDocument.Parse(body);
+        var items = json.RootElement.GetProperty("items");
+        Expect(items.GetArrayLength() == 1, $"expected 1 queue item, got {items.GetArrayLength()}");
+        var item = items[0];
+        Expect(item.GetProperty("id").GetInt64() == expectedId, "queue item has the wrong id");
+        return item.Clone();
+    }
+
+    private static long FirstPortfolioImageId(JsonElement profile)
+    {
+        var files = profile.GetProperty("portfolioFiles");
+        Expect(files.GetArrayLength() > 0, "portfolio files are missing");
+        return files[0].GetProperty("id").GetInt64();
+    }
+
+    private int EmailCount() =>
+        Directory.Exists(emailPath) ? Directory.GetFiles(emailPath, "*.txt").Length : 0;
 
     private AppDbContext CreateDb()
     {
