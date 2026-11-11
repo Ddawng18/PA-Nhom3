@@ -137,7 +137,7 @@ export class UnsupportedCourseApprovalError extends Error {
 }
 
 type ApiRequestOptions = {
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "PUT" | "DELETE";
   token: string;
   body?: unknown;
   signal?: AbortSignal;
@@ -166,15 +166,16 @@ export async function requestAdminApi(
   const timeout = window.setTimeout(() => controller.abort(), 30_000);
   const abortParent = () => controller.abort();
   options.signal?.addEventListener("abort", abortParent, { once: true });
+  if (options.signal?.aborted) controller.abort();
 
   try {
     const response = await fetch(url, {
       method: options.method ?? "GET",
       headers: {
         Authorization: `Bearer ${options.token}`,
-        ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
+        ...(options.body === undefined || options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       },
-      ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+      ...(options.body === undefined ? {} : { body: options.body instanceof FormData ? options.body : JSON.stringify(options.body) }),
       signal: controller.signal,
     });
     const payload: unknown = response.status === 204 ? null : await response.json().catch(() => null);

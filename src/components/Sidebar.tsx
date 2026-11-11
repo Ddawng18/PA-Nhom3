@@ -28,6 +28,7 @@ const navigationItems = [
   { label: "Tác phẩm", icon: FolderHeart, to: null },
   { label: "Cộng đồng", icon: Users, to: null },
   { label: "Cài đặt", icon: Settings, to: "/settings" },
+  { label: "Hồ sơ giáo viên", icon: PenTool, to: "/teacher/onboarding" },
 ];
 
 export default function Sidebar({ user, displayName, initials }: SidebarProps) {

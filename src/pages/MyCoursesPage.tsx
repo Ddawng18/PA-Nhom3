@@ -1,3 +1,4 @@
+import { listCourses } from "../lib/courseApi";
 import { useEffect, useState } from "react";
 import { Bell, BookOpen, ChevronRight, Clock3, Plus } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
@@ -7,7 +8,6 @@ import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
 import { getCourseLevelLabel, getCourseStatusLabel } from "../logic/courseEditor";
 import { useUserRole } from "../hooks/useUserRole";
-import { supabase } from "../lib/supabase";
 import "../styles/settings.css";
 import "../styles/teacher-course.css";
 
@@ -25,7 +25,7 @@ type TeacherCourseTab = "all" | "owned";
 const enrolledCourses: EnrolledCourse[] = [];
 
 const teacherCourseSchema = z.object({
-  ma_khoa_hoc: z.string(),
+  ma_khoa_hoc: z.union([z.string(), z.number().int().safe()]).transform(String),
   ma_giao_vien: z.string().nullable(),
   tieu_de: z.string(),
   cap_do: z.string().nullable(),
@@ -160,6 +160,8 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
 }
 
 function TeacherCourses({ user, displayName }: { user: User; displayName: string }) {
+  const { session } = useAuth();
+  const token = session?.access_token;
   const [activeTab, setActiveTab] = useState<TeacherCourseTab>("all");
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
@@ -169,23 +171,15 @@ function TeacherCourses({ user, displayName }: { user: User; displayName: string
     let isCurrent = true;
 
     async function loadCourses() {
-      if (!supabase) {
-        setLoadError("Ứng dụng chưa được cấu hình Supabase. Không thể tải khóa học.");
-        setLoadedUserId(user.id);
+      let data: unknown;
+      try {
+        if (!token) throw new Error("Missing session");
+        data = await listCourses(token);
+      } catch {
+        if (isCurrent) { setLoadError("Không thể tải danh sách khóa học. Vui lòng thử lại sau."); setLoadedUserId(user.id); }
         return;
       }
-
-      const { data, error } = await supabase
-        .from("khoa_hoc")
-        .select("ma_khoa_hoc, ma_giao_vien, tieu_de, cap_do, chu_de, trang_thai");
-
       if (!isCurrent) return;
-
-      if (error) {
-        setLoadError("Không thể tải danh sách khóa học. Vui lòng thử lại sau.");
-        setLoadedUserId(user.id);
-        return;
-      }
 
       const parsedCourses = z.array(teacherCourseSchema).safeParse(data);
       if (!parsedCourses.success) {
@@ -206,7 +200,7 @@ function TeacherCourses({ user, displayName }: { user: User; displayName: string
     return () => {
       isCurrent = false;
     };
-  }, [user.id]);
+  }, [user.id, token]);
 
   const loading = loadedUserId !== user.id;
   const ownedCourses = courses.filter((course) => course.ma_giao_vien === user.id);

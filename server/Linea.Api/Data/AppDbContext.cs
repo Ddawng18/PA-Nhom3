@@ -7,6 +7,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<Course> Courses => Set<Course>();
+    public DbSet<LearningCourse> LearningCourses => Set<LearningCourse>();
 
     public DbSet<TeacherProfile> TeacherProfiles => Set<TeacherProfile>();
 
@@ -54,6 +55,20 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         course.HasIndex(item => item.Status);
         course.Property(item => item.CreatedAt).HasDefaultValueSql("timezone('utc', now())");
         course.Property(item => item.UpdatedAt).HasDefaultValueSql("timezone('utc', now())");
+
+        var learningCourse = modelBuilder.Entity<LearningCourse>();
+        learningCourse.ToTable("khoa_hoc");
+        learningCourse.HasKey(item => item.Id);
+        learningCourse.Property(item => item.Id).HasColumnName("ma_khoa_hoc");
+        learningCourse.Property(item => item.TeacherId).HasColumnName("ma_giao_vien").IsRequired();
+        learningCourse.Property(item => item.Title).HasColumnName("tieu_de").HasMaxLength(200).IsRequired();
+        learningCourse.Property(item => item.Level).HasColumnName("cap_do").HasMaxLength(30).IsRequired();
+        learningCourse.Property(item => item.Topic).HasColumnName("chu_de").HasMaxLength(100).IsRequired();
+        learningCourse.Property(item => item.Description).HasColumnName("mo_ta").IsRequired();
+        learningCourse.Property(item => item.CoverImage).HasColumnName("anh_dai_dien").HasMaxLength(500);
+        learningCourse.Property(item => item.Status).HasColumnName("trang_thai").HasMaxLength(20).IsRequired();
+        learningCourse.Property(item => item.CreatedAt).HasColumnName("ngay_tao").IsRequired();
+        learningCourse.HasIndex(item => item.TeacherId);
 
         var teacherProfile = modelBuilder.Entity<TeacherProfile>();
         teacherProfile.ToTable("ho_so_giao_vien");

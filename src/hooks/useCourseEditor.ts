@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
+import { useAuth } from "../auth/useAuth";
+import { getCourse, saveCourseInfo, submitCourse } from "../lib/courseApi";
+import { AdminApiError } from "../lib/adminApi";
 import { supabase } from "../lib/supabase";
 import { removeCourseMedia } from "../lib/courseStorage";
 import { buildReorderPlan, type CourseInfo } from "../logic/courseEditor";
@@ -109,6 +112,8 @@ const isMissingRubricTable = (message: string) => message.includes("tieu_chi_cha
   && (message.includes("does not exist") || message.includes("Could not find the table") || message.includes("schema cache"));
 
 export function useCourseEditor(courseId: string | undefined, userId: string) {
+  const { session } = useAuth();
+  const token = session?.access_token;
   const [state, setState] = useState<EditorState>({
     course: null,
     loading: Boolean(courseId),
@@ -137,16 +142,8 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
     setState({ course: null, loading: true, error: null, notFound: false, rubricUnavailable: false });
     void (async () => {
       try {
-        const { data: courseRow, error: courseError } = await supabase
-          .from("khoa_hoc")
-          .select("ma_khoa_hoc, ma_giao_vien, tieu_de, cap_do, chu_de, mo_ta, anh_dai_dien, trang_thai")
-          .eq("ma_khoa_hoc", courseId)
-          .maybeSingle();
-        if (courseError) throw courseError;
-        if (!courseRow) {
-          if (active) setState({ course: null, loading: false, error: null, notFound: true, rubricUnavailable: false });
-          return;
-        }
+        if (!token) throw new Error(genericLoadError);
+        const courseRow = await getCourse(token, courseId);
         const parsedCourse = courseSchema.safeParse(courseRow);
         if (!parsedCourse.success) throw new Error(genericLoadError);
         if (parsedCourse.data.ma_giao_vien !== userId) {
@@ -242,38 +239,21 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
             rubricUnavailable,
           });
         }
-      } catch {
-        if (active) setState({ course: null, loading: false, error: genericLoadError, notFound: false, rubricUnavailable: false });
+      } catch (error) {
+        if (active) setState({ course: null, loading: false, error: error instanceof AdminApiError && error.status === 404 ? null : genericLoadError, notFound: error instanceof AdminApiError && error.status === 404, rubricUnavailable: false });
       }
     })();
     return () => {
       active = false;
     };
-  }, [courseId, userId, attempt]);
+  }, [courseId, userId, token, attempt]);
 
   const saveCourse = useCallback(async (values: CourseInfo) => {
-    if (!supabase) throw new Error(saveErrorMessage);
-    if (!courseId) {
-      const { data, error } = await supabase.from("khoa_hoc").insert({
-        ...values,
-        ma_giao_vien: userId,
-      }).select("ma_khoa_hoc, trang_thai").single();
-      const created = z.object({ ma_khoa_hoc: rowIdSchema, trang_thai: z.literal("NHAP") }).safeParse(data);
-      if (error || !created.success) throw new Error(saveErrorMessage);
-      return String(created.data.ma_khoa_hoc);
-    }
-    const { data, error } = await supabase
-      .from("khoa_hoc")
-      .update(values)
-      .eq("ma_khoa_hoc", courseId)
-      .eq("ma_giao_vien", userId)
-      .eq("trang_thai", "NHAP")
-      .select("ma_khoa_hoc")
-      .maybeSingle();
-    if (error || !z.object({ ma_khoa_hoc: rowIdSchema }).safeParse(data).success) throw new Error(saveErrorMessage);
+    if (!token) throw new Error(saveErrorMessage);
+    const saved = await saveCourseInfo(token, courseId, values);
     reload();
-    return courseId;
-  }, [courseId, userId, reload]);
+    return String(saved.ma_khoa_hoc);
+  }, [courseId, token, reload]);
 
   const assertEditable = useCallback(() => {
     if (!state.course || state.course.trang_thai !== "NHAP" || state.course.ma_giao_vien !== userId) {
@@ -511,27 +491,10 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
 
   const submitForReview = useCallback(async () => {
     const course = assertEditable();
-    const { data, error } = await supabase!.from("khoa_hoc")
-      .update({ trang_thai: "CHO_DUYET" })
-      .eq("ma_khoa_hoc", course.ma_khoa_hoc)
-      .eq("ma_giao_vien", userId)
-      .eq("trang_thai", "NHAP")
-      .select("ma_khoa_hoc")
-      .maybeSingle();
-    if (error || !data) throw new Error(saveErrorMessage);
-    const historyResult = await supabase!.from("lich_su_trang_thai").insert({
-      loai_doi_tuong: "KHOA_HOC",
-      ma_doi_tuong: course.ma_khoa_hoc,
-      trang_thai_cu: "NHAP",
-      trang_thai_moi: "CHO_DUYET",
-      ma_nguoi_thuc_hien: userId,
-    });
-    if (historyResult.error) {
-      reload();
-      throw new Error("Khóa học đã chuyển sang chờ duyệt nhưng không ghi được lịch sử trạng thái.");
-    }
+    if (!token) throw new Error(saveErrorMessage);
+    await submitCourse(token, course.ma_khoa_hoc);
     reload();
-  }, [assertEditable, userId, reload]);
+  }, [assertEditable, token, reload]);
 
   return {
     ...state,

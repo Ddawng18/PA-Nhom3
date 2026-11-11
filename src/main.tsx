@@ -16,12 +16,14 @@ import RegisterPage from "./pages/RegisterPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SettingsPage from "./pages/SettingsPage";
 import TeacherCourseFormPage from "./pages/TeacherCourseFormPage";
+import TeacherOnboardingPage from "./pages/TeacherOnboardingPage";
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          <Route path="/teacher/onboarding" element={<ProtectedRoute><TeacherOnboardingPage /></ProtectedRoute>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />

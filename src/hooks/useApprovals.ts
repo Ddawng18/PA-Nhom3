@@ -17,6 +17,7 @@ import {
 } from "../lib/adminApi";
 import { mapApiError } from "../logic/approvals";
 import { supabase } from "../lib/supabase";
+import { listCourses } from "../lib/courseApi";
 
 const courseRowSchema = z.object({
   ma_khoa_hoc: z.number().int().safe(),
@@ -77,15 +78,9 @@ function getSupabaseErrorMessage(error: { code?: string; status?: number }): str
   return loadError;
 }
 
-async function loadCourseRows(signal: AbortSignal): Promise<ApprovalCourse[]> {
+async function loadCourseRows(token: string, signal: AbortSignal): Promise<ApprovalCourse[]> {
   if (!supabase) throw new Error("Ứng dụng chưa được cấu hình Supabase.");
-  const { data: rawCourses, error: coursesError } = await supabase
-    .from("khoa_hoc")
-    .select("ma_khoa_hoc, ma_giao_vien, tieu_de, cap_do, chu_de, anh_dai_dien, ngay_tao, trang_thai")
-    .eq("trang_thai", "CHO_DUYET")
-    .order("ngay_tao", { ascending: true })
-    .abortSignal(signal);
-  if (coursesError) throw new Error(getSupabaseErrorMessage(coursesError));
+  const rawCourses = (await listCourses(token, signal)).filter(course => course.trang_thai === "CHO_DUYET");
   const parsedCourses = z.array(courseRowSchema).safeParse(rawCourses);
   if (!parsedCourses.success) throw new Error(invalidDataError);
   if (!parsedCourses.data.length) return [];
@@ -214,7 +209,7 @@ export function useApprovals(active: boolean, isAdmin: boolean, token: string | 
     }, 30_000);
     setCourseLoading(true);
     setCourseError(null);
-    loadCourseRows(controller.signal)
+    loadCourseRows(token, controller.signal)
       .then((rows) => {
         setCourses(rows);
         setCounts((current) => ({ ...current, courses: rows.length, total: current.teachers + rows.length }));
