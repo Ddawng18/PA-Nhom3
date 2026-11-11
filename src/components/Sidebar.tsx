@@ -20,7 +20,7 @@ type SidebarProps = {
 
 const navigationItems = [
   { label: "Tổng quan", icon: LayoutDashboard, to: "/dashboard" },
-  { label: "Khóa học của tôi", icon: BookOpen, to: "/my-courses" },
+  { label: "Khóa học", icon: BookOpen, to: "/my-courses" },
   { label: "Studio", icon: PenTool, to: null },
   { label: "Bài luyện tập", icon: Sparkles, to: null },
   { label: "Tiến độ", icon: ChartNoAxesColumnIncreasing, to: null },
