@@ -65,6 +65,62 @@ namespace Linea.Api.Migrations
                     b.ToTable("courses", (string)null);
                 });
 
+            modelBuilder.Entity("Linea.Api.Models.LearningCourse", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_khoa_hoc");
+
+                    b.Property<string>("CoverImage")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("anh_dai_dien");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_tao");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("mo_ta");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("cap_do");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("trang_thai");
+
+                    b.Property<Guid>("TeacherId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ma_giao_vien");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tieu_de");
+
+                    b.Property<string>("Topic")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("chu_de");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeacherId");
+
+                    b.ToTable("khoa_hoc", (string)null);
+                });
+
             modelBuilder.Entity("Linea.Api.Models.NotificationMessage", b =>
                 {
                     b.Property<long>("Id")

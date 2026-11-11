@@ -43,7 +43,9 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 > hiện có đăng ký/đăng nhập JWT, phân quyền student/teacher/admin và API hồ sơ
 > giáo viên (gửi, upload ảnh riêng tư, duyệt/từ chối/yêu cầu bổ sung, email,
 > signed URL 5 phút, Supabase Storage hoặc local fallback, lưu lịch sử và thông
-> báo). Một số API bài tập/khóa học vẫn có thể trả dữ liệu mẫu; xem
+> báo). Sprint 5 bổ sung UI `/teacher/onboarding`, thống nhất duyệt giáo viên và
+> tạo/sửa/danh sách khóa học qua `/api/courses` dùng bảng `khoa_hoc`. Các phần bài
+> tập chưa triển khai vẫn có thể là dữ liệu mẫu. Xem [log Sprint 5](docs/sprint5-implementation-log.md) và
 > [`docs/teacher-profile-api.md`](docs/teacher-profile-api.md) để biết hợp đồng
 > API và kết quả kiểm thử hồ sơ giáo viên.
 

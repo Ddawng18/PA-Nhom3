@@ -15,6 +15,7 @@ server/.nuget-local/
 *.db-shm
 *.db-wal
 TestResults/
+test-results/
 
 # Private teacher portfolio uploads stored by the API
 server/**/App_Data/

@@ -1,5 +1,7 @@
 # Đối chiếu Sprint 5 — 11/11/2026
 
+> Đây là ảnh chụp trạng thái trước khi bổ sung mã. Kết quả xử lý tiếp theo nằm trong [nhật ký triển khai](sprint5-implementation-log.md); deploy do PM tự thực hiện, chưa xác nhận production hoàn tất.
+
 ## Kết luận
 
 Chưa đủ điều kiện xác nhận hoàn thành Sprint 5. Mã nguồn đã được tích hợp vào `develop`; frontend gửi hồ sơ giáo viên chưa có trong các nhánh đã kiểm tra, tích hợp khóa học chưa thống nhất, backend deploy chưa có các endpoint mới. Trạng thái Trello là thông tin theo dõi, không thay thế nghiệm thu.

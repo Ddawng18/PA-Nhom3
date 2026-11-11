@@ -124,7 +124,9 @@ npm run build
 dotnet run --project server/Linea.Api.Tests
 ```
 
-Backend test chạy với SQLite tạm, không ghi vào Supabase. Kỳ vọng: `20/20 PASS`.
+Backend test chạy với SQLite tạm, không ghi vào Supabase. Kết quả Sprint 5: `36/36 PASS`.
+Frontend: `60/60 PASS`. Browser local: `npm.cmd run test:browser` sau khi build backend;
+xem [nhật ký và giới hạn kiểm thử](sprint5-implementation-log.md).
 
 ## 7. Quy tắc bảo mật
 

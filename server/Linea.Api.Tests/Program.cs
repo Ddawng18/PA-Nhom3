@@ -298,7 +298,9 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
             ("teacher profile permissions and portfolio privacy are enforced", TeacherProfilePermissionsAsync),
             ("signed portfolio URLs serve images and reject tampering", SignedPortfolioUrlsAsync),
             ("Supabase storage builds upload, validation and signed URL requests", SupabaseStorageRequestsAsync),
-            ("portfolio upload rejects invalid type and oversized files", PortfolioUploadValidationAsync)
+            ("portfolio upload rejects invalid type and oversized files", PortfolioUploadValidationAsync),
+            ("course API enforces ownership, validation and draft privacy", CourseAccessAsync),
+            ("course review updates canonical data, history and notifications atomically", CourseWorkflowAsync)
         };
 
         var passed = 0;
@@ -1456,6 +1458,70 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         using var response = await client.SendAsync(request);
         return (response.StatusCode, await response.Content.ReadAsStringAsync());
+    }
+
+    private long _courseId;
+    private object CoursePayload(string title = "Digital art foundation") => new {
+        tieu_de = title, mo_ta = new string('A', 60), cap_do = "CO_BAN", chu_de = "Digital Art",
+        anh_dai_dien = "", ma_giao_vien = Guid.NewGuid(), trang_thai = "DA_DANG"
+    };
+
+    private async Task CourseAccessAsync()
+    {
+        var student = await RegisterStudentAsync("course-student");
+        var (anonymous, _) = await SendAsync(HttpMethod.Post, "/api/courses", CoursePayload());
+        Expect(anonymous == HttpStatusCode.Unauthorized, "anonymous created a course");
+        var (forbidden, _) = await SendAsync(HttpMethod.Post, "/api/courses", CoursePayload(), student.Token);
+        Expect(forbidden == HttpStatusCode.Forbidden, "student created a course");
+        var (invalid, _) = await SendAsync(HttpMethod.Post, "/api/courses", CoursePayload(" "), _firstTeacherToken);
+        Expect(invalid == HttpStatusCode.BadRequest, "blank title accepted");
+        var (created, body) = await SendAsync(HttpMethod.Post, "/api/courses", CoursePayload(), _firstTeacherToken);
+        Expect(created == HttpStatusCode.Created, $"create returned {(int)created}: {body}");
+        using (var json = JsonDocument.Parse(body)) {
+            _courseId = json.RootElement.GetProperty("ma_khoa_hoc").GetInt64();
+            Expect(GetString(json.RootElement, "trang_thai") == "NHAP", "client selected the course status");
+            Expect(GetString(json.RootElement, "ma_giao_vien") == _firstTeacherStudentId.ToString(), "client selected the course owner");
+        }
+        var (hidden, _) = await SendAsync(HttpMethod.Get, $"/api/courses/{_courseId}");
+        Expect(hidden == HttpStatusCode.NotFound, "anonymous read a draft");
+        var (mineStatus, _) = await SendAsync(HttpMethod.Get, "/api/courses?mine=true");
+        Expect(mineStatus == HttpStatusCode.Unauthorized, "anonymous used mine filter");
+        var (listStatus, listBody) = await SendAsync(HttpMethod.Get, "/api/courses?search=FOUNDATION&pageSize=1", token: _firstTeacherToken);
+        Expect(listStatus == HttpStatusCode.OK, $"SQLite search failed: {listBody}");
+        using (var list = JsonDocument.Parse(listBody)) Expect(list.RootElement.GetProperty("totalCount").GetInt32() == 1, "search/pagination lost canonical course");
+        var (otherOwner, _) = await SendAsync(HttpMethod.Put, $"/api/courses/{_courseId}", CoursePayload(), _adminToken);
+        Expect(otherOwner == HttpStatusCode.NotFound, "non-owner edited teacher draft");
+        var (saved, saveBody) = await SendAsync(HttpMethod.Put, $"/api/courses/{_courseId}", CoursePayload("Updated digital art foundation"), _firstTeacherToken);
+        Expect(saved == HttpStatusCode.OK, $"owner update failed: {saveBody}");
+        await using var db = CreateDb();
+        Expect(await db.LearningCourses.AnyAsync(item => item.Id == _courseId && item.Status == "NHAP"), "course was not stored in khoa_hoc");
+        Expect(!await db.Courses.AnyAsync(), "new course was written to legacy courses");
+    }
+
+    private async Task CourseWorkflowAsync()
+    {
+        var (submitted, submitBody) = await SendAsync(HttpMethod.Post, $"/api/courses/{_courseId}/submit", token: _firstTeacherToken);
+        Expect(submitted == HttpStatusCode.OK, $"submit failed: {submitBody}");
+        var (locked, _) = await SendAsync(HttpMethod.Put, $"/api/courses/{_courseId}", CoursePayload(), _firstTeacherToken);
+        Expect(locked == HttpStatusCode.Conflict, "pending course was editable");
+        var (forbidden, _) = await SendAsync(HttpMethod.Post, $"/api/admin/courses/{_courseId}/approve", token: _firstTeacherToken);
+        Expect(forbidden == HttpStatusCode.Forbidden, "teacher approved their course");
+        var (badReason, _) = await SendAsync(HttpMethod.Post, $"/api/admin/courses/{_courseId}/reject", new { reason = "" }, _adminToken);
+        Expect(badReason == HttpStatusCode.BadRequest, "rejection without reason accepted");
+        var (rejected, _) = await SendAsync(HttpMethod.Post, $"/api/admin/courses/{_courseId}/reject", new { reason = "Please expand the course description." }, _adminToken);
+        Expect(rejected == HttpStatusCode.OK, "admin could not return course to draft");
+        var (resubmit, _) = await SendAsync(HttpMethod.Post, $"/api/courses/{_courseId}/submit", token: _firstTeacherToken);
+        Expect(resubmit == HttpStatusCode.OK, "rejected course could not resubmit");
+        var (approved, approveBody) = await SendAsync(HttpMethod.Post, $"/api/admin/courses/{_courseId}/approve", token: _adminToken);
+        Expect(approved == HttpStatusCode.OK, $"approval failed: {approveBody}");
+        var (duplicate, _) = await SendAsync(HttpMethod.Post, $"/api/admin/courses/{_courseId}/approve", token: _adminToken);
+        Expect(duplicate == HttpStatusCode.Conflict, "duplicate approval succeeded");
+        var (published, _) = await SendAsync(HttpMethod.Get, $"/api/courses/{_courseId}");
+        Expect(published == HttpStatusCode.OK, "published course was not public");
+        await using var db = CreateDb();
+        Expect((await db.LearningCourses.SingleAsync(item => item.Id == _courseId)).Status == "DA_DANG", "wrong persisted status");
+        Expect(await db.StatusHistory.CountAsync(item => item.ObjectType == "KHOA_HOC" && item.ObjectId == _courseId.ToString()) == 4, "missing or duplicated course history");
+        Expect(await db.Notifications.CountAsync(item => item.Type == "KHOA_HOC" && item.UserId == _firstTeacherStudentId) == 2, "missing or duplicated course notifications");
     }
 
     private static JsonElement SingleItem(string body, long expectedId)

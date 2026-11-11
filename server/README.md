@@ -1,5 +1,11 @@
 # LINEA Backend API (ASP.NET Core)
 
+> Sprint 5: `/api/courses` hiện dùng bảng `khoa_hoc`, ID số và payload tiếng Việt,
+> không dùng GUID/bảng `courses` cũ. Hợp đồng API, migration, kết quả test và phần
+> cần kiểm tra trước deploy nằm trong [nhật ký Sprint 5](../docs/sprint5-implementation-log.md).
+> Backend và frontend cần cùng kết nối một Supabase PostgreSQL để dùng chung
+> khóa học/chương/bài học; SQLite chỉ dành cho dev/test độc lập.
+
 > Cập nhật Sprint 4: mặc định backend xác thực bằng Supabase Auth; các API
 > student/teacher dùng vai trò lấy từ `nguoi_dung`. API quản lý tài khoản admin
 > cũ trả 501 để tránh sửa bảng `users` không liên quan. Các endpoint đăng nhập
