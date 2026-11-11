@@ -888,7 +888,7 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
 
         var (oldTokenStatus, oldTokenBody) = await SendAsync(
             HttpMethod.Get, "/api/auth/me", token: _firstTeacherStudentToken);
-        Expect(oldTokenStatus == HttpStatusCode.OK,
+        Expect(oldTokenStatus == HttpStatusCode.Unauthorized,
             $"old token after approval returned {(int)oldTokenStatus}: {oldTokenBody}");
 
         var (loginStatus, loginBody) = await SendAsync(HttpMethod.Post, "/api/auth/login", new
