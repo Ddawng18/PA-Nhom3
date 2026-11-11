@@ -65,6 +65,20 @@ builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddSingleton<SignedUrlService>();
+builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+builder.Services.AddSingleton<IPortfolioStorage>(services =>
+{
+    var configuration = services.GetRequiredService<IConfiguration>();
+    if (!string.IsNullOrWhiteSpace(configuration["SUPABASE_SERVICE_ROLE_KEY"]) &&
+        !string.IsNullOrWhiteSpace(configuration["SUPABASE_URL"]))
+    {
+        return ActivatorUtilities.CreateInstance<SupabasePortfolioStorage>(services);
+    }
+
+    return ActivatorUtilities.CreateInstance<LocalPortfolioStorage>(services);
+});
+builder.Services.AddScoped<AccountDirectory>();
 
 builder.Services
     .AddAuthentication(useLegacyAuth ? JwtBearerDefaults.AuthenticationScheme : "Supabase")
