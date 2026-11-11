@@ -13,14 +13,12 @@ import {
   getGreeting,
 } from "../logic/dashboard";
 import { getDisplayName, getInitials } from "../lib/userDisplay";
+import { getCourseLevelLabel } from "../logic/courseEditor";
 import "../styles/settings.css";
 import "../styles/dashboard.css";
 
 function getCourseLevel(level: string | null): string {
-  if (level === "CO_BAN") return "Cơ bản";
-  if (level === "TRUNG_CAP") return "Trung cấp";
-  if (level === "NANG_CAO") return "Nâng cao";
-  return level || "Chưa phân cấp";
+  return level ? getCourseLevelLabel(level) : "Chưa phân cấp";
 }
 
 function DisabledFeatureButton({ children, className }: { children: string; className: string }) {

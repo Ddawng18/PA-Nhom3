@@ -5,9 +5,11 @@ import { Link } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
+import { getCourseLevelLabel, getCourseStatusLabel } from "../logic/courseEditor";
 import { useUserRole } from "../hooks/useUserRole";
 import { supabase } from "../lib/supabase";
 import "../styles/settings.css";
+import "../styles/teacher-course.css";
 
 type CourseStatus = "in-progress" | "completed";
 
@@ -143,10 +145,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
                   <Clock3 aria-hidden="true" size={14} />
                   Học theo nhịp độ của bạn
                 </span>
-                <div className="my-courses-course-pricing">
-                  <strong>₫399.000</strong>
-                  <del>₫599.000</del>
-                </div>
+                <span className="course-free-chip">Miễn phí</span>
               </div>
               <a className="button button-primary my-courses-course-action" href="#recommended-course">
                 Xem khóa học
@@ -249,17 +248,10 @@ function TeacherCourses({ user, displayName }: { user: User; displayName: string
               ))}
             </nav>
             <div className="teacher-create-action">
-              <button
-                className="button button-primary"
-                type="button"
-                disabled
-                aria-disabled="true"
-                title="Tính năng đang phát triển"
-              >
+              <Link className="button button-primary" to="/teacher/courses/new">
                 <Plus aria-hidden="true" size={16} />
                 Tạo khóa học
-              </button>
-              <span>Tính năng đang phát triển</span>
+              </Link>
             </div>
           </div>
           {loadError && <p className="settings-error" role="alert">{loadError}</p>}
@@ -274,16 +266,16 @@ function TeacherCourses({ user, displayName }: { user: User; displayName: string
                     <div className="teacher-course-card-heading">
                       <div>
                         <h2>{course.tieu_de}</h2>
-                        <p>{course.cap_do || "Chưa phân cấp"} · {course.chu_de || "Chưa có chủ đề"}</p>
+                        <p>{course.cap_do ? getCourseLevelLabel(course.cap_do) : "Chưa phân cấp"} · {course.chu_de || "Chưa có chủ đề"}</p>
                       </div>
-                      <span className="teacher-course-status">{course.trang_thai || "Chưa có trạng thái"}</span>
+                      <span className={`teacher-course-status status-${course.trang_thai || "unknown"}`}>{course.trang_thai ? getCourseStatusLabel(course.trang_thai) : "Chưa có trạng thái"}</span>
                     </div>
                     {isOwnedCourse && (
                       <Link
                         className="teacher-course-edit"
                         to={`/teacher/courses/${encodeURIComponent(course.ma_khoa_hoc)}/edit`}
                       >
-                        Chỉnh sửa
+                        {course.trang_thai === "NHAP" ? "Chỉnh sửa" : "Xem"}
                       </Link>
                     )}
                   </article>
