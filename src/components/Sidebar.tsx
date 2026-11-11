@@ -7,8 +7,11 @@ import {
   PenTool,
   Settings,
   Sparkles,
+  Users,
 } from "lucide-react";
+import { Link, NavLink } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
+import { useUserRole } from "../hooks/useUserRole";
 
 type SidebarProps = {
   user: User;
@@ -17,34 +20,48 @@ type SidebarProps = {
 };
 
 const navigationItems = [
-  { label: "Tổng quan", icon: LayoutDashboard },
-  { label: "Khóa học của tôi", icon: BookOpen },
-  { label: "Studio", icon: PenTool },
-  { label: "Bài luyện tập", icon: Sparkles },
-  { label: "Tiến độ", icon: ChartNoAxesColumnIncreasing },
-  { label: "Tác phẩm", icon: FolderHeart },
-  { label: "Cài đặt", icon: Settings, active: true },
+  { label: "Tổng quan", icon: LayoutDashboard, to: "/dashboard" },
+  { label: "Khóa học", icon: BookOpen, to: "/my-courses" },
+  { label: "Studio", icon: PenTool, to: null },
+  { label: "Bài luyện tập", icon: Sparkles, to: null },
+  { label: "Tiến độ", icon: ChartNoAxesColumnIncreasing, to: null },
+  { label: "Tác phẩm", icon: FolderHeart, to: null },
+  { label: "Cộng đồng", icon: Users, to: null },
+  { label: "Cài đặt", icon: Settings, to: "/settings" },
+  { label: "Hồ sơ giáo viên", icon: PenTool, to: "/teacher/onboarding" },
 ];
 
 export default function Sidebar({ user, displayName, initials }: SidebarProps) {
+  const { role } = useUserRole();
+  const adminNavigationItem = role === "admin"
+    ? { label: "Quản trị viên", icon: Users, to: "/admin/teachers" }
+    : null;
+
   return (
     <aside className="settings-sidebar">
-      <a className="settings-brand" href="/settings" aria-label="LINEA - Hồ sơ và cài đặt">
+      <Link className="settings-brand" to="/dashboard" aria-label="LINEA - Tổng quan">
         <span className="settings-brand-name">LINEA</span>
         <span className="settings-brand-caption">Không gian học sáng tạo</span>
-      </a>
+      </Link>
 
       <nav className="settings-navigation" aria-label="Điều hướng chính">
-        {navigationItems.map(({ label, icon: Icon, active }) => (
-          <button
-            className={`settings-nav-item${active ? " active" : ""}`}
-            type="button"
-            aria-current={active ? "page" : undefined}
-            key={label}
-          >
-            <Icon aria-hidden="true" size={18} />
-            <span>{label}</span>
-          </button>
+        {[...navigationItems, ...(adminNavigationItem ? [adminNavigationItem] : [])].map(({ label, icon: Icon, to }) => (
+          to ? (
+            <NavLink
+              className={({ isActive }) => `settings-nav-item${isActive ? " active" : ""}`}
+              to={to}
+              key={label}
+              end
+            >
+              <Icon aria-hidden="true" size={18} />
+              <span>{label}</span>
+            </NavLink>
+          ) : (
+            <button className="settings-nav-item" type="button" key={label}>
+              <Icon aria-hidden="true" size={18} />
+              <span>{label}</span>
+            </button>
+          )
         ))}
       </nav>
 
