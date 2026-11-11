@@ -8,7 +8,7 @@ export default function RegisterPage() {
   const { session, loading } = useAuth();
 
   if (loading) return <p className="auth-loading" role="status">Đang kiểm tra phiên đăng nhập...</p>;
-  if (session) return <Navigate to="/" replace />;
+  if (session) return <Navigate to="/dashboard" replace />;
 
   return (
     <AuthLayout authLink={{ to: "/login", label: "Đăng nhập" }}>
