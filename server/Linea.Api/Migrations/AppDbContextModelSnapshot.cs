@@ -65,6 +65,204 @@ namespace Linea.Api.Migrations
                     b.ToTable("courses", (string)null);
                 });
 
+            modelBuilder.Entity("Linea.Api.Models.NotificationMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_thong_bao");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("noi_dung");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_tao");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("da_doc");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("duong_dan_lien_ket");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("loai_thong_bao");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ma_nguoi_dung");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("thong_bao", (string)null);
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.PortfolioImage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_anh");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("duong_dan_anh");
+
+                    b.Property<long>("ProfileId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_ho_so");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_tai_len");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId");
+
+                    b.ToTable("anh_tac_pham", (string)null);
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.StatusHistoryEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_lich_su");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ma_nguoi_thuc_hien");
+
+                    b.Property<string>("FieldsToUpdate")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("truong_can_bo_sung");
+
+                    b.Property<string>("InternalNote")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ghi_chu_noi_bo");
+
+                    b.Property<string>("ObjectId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ma_doi_tuong");
+
+                    b.Property<string>("ObjectType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("loai_doi_tuong");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_thuc_hien");
+
+                    b.Property<string>("PreviousStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("trang_thai_cu");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ly_do");
+
+                    b.Property<string>("ReasonCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ma_ly_do");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("trang_thai_moi");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("ObjectType", "ObjectId");
+
+                    b.ToTable("lich_su_trang_thai", (string)null);
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.TeacherProfile", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_ho_so");
+
+                    b.Property<string>("Experience")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kinh_nghiem");
+
+                    b.Property<string>("FieldsToUpdate")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("truong_can_bo_sung");
+
+                    b.Property<string>("InternalNote")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ghi_chu_noi_bo");
+
+                    b.Property<string>("Introduction")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("gioi_thieu");
+
+                    b.Property<string>("ReasonCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ma_ly_do");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ly_do_tu_choi");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_duyet");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("trang_thai");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_gui");
+
+                    b.Property<string>("SupplementReason")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ly_do_bo_sung");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ma_nguoi_dung");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("ho_so_giao_vien", (string)null);
+                });
+
             modelBuilder.Entity("Linea.Api.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -107,6 +305,22 @@ namespace Linea.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.PortfolioImage", b =>
+                {
+                    b.HasOne("Linea.Api.Models.TeacherProfile", "Profile")
+                        .WithMany("PortfolioImages")
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Profile");
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.TeacherProfile", b =>
+                {
+                    b.Navigation("PortfolioImages");
                 });
 #pragma warning restore 612, 618
         }

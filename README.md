@@ -39,9 +39,13 @@ khóa học, theo dõi tiến độ học tập, thực hành bài tập và tra
 - **Vitest**: viết và chạy unit test.
 - **ESLint**: kiểm tra chất lượng và quy chuẩn mã nguồn.
 
-> Phiên bản hiện tại là prototype React/Vite chạy phía client. Các chức năng
-> backend, cơ sở dữ liệu thật, thanh toán và xác thực tài khoản thực tế sẽ được
-> tích hợp trong các giai đoạn tiếp theo.
+> Repo gồm frontend React/Vite và backend ASP.NET Core trong `server/`. Backend
+> hiện có đăng ký/đăng nhập JWT, phân quyền student/teacher/admin và API hồ sơ
+> giáo viên (gửi, upload ảnh riêng tư, duyệt/từ chối/yêu cầu bổ sung, email,
+> signed URL 5 phút, Supabase Storage hoặc local fallback, lưu lịch sử và thông
+> báo). Một số API bài tập/khóa học vẫn có thể trả dữ liệu mẫu; xem
+> [`docs/teacher-profile-api.md`](docs/teacher-profile-api.md) để biết hợp đồng
+> API và kết quả kiểm thử hồ sơ giáo viên.
 
 ## Chức năng dự kiến
 
