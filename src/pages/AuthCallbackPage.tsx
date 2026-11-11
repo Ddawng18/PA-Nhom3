@@ -23,5 +23,5 @@ export default function AuthCallbackPage() {
     );
   }
 
-  return <Navigate to={session ? "/settings" : "/login"} replace />;
+  return <Navigate to={session ? "/dashboard" : "/login"} replace />;
 }

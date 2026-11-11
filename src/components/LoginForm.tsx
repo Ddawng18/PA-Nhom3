@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { loginSchema } from "../auth/schemas";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
@@ -15,6 +15,18 @@ export default function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const { signInWithEmail, signInWithGoogle, configured } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const locationState = location.state;
+  const redirectTo =
+    typeof locationState === "object" &&
+    locationState !== null &&
+    "from" in locationState &&
+    typeof locationState.from === "string" &&
+    locationState.from.startsWith("/") &&
+    !locationState.from.startsWith("//")
+      ? locationState.from
+      : "/dashboard";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -47,7 +59,7 @@ export default function LoginForm() {
       if (result.error) {
         setMessage(result.error);
       } else {
-        navigate("/settings", { replace: true });
+        navigate(redirectTo, { replace: true });
       }
     } catch (error) {
       setMessage(getAuthErrorMessage(error instanceof Error ? error.message : undefined));
