@@ -52,6 +52,12 @@ của nhóm — không qua Git/chat/issue.
 | `SUPABASE_DB_URL` | Không | Connection string PostgreSQL của Supabase, chỉ dùng server-side. Có giá trị thì backend dùng Supabase; để trống thì dùng SQLite. Không đặt tiền tố `VITE_` và không commit. |
 | `DB_CONNECTION` | Không | Chuỗi SQLite fallback, mặc định `Data Source=linea-dev.db`. |
 | `RUN_MIGRATIONS` | Không | Đặt `true` trên hosting để chạy migration khi khởi động (lần deploy đầu). Development luôn chạy migration. |
+| `TEACHER_DOCS_PATH` | Không | Thư mục lưu ảnh hồ sơ giáo viên riêng tư. Mặc định `App_Data/teacher-docs` dưới content root của API. |
+| `SIGNED_URL_KEY` | Khuyến nghị | Khóa ký signed URL local. Nếu trống, dùng `JWT_KEY`, sau đó `SUPABASE_SERVICE_ROLE_KEY`, cuối cùng là khóa ngẫu nhiên (mất hiệu lực sau khi restart). |
+| `SUPABASE_SERVICE_ROLE_KEY` | Không | Khóa server-side để dùng Supabase Storage. Không đưa vào biến `VITE_` hoặc frontend. Có khóa này cùng `SUPABASE_URL` thì backend dùng Supabase Storage thay vì đĩa local. |
+| `SUPABASE_STORAGE_BUCKET` | Không | Bucket ảnh riêng tư, mặc định `teacher-docs`. |
+| `EMAIL_OUTBOX_PATH` | Không | Ghi email ra file trong thư mục này (dev/test) thay vì gửi SMTP. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_ENABLE_SSL` | Không | Cấu hình gửi email thật sau khi commit. Thiếu cấu hình thì bỏ qua và ghi log. |
 | `CLIENT_ORIGIN` | Không | Origin được CORS, mặc định `http://localhost:5173`. |
 | `SEED_ADMIN_EMAIL` | Không | Tạo admin đầu tiên khi CSDL chưa có tài khoản này. |
 | `SEED_ADMIN_PASSWORD` | Không | Mật khẩu admin đầu tiên. Nên xóa sau lần chạy đầu. |
@@ -87,6 +93,39 @@ chuyển sang Supabase và trả 501 sau khi kiểm tra quyền admin. `JWT_KEY`
 cho kiểm thử chế độ cũ. Muốn chạy container, build từ thư mục gốc bằng
 `docker build -f server/Dockerfile .`, đặt `SUPABASE_URL`,
 `SUPABASE_PUBLISHABLE_KEY`, `CLIENT_ORIGIN` và cổng 8080 trên hosting.
+
+### Hồ sơ giáo viên
+
+Các endpoint `/api/teacher/profile/*` và `/api/admin/teacher-profiles/*` đọc/ghi
+các bảng `ho_so_giao_vien`, `anh_tac_pham`, `thong_bao`, `lich_su_trang_thai`.
+Trạng thái hồ sơ gồm `CHO_DUYET`, `CAN_BO_SUNG`, `DA_DUYET`, `TU_CHOI`. Admin có
+thể duyệt, từ chối hoặc yêu cầu bổ sung; lý do, `reasonCode`, `internalNote` và
+danh sách trường cần sửa được lưu riêng trên hồ sơ và trong lịch sử. `internalNote`
+chỉ trả cho admin, không trả cho chủ hồ sơ.
+
+Khi dùng Supabase, đặt `SUPABASE_DB_URL` để EF Core kết nối PostgreSQL; nếu để
+trống, dữ liệu hồ sơ nằm trong SQLite và tách khỏi tài khoản Supabase. Duyệt hồ
+sơ cập nhật `nguoi_dung.role = 'teacher'` trong cùng transaction với trạng thái
+hồ sơ, lịch sử và thông báo. Ở chế độ legacy, vai trò được cập nhật trong bảng
+`users`; người dùng cần đăng nhập lại để nhận quyền mới.
+
+Ảnh tác phẩm được kiểm tra magic bytes JPG/PNG/WEBP, tối đa 10 MB/ảnh và 30 MB
+tổng. Mặc định lưu tên UUID trong thư mục riêng tư (`TEACHER_DOCS_PATH`); nếu có
+`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`, backend dùng Supabase Storage
+(bucket `SUPABASE_STORAGE_BUCKET`, mặc định `teacher-docs`). Cần tạo bucket
+riêng tư trước; service role key upload/sign trực tiếp nên không cần policy cho
+`anon`/`authenticated`. Không có URL công
+khai: chủ hồ sơ/admin tải qua endpoint có xác thực hoặc tạo signed URL 5 phút.
+Signed URL local dùng HMAC-SHA256 với `SIGNED_URL_KEY`; signed URL Supabase do
+Storage cấp với `expiresIn = 300`. Local lưu path `teacher-docs/<uuid>.<ext>`,
+Supabase Storage lưu `<uuid>.<ext>` trong bucket; khi đổi kho lưu cần di chuyển
+object và cập nhật `anh_tac_pham.duong_dan_anh`.
+
+Sau khi commit, backend gửi email best-effort cho người gửi khi gửi/duyệt/từ
+chối/yêu cầu bổ sung. Đặt `EMAIL_OUTBOX_PATH` để ghi email ra file khi dev/test,
+hoặc cấu hình `SMTP_*` để gửi thật; lỗi email chỉ ghi log, không làm hỏng thao
+tác. Giới hạn gửi lại là 3 lần/30 ngày. Chi tiết hợp đồng API, migration và kết
+quả kiểm thử nằm trong [`../docs/teacher-profile-api.md`](../docs/teacher-profile-api.md).
 
 ## Chạy backend
 
@@ -134,6 +173,19 @@ Invoke-RestMethod http://localhost:4174/api/auth/me `
 | `POST` | `/api/auth/login` | Công khai | Kiểm tra hash + khóa tài khoản, trả JWT. |
 | `GET` | `/api/auth/me` | Đã đăng nhập | Hồ sơ hiện tại. |
 | `GET` | `/api/student/assignments` | `student` | Dữ liệu học viên. |
+| `GET` | `/api/teacher/profile/me` | Đã đăng nhập (student/teacher) | Hồ sơ giáo viên hiện tại, ảnh và lịch sử; admin nhận `403`. |
+| `POST` | `/api/teacher/profile/me/submit` | `student` | Gửi hoặc gửi lại hồ sơ giáo viên; trả `202`. |
+| `POST` | `/api/teacher/profile/me/portfolio` | `student` | Upload ảnh tác phẩm riêng tư (multipart `file`). |
+| `GET` | `/api/teacher/profile/me/portfolio/{imageId}` | Chủ hồ sơ | Tải ảnh tác phẩm của chính mình (local trả file, Storage trả redirect). |
+| `POST` | `/api/teacher/profile/me/portfolio/{imageId}/signed-url` | Chủ hồ sơ | Tạo signed URL 5 phút cho ảnh. |
+| `GET` | `/api/admin/teacher-profiles` | `admin` | Hàng đợi hồ sơ; lọc `status`, tìm `q`, phân trang ≤20. |
+| `GET` | `/api/admin/teacher-profiles/{id}` | `admin` | Chi tiết hồ sơ, ảnh, lịch sử, `internalNote`, `fields`. |
+| `POST` | `/api/admin/teacher-profiles/{id}/approve` | `admin` | Duyệt hồ sơ đang `CHO_DUYET`, đổi vai trò thành `teacher`. |
+| `POST` | `/api/admin/teacher-profiles/{id}/reject` | `admin` | Từ chối hồ sơ, bắt buộc lý do 10-500 ký tự; lưu `reasonCode`/`internalNote`. |
+| `POST` | `/api/admin/teacher-profiles/{id}/request-changes` | `admin` | Chuyển hồ sơ sang `CAN_BO_SUNG`, bắt buộc lý do + `fields`. |
+| `GET` | `/api/admin/teacher-profiles/{id}/portfolio/{imageId}` | `admin` | Tải ảnh để thẩm định. |
+| `POST` | `/api/admin/teacher-profiles/{id}/portfolio/{imageId}/signed-url` | `admin` | Tạo signed URL 5 phút cho ảnh. |
+| `GET` | `/api/teacher-docs/{imageId}?token=...` | Public + signed token | Tải ảnh local bằng signed URL; token sai/hết hạn trả `401`. |
 | `GET` | `/api/teacher/courses`, `/api/teacher/dashboard` | `teacher`, `admin` | Dữ liệu giảng viên. |
 | `GET` | `/api/admin/users` | `admin` | Danh sách tài khoản (đã lọc mật khẩu). |
 | `PATCH` | `/api/admin/users/{id}/lock` | `admin` | Khóa/mở khóa tài khoản. Không cho tự khóa. |
@@ -142,10 +194,13 @@ Invoke-RestMethod http://localhost:4174/api/auth/me `
 Quy ước lỗi:
 
 - `400`: dữ liệu không hợp lệ (ProblemDetails + `errors` theo từng trường).
-- `401`: sai email/mật khẩu (thông báo chung), thiếu/sai/hết hạn JWT, tài khoản bị khóa khi dùng token cũ.
+- `401`: sai email/mật khẩu (thông báo chung), thiếu/sai/hết hạn JWT, tài khoản bị khóa khi dùng token cũ, signed URL sai/hết hạn.
 - `403`: sai vai trò (RBAC).
-- `409`: email đã tồn tại.
+- `409`: email đã tồn tại; trạng thái hồ sơ không cho phép thao tác.
+- `413`/`415`: ảnh quá dung lượng/sai loại.
 - `423`: tài khoản bị khóa khi đăng nhập.
+- `429`: gửi lại hồ sơ quá giới hạn.
+- `502`/`503`: Supabase Storage lỗi hoặc chưa cấu hình.
 
 Không endpoint nào trả `password` hay `passwordHash`.
 
@@ -176,7 +231,7 @@ bên ngoài nên chạy được cả khi mạng chậm.
 dotnet run --project server/Linea.Api.Tests
 ```
 
-Các nhóm test chính (20 test):
+Các nhóm test chính (30 test):
 
 - Health check báo CSDL đã kết nối; tài khoản admin seed đăng nhập được.
 - Đăng ký thành công: `201`, hash BCrypt trong CSDL, response không có mật khẩu/hash.
@@ -188,6 +243,23 @@ Các nhóm test chính (20 test):
 - Student không thể tự đổi role hoặc tự khóa tài khoản qua endpoint admin (`403`).
 - Admin đổi vai trò, vai trò mới có hiệu lực sau khi đăng nhập lại.
 - Admin khóa tài khoản: đăng nhập `423`, token cũ bị từ chối `401`; không cho tự khóa.
+- Hồ sơ giáo viên: kiểm tra đăng nhập/vai trò, validate giới thiệu/kinh nghiệm/ảnh,
+  upload magic bytes và giới hạn dung lượng, tạo `CHO_DUYET`, chặn gửi lặp,
+  ghi lịch sử + thông báo, giữ vai trò `student` trước khi duyệt.
+- Duyệt giáo viên: hàng đợi admin có tên/email, chi tiết + ảnh + lịch sử, duyệt
+  cập nhật `DA_DUYET`/`ngay_duyet`/role `teacher` trong transaction, đăng nhập lại
+  nhận quyền giáo viên, duyệt lặp trả `409`.
+- Từ chối giáo viên: bắt buộc lý do 10-500 ký tự, lưu lý do/mã/ghi chú nội bộ,
+  giữ vai trò `student`, người dùng thấy lý do, gửi lại về `CHO_DUYET`, lịch sử cũ còn.
+- Yêu cầu bổ sung: chuyển `CAN_BO_SUNG`, lưu lý do/mã/ghi chú/trường cần sửa,
+  người dùng thấy lý do và trường, gửi lại về `CHO_DUYET`, lịch sử giữ dữ liệu cũ.
+- Email: mỗi lần gửi/duyệt/từ chối/yêu cầu bổ sung ghi một email vào outbox dev.
+- Ảnh hồ sơ riêng tư: người khác nhận `404`; chủ hồ sơ và admin tải được.
+- Signed URL: chủ hồ sơ/admin tạo URL 5 phút; URL tải được; token bị sửa hoặc hết
+  hạn trả `401`; người không sở hữu không tạo được URL.
+- Supabase Storage: test HTTP giả lập kiểm tra upload, HEAD/range, sign URL và
+  header service key.
+- Upload sai loại trả `415`; ảnh quá 10 MB trả `413`.
 
 Kết quả chạy thực tế:
 
@@ -212,7 +284,17 @@ PASS teacher role is enforced immediately after re-login
 PASS admin can access admin and teacher endpoints
 PASS admin lock blocks login and invalidates existing tokens
 PASS admin cannot lock their own account
-RESULT passed=20 failed=0
+PASS teacher profile endpoints require authentication and a student role
+PASS student submits a teacher profile and remains a student
+PASS pending teacher profile blocks resubmission
+PASS admin approves a teacher profile and promotes the account
+PASS admin rejects a teacher profile and the student resubmits
+PASS admin requests changes and the student resubmits
+PASS teacher profile permissions and portfolio privacy are enforced
+PASS signed portfolio URLs serve images and reject tampering
+PASS Supabase storage builds upload, validation and signed URL requests
+PASS portfolio upload rejects invalid type and oversized files
+RESULT passed=30 failed=0
 ```
 
 ## Bằng chứng chạy thủ công (Development)
@@ -268,6 +350,15 @@ Cột `PasswordHash` không được trả qua API và bảng `users` không cho
   `SELECT` của `anon`/`authenticated`; chỉ role backend (`postgres`) truy cập được.
 - `SUPABASE_DB_URL`, `JWT_KEY`, mật khẩu seed và file `.env` không được commit;
   `.gitignore` đã chặn. Không dùng tiền tố `VITE_` cho `SUPABASE_DB_URL`.
+- `SUPABASE_SERVICE_ROLE_KEY` chỉ dùng ở backend cho Storage; không đưa vào bundle
+  frontend, log hoặc phản hồi API. Nếu không dùng Storage, để trống và dùng local.
+- Signed URL local dùng HMAC-SHA256, gắn ảnh + chủ hồ sơ + hạn 5 phút; so sánh
+  chữ ký bằng `CryptographicOperations.FixedTimeEquals`. API không ghi token vào
+  log ứng dụng, nhưng request log của reverse proxy/ASP.NET có thể ghi đầy đủ URL;
+  cần che query `token` ở tầng proxy khi vận hành.
+- `internalNote` chỉ trả trong API admin; response của chủ hồ sơ không chứa trường
+  này. `reasonCode` và `fields` được trả cho cả hai phía để người dùng biết cần sửa gì.
+- Email được gửi sau commit và không chứa token/mật khẩu; lỗi SMTP chỉ ghi log.
 
 ## Ghi chú tích hợp
 
