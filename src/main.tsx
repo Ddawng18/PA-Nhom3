@@ -18,6 +18,8 @@ import SettingsPage from "./pages/SettingsPage";
 import TeacherCourseFormPage from "./pages/TeacherCourseFormPage";
 import TeacherOnboardingPage from "./pages/TeacherOnboardingPage";
 import CourseLearningPage from "./pages/CourseLearningPage";
+import TeacherSubmissionsPage from "./pages/TeacherSubmissionsPage";
+import StudentLearningOverviewPage from "./pages/StudentLearningOverviewPage";
 
 function App() {
   return (
@@ -112,6 +114,9 @@ function App() {
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/progress" element={<ProtectedRoute><StudentLearningOverviewPage mode="progress" /></ProtectedRoute>} />
+          <Route path="/assignments" element={<ProtectedRoute><StudentLearningOverviewPage mode="assignments" /></ProtectedRoute>} />
+          <Route path="/teacher/courses/:courseId/submissions" element={<ProtectedRoute><TeacherRoleGuard><TeacherSubmissionsPage /></TeacherRoleGuard></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
