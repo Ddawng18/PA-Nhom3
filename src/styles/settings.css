@@ -893,12 +893,6 @@
   font-weight: 650;
 }
 
-.my-courses-item { flex-wrap: wrap; }
-.my-courses-item > svg { flex-shrink: 0; }
-.student-course-details { flex: 1 1 220px; min-width: 0; }
-.student-course-details h2 { margin: 0; font-size: 18px; line-height: 1.5; overflow-wrap: anywhere; }
-.student-course-details p { margin: 5px 0 0; color: #64748b; font-size: 13px; }
-
 .my-courses-recommendations {
   margin-top: 34px;
 }

@@ -9,7 +9,6 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:browser": "node tests/sprint5.browser.mjs",
-    "test:student-courses": "node tests/student-courses.browser.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
