@@ -1,4 +1,4 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 import { buildApiUrl } from "../logic/approvals";
 
 const nullableString = z.string().nullable();
@@ -63,14 +63,14 @@ export const teacherProfileDetailSchema = z.object({
 });
 
 export const approveTeacherResponseSchema = z.object({
-  id: z.number().int().safe(),
+  id: z.number().int(),
   status: z.literal("DA_DUYET"),
   role: z.literal("teacher"),
   reviewedAt: dateTime,
 });
 
 export const rejectTeacherResponseSchema = z.object({
-  id: z.number().int().safe(),
+  id: z.number().int(),
   status: z.literal("TU_CHOI"),
   reasonCode: nullableString,
   rejectionReason: z.string(),
@@ -83,7 +83,7 @@ export const signedUrlResponseSchema = z.object({
 });
 
 const courseApprovalResponseBaseSchema = z.object({
-  id: z.union([z.number().int().safe(), z.string().regex(/^\d+$/)]),
+  id: z.union([z.number().int(), z.string().regex(/^\d+$/)]),
   reviewedAt: dateTime,
 });
 
@@ -145,7 +145,8 @@ type ApiRequestOptions = {
 };
 
 export function buildAdminApiHeaders(token?: string): Record<string, string> {
-  return token === undefined ? {} : { Authorization: `Bearer ${token}` };
+  if (!token || !token.trim()) return {};
+  return { Authorization: `Bearer ${token}` };
 }
 
 function getErrorDetails(payload: unknown): { code?: string; message: string } {
