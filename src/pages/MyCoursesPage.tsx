@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, BookOpen, ChevronRight, Clock3, Plus } from "lucide-react";
+import { ArrowLeft, Bell, BookOpen, Check, ChevronRight, LockKeyhole, PlayCircle, Plus } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { Link } from "react-router-dom";
 import { z } from "zod";
@@ -19,10 +19,112 @@ type EnrolledCourse = {
   status: CourseStatus;
 };
 
-type CourseTab = "all" | CourseStatus;
 type TeacherCourseTab = "all" | "owned";
 
-const enrolledCourses: EnrolledCourse[] = [];
+type DemoCourse = EnrolledCourse & {
+  category: "basic" | "paid";
+  level: string;
+  teacher: string;
+  lessons: number;
+  completedLessons: number;
+  description: string;
+  modules: string[];
+  price: string;
+};
+
+const availableCourses: DemoCourse[] = [
+  {
+    id: "line-control",
+    title: "Kiểm soát nét",
+    category: "basic",
+    status: "in-progress",
+    level: "Cơ bản",
+    teacher: "Minh Anh",
+    lessons: 12,
+    completedLessons: 5,
+    description: "Làm chủ nét vẽ, lực tay và nhịp điệu để nét nào cũng có chủ đích.",
+    modules: ["Làm quen với nét", "Nét thẳng và đường cong", "Bài tập kiểm soát lực tay", "Tổng hợp và thực hành"],
+    price: "Miễn phí",
+  },
+  {
+    id: "shape-form",
+    title: "Hình khối và dựng hình",
+    category: "basic",
+    status: "in-progress",
+    level: "Cơ bản",
+    teacher: "Minh Anh",
+    lessons: 16,
+    completedLessons: 2,
+    description: "Từ hình khối đơn giản đến cách dựng vật thể có chiều sâu.",
+    modules: ["Hình khối cơ bản", "Phối hợp hình khối", "Sáng tối và thể tích", "Dựng vật thể hoàn chỉnh"],
+    price: "Miễn phí",
+  },
+  {
+    id: "perspective-space",
+    title: "Phối cảnh và không gian",
+    category: "basic",
+    status: "completed",
+    level: "Trung cấp",
+    teacher: "Hà Linh",
+    lessons: 14,
+    completedLessons: 14,
+    description: "Hiểu phối cảnh để tạo ra những không gian cân bằng và có chiều sâu.",
+    modules: ["Đường chân trời", "Một điểm tụ", "Hai điểm tụ", "Bài tập không gian"],
+    price: "Miễn phí",
+  },
+  {
+    id: "light-color",
+    title: "Ánh sáng và sắc độ",
+    category: "basic",
+    status: "completed",
+    level: "Trung cấp",
+    teacher: "Hà Linh",
+    lessons: 10,
+    completedLessons: 10,
+    description: "Quan sát ánh sáng và chuyển nó thành sắc độ rõ ràng trong tranh.",
+    modules: ["Nguồn sáng", "Sắc độ căn bản", "Bóng đổ", "Bài tập tĩnh vật"],
+    price: "Miễn phí",
+  },
+  {
+    id: "character-design",
+    title: "Nhân vật và nét viền",
+    category: "basic",
+    status: "completed",
+    level: "Cơ bản",
+    teacher: "Minh Anh",
+    lessons: 18,
+    completedLessons: 18,
+    description: "Xây dựng nhân vật có cá tính từ hình dáng, tỷ lệ và nét viền.",
+    modules: ["Tỷ lệ nhân vật", "Dáng và cử chỉ", "Nét viền có chủ đích", "Bài tập nhân vật"],
+    price: "Miễn phí",
+  },
+  {
+    id: "gesture-masterclass",
+    title: "Gesture và dáng chuyển động",
+    category: "paid",
+    status: "in-progress",
+    level: "Nâng cao",
+    teacher: "Minh Anh",
+    lessons: 20,
+    completedLessons: 0,
+    description: "Nắm bắt chuyển động và nhịp điệu để nhân vật có sức sống tự nhiên.",
+    modules: ["Quan sát chuyển động", "Đường hành động", "Dáng người", "Bài tập gesture"],
+    price: "299.000đ",
+  },
+  {
+    id: "digital-color",
+    title: "Màu kỹ thuật số cho minh họa",
+    category: "paid",
+    status: "in-progress",
+    level: "Trung cấp",
+    teacher: "Hà Linh",
+    lessons: 15,
+    completedLessons: 0,
+    description: "Xây dựng bảng màu và hoàn thiện một minh họa kỹ thuật số.",
+    modules: ["Bảng màu", "Ánh sáng màu", "Chất liệu", "Hoàn thiện minh họa"],
+    price: "399.000đ",
+  },
+];
 
 const teacherCourseSchema = z.object({
   ma_khoa_hoc: z.string(),
@@ -47,21 +149,127 @@ function getInitials(name: string): string {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase();
 }
 
+function CourseCatalogCard({
+  course,
+  enrolled,
+  onOpen,
+  onEnroll,
+}: {
+  course: DemoCourse;
+  enrolled: boolean;
+  onOpen: (courseId: string) => void;
+  onEnroll: (courseId: string) => void;
+}) {
+  return (
+    <article className="course-catalog-card">
+      <button className="course-catalog-main" type="button" onClick={() => onOpen(course.id)}>
+        <span className="course-path-card-heading">
+          <span className="course-path-title">{course.title}</span>
+          <span className="course-status-chip">{course.price}</span>
+        </span>
+        <span className="course-path-level">{course.level} · {course.lessons} bài học</span>
+        <span className="course-catalog-description">{course.description}</span>
+      </button>
+      <div className="course-catalog-actions">
+        <button className="button button-outline" type="button" onClick={() => onOpen(course.id)}>Xem chi tiết</button>
+        <button className="button button-primary" type="button" disabled={enrolled} onClick={() => onEnroll(course.id)}>
+          {enrolled ? "Đã thêm" : course.price === "Miễn phí" ? "Thêm vào của tôi" : "Đăng ký"}
+        </button>
+      </div>
+    </article>
+  );
+}
+
 function StudentCourses({ user, displayName }: { user: User; displayName: string }) {
-  const [activeTab, setActiveTab] = useState<CourseTab>("all");
-  const counts = {
-    all: enrolledCourses.length,
-    "in-progress": enrolledCourses.filter((course) => course.status === "in-progress").length,
-    completed: enrolledCourses.filter((course) => course.status === "completed").length,
-  };
-  const tabs: { id: CourseTab; label: string; count: number }[] = [
-    { id: "all", label: "Tất cả", count: counts.all },
-    { id: "in-progress", label: "Đang học", count: counts["in-progress"] },
-    { id: "completed", label: "Hoàn thành", count: counts.completed },
-  ];
-  const visibleCourses = activeTab === "all"
-    ? enrolledCourses
-    : enrolledCourses.filter((course) => course.status === activeTab);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
+  const [activeSection, setActiveSection] = useState<"mine" | "discover">("mine");
+  const selectedCourse = availableCourses.find((course) => course.id === selectedCourseId);
+
+  if (selectedCourse) {
+    const isEnrolled = enrolledCourseIds.includes(selectedCourse.id);
+    const progress = isEnrolled
+      ? Math.round((selectedCourse.completedLessons / selectedCourse.lessons) * 100)
+      : 0;
+    return (
+      <div className="settings-shell">
+        <Sidebar user={user} displayName={displayName} initials={getInitials(displayName)} />
+        <main className="settings-main">
+          <div className="settings-content course-detail">
+            <button className="course-back-button" type="button" onClick={() => setSelectedCourseId(null)}>
+              <ArrowLeft aria-hidden="true" size={16} /> Lộ trình học
+            </button>
+            <header className="course-detail-heading">
+              <div>
+                <p className="settings-eyebrow">LỘ TRÌNH HỌC / BÀI HỌC</p>
+                <h1>{selectedCourse.title}</h1>
+                <p>{selectedCourse.description}</p>
+              </div>
+              <Link className="button button-outline my-courses-bell" to="/notifications" aria-label="Thông báo">
+                <Bell aria-hidden="true" size={18} />
+              </Link>
+            </header>
+            <div className="course-detail-meta">
+              <span className="course-status-chip in-progress">{isEnrolled ? "Đang học" : selectedCourse.price}</span>
+              <span>{selectedCourse.teacher} · {selectedCourse.lessons} bài học · {selectedCourse.level}</span>
+            </div>
+            <section className="course-detail-hero" aria-label="Tiến độ khóa học">
+              <div className="course-detail-hero-art"><PlayCircle aria-hidden="true" size={42} /></div>
+              <div className="course-detail-hero-copy">
+                <span>Bài học tiếp theo</span>
+                <h2>{selectedCourse.modules[Math.min(selectedCourse.completedLessons, selectedCourse.modules.length - 1)]}</h2>
+                <p>{selectedCourse.completedLessons} / {selectedCourse.lessons} bài học đã hoàn thành</p>
+                <div className="course-progress-track"><span style={{ width: `${progress}%` }} /></div>
+              </div>
+              <button
+                className="button button-primary"
+                type="button"
+                onClick={() => {
+                  if (!isEnrolled) {
+                    setEnrolledCourseIds((ids) => [...ids, selectedCourse.id]);
+                    setActiveSection("mine");
+                  }
+                }}
+              >
+                {isEnrolled ? "Mở bài học" : selectedCourse.price === "Miễn phí" ? "Thêm vào khóa học của tôi" : "Đăng ký khóa học"}
+                <ChevronRight aria-hidden="true" size={16} />
+              </button>
+            </section>
+            <div className="course-detail-grid">
+              <section className="course-module-card" aria-labelledby="course-modules-title">
+                <h2 id="course-modules-title">Lộ trình trong khóa</h2>
+                <div className="course-module-list">
+                  {selectedCourse.modules.map((module, index) => {
+                    const moduleDone = isEnrolled && index < Math.ceil(selectedCourse.completedLessons / 4);
+                    return (
+                      <div className={`course-module${moduleDone ? " done" : ""}`} key={module}>
+                        <span className="course-module-number">{String(index + 1).padStart(2, "0")}</span>
+                        <span><strong>{module}</strong><small>{moduleDone ? "Đã hoàn thành" : "Chưa bắt đầu"}</small></span>
+                        {moduleDone ? <Check aria-label="Đã hoàn thành" size={15} /> : <LockKeyhole aria-label="Chưa mở khóa" size={14} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+              <aside className="course-detail-side-card">
+                <h2>Mục tiêu bài học</h2>
+                <ul>
+                  <li>Hiểu các nguyên tắc cốt lõi</li>
+                  <li>Thực hành qua bài tập ngắn</li>
+                  <li>Tự tin áp dụng vào tác phẩm</li>
+                </ul>
+              </aside>
+            </div>
+            <section className="course-resource-card">
+              <h2>Tài liệu & tài nguyên</h2>
+              <p><Check aria-hidden="true" size={14} /> Tư thế tham khảo · mẫu nét</p>
+              <p><Check aria-hidden="true" size={14} /> Bài tập PDF · hướng dẫn thực hành</p>
+            </section>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="settings-shell">
@@ -70,9 +278,9 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
         <div className="settings-content">
           <header className="settings-page-heading">
             <div>
-              <p className="settings-eyebrow">KHÔNG GIAN HỌC TẬP</p>
-              <h1>Khóa học của tôi</h1>
-              <p>Một hành trình mới đang chờ nét vẽ đầu tiên của bạn.</p>
+              <p className="settings-eyebrow">{activeSection === "mine" ? "KHÔNG GIAN HỌC TẬP" : "KHÁM PHÁ NỘI DUNG"}</p>
+              <h1>{activeSection === "mine" ? "Khóa học của tôi" : "Khám phá khóa học"}</h1>
+              <p>{activeSection === "mine" ? "Các khóa học bạn đã thêm sẽ xuất hiện ở đây." : "Chọn một khóa học để xem chi tiết và bắt đầu học."}</p>
             </div>
             <div className="settings-heading-actions">
               <Link className="button button-outline my-courses-bell" to="/notifications" aria-label="Thông báo">
@@ -80,79 +288,77 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
               </Link>
             </div>
           </header>
-          <nav className="settings-tabs" aria-label="Lọc khóa học">
-            {tabs.map((tab) => (
-              <button
-                className={`settings-tab${activeTab === tab.id ? " active" : ""}`}
-                type="button"
-                aria-current={activeTab === tab.id ? "page" : undefined}
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label} ({tab.count})
-              </button>
-            ))}
+          <nav className="course-section-tabs" aria-label="Khu vực khóa học">
+            <button className={activeSection === "mine" ? "active" : ""} type="button" onClick={() => setActiveSection("mine")}>
+              Khóa học của tôi ({enrolledCourseIds.length})
+            </button>
+            <button className={activeSection === "discover" ? "active" : ""} type="button" onClick={() => setActiveSection("discover")}>
+              Khám phá khóa học ({availableCourses.length})
+            </button>
           </nav>
-          {visibleCourses.length === 0 ? (
-            <section className="my-courses-empty" aria-labelledby="my-courses-empty-title">
-              <span className="my-courses-empty-icon">
-                <BookOpen aria-hidden="true" size={28} />
-              </span>
-              <h2 id="my-courses-empty-title">Bắt đầu bộ sưu tập kiến thức của bạn</h2>
-              <p>
-                Những khóa học đầu tiên sẽ giúp bạn biến ý tưởng thành nét vẽ.
-                Hãy chọn một chủ đề và bắt đầu hành trình sáng tạo của mình nhé.
-              </p>
-              <div className="my-courses-empty-actions">
-                <a className="button button-primary" href="#recommended-course">
-                  Khám phá khóa học
-                  <ChevronRight aria-hidden="true" size={16} />
-                </a>
-                <a className="button button-outline" href="#recommended-course">
-                  Tìm lộ trình phù hợp
-                </a>
-              </div>
-              <p className="my-courses-empty-note">
-                Bạn đã mua khóa học? <Link to="/settings">Xem thông tin tài khoản</Link>
-              </p>
-            </section>
-          ) : (
-            <section className="my-courses-list" aria-label="Khóa học đã đăng ký">
-              {visibleCourses.map((course) => (
-                <article className="settings-card my-courses-item" key={course.id}>
-                  <BookOpen aria-hidden="true" size={20} />
-                  <span>{course.title}</span>
-                </article>
-              ))}
+          {activeSection === "mine" && enrolledCourseIds.length === 0 && (
+            <section className="course-empty-state">
+              <BookOpen aria-hidden="true" size={30} />
+              <h2>Bạn chưa có khóa học nào</h2>
+              <p>Khám phá các khóa học cơ bản miễn phí hoặc chọn khóa học trả phí phù hợp với mục tiêu của bạn.</p>
+              <button className="button button-primary" type="button" onClick={() => setActiveSection("discover")}>
+                Khám phá khóa học <ChevronRight aria-hidden="true" size={15} />
+              </button>
             </section>
           )}
-          <section className="my-courses-recommendations" id="recommended-course" aria-labelledby="recommendations-title">
-            <div className="my-courses-section-heading">
-              <div>
-                <p className="settings-eyebrow">DÀNH CHO NGƯỜI MỚI HỌC VẼ</p>
-                <h2 id="recommendations-title">Một điểm bắt đầu nhẹ nhàng</h2>
+          {activeSection === "mine" && enrolledCourseIds.length > 0 && (
+            <section className="course-path-grid" aria-label="Khóa học của tôi">
+            {availableCourses.filter((course) => enrolledCourseIds.includes(course.id)).map((course) => {
+              const progress = Math.round((course.completedLessons / course.lessons) * 100);
+              const statusLabel = progress === 100 ? "Hoàn thành" : "Đang học";
+              return (
+                <button className={`course-path-card ${course.status}`} type="button" key={course.id} onClick={() => setSelectedCourseId(course.id)}>
+                  <span className="course-path-card-heading">
+                    <span className="course-path-title">{course.title}</span>
+                    <span className="course-status-chip">{statusLabel}</span>
+                  </span>
+                  <span className="course-path-level">{course.level}</span>
+                  <span className="course-path-progress-label">{course.status === "in-progress" ? `Tiến độ khóa học · ${progress}%` : "Đã khóa · 0%"}</span>
+                  <span className="course-progress-track"><span style={{ width: `${progress}%` }} /></span>
+                  <span className="course-path-footer">{course.status === "in-progress" ? "Bài học và bài tập có hướng dẫn" : "Cần hoàn thành bài tiên quyết"}</span>
+                  <ChevronRight className="course-path-arrow" aria-hidden="true" size={17} />
+                </button>
+              );
+            })}
+            </section>
+          )}
+          {activeSection === "discover" && (
+            <section className="course-catalog" aria-label="Danh mục khóa học">
+              <div className="course-catalog-section">
+                <div className="course-catalog-heading">
+                  <div>
+                    <p className="settings-eyebrow">BẮT ĐẦU TỪ CƠ BẢN</p>
+                    <h2>Khóa học cơ bản miễn phí</h2>
+                  </div>
+                  <span>5 khóa học</span>
+                </div>
+                <div className="course-path-grid">
+                  {availableCourses.filter((course) => course.category === "basic").map((course) => (
+                    <CourseCatalogCard key={course.id} course={course} enrolled={enrolledCourseIds.includes(course.id)} onOpen={setSelectedCourseId} onEnroll={(id) => setEnrolledCourseIds((ids) => [...ids, id])} />
+                  ))}
+                </div>
               </div>
-            </div>
-            <article className="settings-card my-courses-recommendation">
-              <div className="my-courses-course-art" aria-hidden="true">
-                <BookOpen size={34} />
+              <div className="course-catalog-section">
+                <div className="course-catalog-heading">
+                  <div>
+                    <p className="settings-eyebrow">ĐI XA HƠN</p>
+                    <h2>Khóa học chuyên sâu</h2>
+                  </div>
+                  <span>Trả phí</span>
+                </div>
+                <div className="course-path-grid">
+                  {availableCourses.filter((course) => course.category === "paid").map((course) => (
+                    <CourseCatalogCard key={course.id} course={course} enrolled={enrolledCourseIds.includes(course.id)} onOpen={setSelectedCourseId} onEnroll={(id) => setEnrolledCourseIds((ids) => [...ids, id])} />
+                  ))}
+                </div>
               </div>
-              <div className="my-courses-course-info">
-                <span className="my-courses-course-level">Cơ bản</span>
-                <h3>Vẽ nhân vật từ hình khối cơ bản</h3>
-                <p>Minh Anh · 24 bài học · 8 giờ</p>
-                <span className="my-courses-course-duration">
-                  <Clock3 aria-hidden="true" size={14} />
-                  Học theo nhịp độ của bạn
-                </span>
-                <span className="course-free-chip">Miễn phí</span>
-              </div>
-              <a className="button button-primary my-courses-course-action" href="#recommended-course">
-                Xem khóa học
-                <ChevronRight aria-hidden="true" size={16} />
-              </a>
-            </article>
-          </section>
+            </section>
+          )}
         </div>
       </main>
     </div>
