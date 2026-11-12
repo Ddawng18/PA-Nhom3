@@ -6,6 +6,7 @@ import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
 import { requestAdminApi } from "../lib/adminApi";
 import { enrollInCourse } from "../lib/courseApi";
+import { supabase } from "../lib/supabase";
 import "../styles/settings.css";
 
 const lessonSchema = z.object({
@@ -70,11 +71,17 @@ export default function CourseLearningPage() {
     setLoading(true);
     const lookup = /^\d+$/.test(courseId)
       ? Promise.resolve(Number(courseId))
-      : requestAdminApi("/api/courses", { token }, { search: courseTitles[courseId], page: 1, pageSize: 10 })
-        .then((payload) => {
-          const result = z.object({ items: z.array(z.object({ ma_khoa_hoc: z.number().int(), tieu_de: z.string() })) }).parse(payload);
-          return result.items.find((item) => item.tieu_de === courseTitles[courseId])?.ma_khoa_hoc ?? null;
-        });
+      : !supabase
+        ? Promise.reject(new Error("Supabase is not configured"))
+        : Promise.resolve(supabase.from("khoa_hoc")
+            .select("ma_khoa_hoc, tieu_de")
+            .eq("tieu_de", courseTitles[courseId])
+            .eq("trang_thai", "DA_DANG")
+            .maybeSingle())
+            .then(({ data, error }) => {
+              if (error) throw error;
+              return data?.ma_khoa_hoc ?? null;
+            });
     void lookup.then((id) => {
       if (id === null) throw new Error("Course not found");
       setResolvedCourseId(String(id));
