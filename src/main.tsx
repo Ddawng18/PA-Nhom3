@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AuthProvider from "./auth/AuthProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
+import HomeRoute from "./components/HomeRoute";
 import AdminRoleGuard from "./components/AdminRoleGuard";
 import TeacherRoleGuard from "./components/TeacherRoleGuard";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
@@ -14,6 +15,7 @@ import MyCoursesPage from "./pages/MyCoursesPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import RegisterPage from "./pages/RegisterPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import CoursesPage from "./pages/CoursesPage";
 import SettingsPage from "./pages/SettingsPage";
 import TeacherCourseFormPage from "./pages/TeacherCourseFormPage";
 
@@ -36,7 +38,7 @@ function App() {
           />
           <Route
             path="/"
-            element={<Navigate to="/dashboard" replace />}
+            element={<HomeRoute />}
           />
           <Route
             path="/dashboard"
@@ -64,6 +66,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/courses" element={<CoursesPage />} />
           <Route
             path="/my-courses"
             element={

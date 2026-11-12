@@ -1,45 +1,12 @@
 import { useEffect, type ReactNode } from "react";
-import { Heart, Search } from "lucide-react";
 import { useLocation } from "react-router-dom";
-import { Link } from "react-router-dom";
-import "../styles/global.css";
-import "../styles/layout.css";
+import PublicHeader from "./PublicHeader";
 import "../styles/auth-form.css";
 
 type AuthLayoutProps = {
   authLink: { to: string; label: string };
   children: ReactNode;
 };
-
-function Header({ authLink }: { authLink: AuthLayoutProps["authLink"] }) {
-  return (
-    <header className="site-header">
-      <div className="header-brand-group">
-        <Link className="wordmark" to="/" aria-label="LINEA - Trang chủ">
-          LINEA
-        </Link>
-        <nav className="header-nav" aria-label="Điều hướng chính">
-          <a href="#">Khám phá</a>
-          <a href="#">Lộ trình</a>
-        </nav>
-      </div>
-
-      <label className="search-field">
-        <Search aria-hidden="true" size={17} />
-        <input aria-label="Tìm khóa học" placeholder="Tìm khóa học" type="search" />
-      </label>
-
-      <div className="header-actions">
-        <button className="icon-button favorite-button" type="button" aria-label="Yêu thích">
-          <Heart aria-hidden="true" size={20} />
-        </button>
-        <Link className="login-link" to={authLink.to}>
-          {authLink.label}
-        </Link>
-      </div>
-    </header>
-  );
-}
 
 function HeroText() {
   return (
@@ -85,7 +52,7 @@ export default function AuthLayout({ authLink, children }: AuthLayoutProps) {
 
   return (
     <div className="register-page">
-      <Header authLink={authLink} />
+      <PublicHeader authLink={authLink} />
       <main className="register-main">
         <HeroText />
         {children}

@@ -41,10 +41,37 @@
   gap: 26px;
 }
 
-.header-nav a {
+.header-nav-link,
+.header-nav-button {
   color: var(--color-text);
   font-size: 14px;
   font-weight: 500;
+}
+
+.header-nav-link {
+  position: relative;
+}
+
+.header-nav-link[aria-current="page"] {
+  color: #355c3a;
+  font-weight: 600;
+}
+
+.header-nav-link[aria-current="page"]::after {
+  position: absolute;
+  right: 0;
+  bottom: -7px;
+  left: 0;
+  height: 2px;
+  background: #355c3a;
+  content: "";
+}
+
+.header-nav-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
 .search-field {
@@ -98,6 +125,57 @@
   color: var(--color-primary);
   font-size: 14px;
   font-weight: 600;
+}
+
+.header-user-chip {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text);
+}
+
+.header-user-avatar {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--color-soft-bg);
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  object-fit: cover;
+}
+
+.header-user-avatar-fallback {
+  border: 1px solid var(--color-border);
+}
+
+.header-user-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.header-user-name,
+.header-user-email {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-user-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.header-user-email {
+  color: var(--color-muted);
+  font-size: 10px;
 }
 
 .register-main {
@@ -179,9 +257,64 @@
     padding-left: 24px;
   }
 
+  .header-brand-group {
+    gap: 20px;
+  }
+
+  .header-nav {
+    gap: 14px;
+  }
+
+  .search-field {
+    width: 170px;
+  }
+
   .site-footer {
     padding-right: 24px;
     padding-left: 24px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .header-brand-group {
+    gap: 12px;
+  }
+
+  .header-nav {
+    gap: 10px;
+  }
+
+  .search-field {
+    left: 52%;
+    width: 120px;
+  }
+}
+
+@media (max-width: 720px) {
+  .header-brand-group {
+    gap: 8px;
+  }
+
+  .header-actions {
+    gap: 10px;
+  }
+
+  .header-nav {
+    gap: 6px;
+  }
+
+  .header-user-chip {
+    gap: 6px;
+  }
+
+  .header-user-name,
+  .header-user-email {
+    max-width: 50px;
+  }
+
+  .search-field {
+    left: 62%;
+    width: 100px;
   }
 }
 
@@ -223,8 +356,18 @@
     gap: 10px;
   }
 
-  .login-link {
+  .login-link,
+  .header-user-name {
     font-size: 13px;
+  }
+
+  .header-user-chip {
+    gap: 6px;
+  }
+
+  .header-user-name,
+  .header-user-email {
+    max-width: 76px;
   }
 
   .register-main {
