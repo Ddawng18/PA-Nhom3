@@ -1617,6 +1617,21 @@
   line-height: 1.7;
 }
 
+.learner-video {
+  width: min(100%, 720px);
+  margin: 14px 0;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  background: #18251d;
+}
+
+.learner-video iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
 @media (max-width: 760px) {
   .learner-course-hero,
   .learner-course-columns {

@@ -41,6 +41,25 @@ const lessonContentSchema = z.object({
 });
 type Course = z.infer<typeof courseSchema>;
 
+function getVideoEmbedUrl(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "youtu.be") {
+      const id = parsed.pathname.slice(1);
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (parsed.hostname.endsWith("youtube.com")) {
+      const id = parsed.searchParams.get("v") ?? parsed.pathname.split("/").filter(Boolean).pop();
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (parsed.hostname === "player.vimeo.com") return url;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 const courseTitles: Record<string, string> = {
   "line-control": "Kiểm soát nét",
   "shape-form": "Hình khối và dựng hình",
@@ -190,6 +209,7 @@ export default function CourseLearningPage() {
   if (!user) return null;
   const displayName = user.user_metadata.display_name || user.email?.split("@")[0] || "Học viên LINEA";
   const currentIndex = lessons.findIndex((item) => item.ma_bai_hoc === currentLessonId);
+  const videoEmbedUrl = getVideoEmbedUrl(lesson?.lien_ket_video ?? null);
 
   async function enroll() {
     if (!token || !resolvedCourseId) return;
@@ -296,7 +316,7 @@ export default function CourseLearningPage() {
                       <section className="learner-side-card"><h2>Bạn sẽ học được</h2><ul><li>Nắm các nguyên tắc cốt lõi</li><li>Thực hành qua bài tập ngắn</li><li>Hoàn thiện nét vẽ tự tin hơn</li></ul></section>
                     </aside>
                   </div>
-                  {lesson && <section className="learner-lesson-content"><div><h2>{lesson.tieu_de}</h2><p>{lesson.noi_dung_van_ban || "Bài học chưa có nội dung văn bản."}</p></div><div className="learner-lesson-navigation"><button className="button button-outline" disabled={currentIndex <= 0} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex - 1].ma_bai_hoc}`)}><ChevronLeft size={15} /> Bài trước</button><button className="button button-outline" disabled={currentIndex < 0 || currentIndex >= lessons.length - 1} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex + 1].ma_bai_hoc}`)}>Bài sau <ChevronRight size={15} /></button></div></section>}
+                  {lesson && <section className="learner-lesson-content"><div><h2>{lesson.tieu_de}</h2>{videoEmbedUrl && <div className="learner-video"><iframe src={videoEmbedUrl} title={`Video bài học: ${lesson.tieu_de}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>}<p>{lesson.noi_dung_van_ban || "Bài học chưa có nội dung văn bản."}</p></div><div className="learner-lesson-navigation"><button className="button button-outline" disabled={currentIndex <= 0} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex - 1].ma_bai_hoc}`)}><ChevronLeft size={15} /> Bài trước</button><button className="button button-outline" disabled={currentIndex < 0 || currentIndex >= lessons.length - 1} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex + 1].ma_bai_hoc}`)}>Bài sau <ChevronRight size={15} /></button></div></section>}
                 </div>
               )}
             </>

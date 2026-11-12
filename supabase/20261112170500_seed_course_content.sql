@@ -56,6 +56,7 @@ begin
           tieu_de,
           thu_tu,
           noi_dung_van_ban,
+          lien_ket_video,
           bat_buoc
         )
         values (
@@ -63,6 +64,7 @@ begin
           chapter_title,
           1,
           'Bài học hướng dẫn thực hành ' || lower(chapter_title) || '. Hãy xem kỹ nguyên tắc, thực hành theo từng bước và lưu lại kết quả của bạn.',
+          'https://www.youtube.com/watch?v=M7lc1UVf-VE',
           true
         );
       end if;
@@ -72,3 +74,20 @@ begin
   end loop;
 end
 $$;
+
+update public.bai_hoc as lesson
+   set lien_ket_video = 'https://www.youtube.com/watch?v=M7lc1UVf-VE'
+ where lesson.ma_chuong in (
+   select chapter.ma_chuong
+     from public.chuong as chapter
+     join public.khoa_hoc as course on course.ma_khoa_hoc = chapter.ma_khoa_hoc
+    where course.tieu_de in (
+      'Kiểm soát nét',
+      'Hình khối và dựng hình',
+      'Phối cảnh và không gian',
+      'Ánh sáng và sắc độ',
+      'Nhân vật và nét viền',
+      'Gesture và dáng chuyển động',
+      'Màu kỹ thuật số cho minh họa'
+    )
+ );
