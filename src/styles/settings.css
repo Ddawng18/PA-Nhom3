@@ -1632,6 +1632,58 @@
   border: 0;
 }
 
+.learner-lesson-page {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.learner-lesson-page h1 {
+  margin: 12px 0 6px;
+  font-size: 34px;
+}
+
+.learner-lesson-intro {
+  color: var(--muted);
+}
+
+.learner-video-large {
+  width: 100%;
+  margin: 24px 0;
+}
+
+.learner-theory-card {
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.learner-theory-card h2 {
+  margin: 4px 0 12px;
+}
+
+.learner-theory-card h3 {
+  margin: 22px 0 8px;
+}
+
+.learner-theory-card p,
+.learner-theory-card li {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.learner-theory-card ol {
+  padding-left: 22px;
+}
+
+.learner-lesson-page-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
 @media (max-width: 760px) {
   .learner-course-hero,
   .learner-course-columns {
@@ -1644,6 +1696,15 @@
 
   .learner-lesson-content {
     display: block;
+  }
+
+  .learner-lesson-page h1 {
+    font-size: 28px;
+  }
+
+  .learner-lesson-page-actions {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

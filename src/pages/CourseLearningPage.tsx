@@ -34,6 +34,7 @@ const lessonContentSchema = z.object({
   ma_khoa_hoc: z.number().int(),
   ma_chuong: z.number().int(),
   tieu_de: z.string(),
+  thu_tu: z.number().int(),
   noi_dung_van_ban: z.string().nullable(),
   duong_dan_anh: z.string().nullable(),
   lien_ket_video: z.string().nullable(),
@@ -182,7 +183,7 @@ export default function CourseLearningPage() {
     if (!token || !client || !resolvedCourseId || !Number.isFinite(currentLessonId) || !course?.da_ghi_danh || !userId) return;
     let active = true;
     void Promise.resolve(client.from("bai_hoc")
-      .select("ma_bai_hoc, ma_chuong, tieu_de, noi_dung_van_ban, duong_dan_anh, lien_ket_video, bat_buoc")
+      .select("ma_bai_hoc, ma_chuong, tieu_de, thu_tu, noi_dung_van_ban, duong_dan_anh, lien_ket_video, bat_buoc")
       .eq("ma_bai_hoc", currentLessonId)
       .maybeSingle())
       .then(({ data, error }) => {
@@ -285,6 +286,29 @@ export default function CourseLearningPage() {
               </header>
               {!course.da_ghi_danh ? (
                 <button className="button button-primary" type="button" onClick={() => void enroll()} disabled={saving}>Tham gia khóa học</button>
+              ) : lessonId ? (
+                <article className="learner-lesson-page">
+                  <Link className="course-back-button" to={`/courses/${course.ma_khoa_hoc}`}> <ArrowLeft size={16} /> Nội dung khóa học</Link>
+                  {lesson ? (
+                    <>
+                      <p className="settings-eyebrow">BÀI {String(lesson.thu_tu).padStart(2, "0")} · {course.chu_de}</p>
+                      <h1>{lesson.tieu_de}</h1>
+                      <p className="learner-lesson-intro">Học lý thuyết, xem hướng dẫn và thực hành từng bước trước khi đánh dấu hoàn thành.</p>
+                      {videoEmbedUrl && <div className="learner-video learner-video-large"><iframe src={videoEmbedUrl} title={`Video bài học: ${lesson.tieu_de}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>}
+                      <section className="learner-theory-card">
+                        <p className="settings-eyebrow">LÝ THUYẾT CỐT LÕI</p>
+                        <h2>Quan sát trước, thực hành sau</h2>
+                        <p>{lesson.noi_dung_van_ban || "Hãy quan sát hướng dẫn, chú ý điểm bắt đầu và kết thúc của nét vẽ. Thực hành chậm, giữ lực tay ổn định và lặp lại cho đến khi đường nét có chủ đích."}</p>
+                        <h3>Các bước thực hành</h3>
+                        <ol><li>Quan sát video và xác định nguyên tắc chính.</li><li>Thực hành lại theo từng bước, không vội tăng tốc.</li><li>Đối chiếu kết quả và ghi chú điều cần cải thiện.</li></ol>
+                      </section>
+                      <div className="learner-lesson-page-actions">
+                        <button className="button button-primary" type="button" onClick={() => void completeLesson()} disabled={saving || lesson.trang_thai === "DA_HOAN_THANH"}>{lesson.trang_thai === "DA_HOAN_THANH" ? "Đã hoàn thành" : "Đánh dấu hoàn thành"} <Check size={15} /></button>
+                        <div className="learner-lesson-navigation"><button className="button button-outline" disabled={currentIndex <= 0} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex - 1].ma_bai_hoc}`)}><ChevronLeft size={15} /> Bài trước</button><button className="button button-outline" disabled={currentIndex < 0 || currentIndex >= lessons.length - 1} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex + 1].ma_bai_hoc}`)}>Bài sau <ChevronRight size={15} /></button></div>
+                      </div>
+                    </>
+                  ) : <p className="auth-loading">Đang tải bài học...</p>}
+                </article>
               ) : (
                 <div className="learner-course-layout">
                   <section className="learner-course-hero">
@@ -294,8 +318,7 @@ export default function CourseLearningPage() {
                       <h2>{lesson?.tieu_de || lessons[0]?.tieu_de || "Chưa có bài học"}</h2>
                       <p>{lesson?.noi_dung_van_ban || "Chọn một bài học trong lộ trình để bắt đầu luyện tập."}</p>
                       <div className="learner-course-hero-actions">
-                        {lesson && <button className="button button-primary" onClick={() => void completeLesson()} disabled={saving || lesson.trang_thai === "DA_HOAN_THANH"}>{lesson.trang_thai === "DA_HOAN_THANH" ? "Đã hoàn thành" : "Đánh dấu hoàn thành"}</button>}
-                        {lessons.length > 0 && <button className="button button-outline" onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex < 0 ? 0 : currentIndex].ma_bai_hoc}`)}>Học tiếp</button>}
+                        {lessons.length > 0 && <button className="button button-primary" onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex < 0 ? 0 : currentIndex].ma_bai_hoc}`)}>Học tiếp</button>}
                       </div>
                     </div>
                   </section>
@@ -316,7 +339,6 @@ export default function CourseLearningPage() {
                       <section className="learner-side-card"><h2>Bạn sẽ học được</h2><ul><li>Nắm các nguyên tắc cốt lõi</li><li>Thực hành qua bài tập ngắn</li><li>Hoàn thiện nét vẽ tự tin hơn</li></ul></section>
                     </aside>
                   </div>
-                  {lesson && <section className="learner-lesson-content"><div><h2>{lesson.tieu_de}</h2>{videoEmbedUrl && <div className="learner-video"><iframe src={videoEmbedUrl} title={`Video bài học: ${lesson.tieu_de}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>}<p>{lesson.noi_dung_van_ban || "Bài học chưa có nội dung văn bản."}</p></div><div className="learner-lesson-navigation"><button className="button button-outline" disabled={currentIndex <= 0} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex - 1].ma_bai_hoc}`)}><ChevronLeft size={15} /> Bài trước</button><button className="button button-outline" disabled={currentIndex < 0 || currentIndex >= lessons.length - 1} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex + 1].ma_bai_hoc}`)}>Bài sau <ChevronRight size={15} /></button></div></section>}
                 </div>
               )}
             </>
