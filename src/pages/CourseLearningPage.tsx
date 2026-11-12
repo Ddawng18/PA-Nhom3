@@ -4,8 +4,6 @@ import { ArrowLeft, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
-import { requestAdminApi } from "../lib/adminApi";
-import { enrollInCourse } from "../lib/courseApi";
 import { supabase } from "../lib/supabase";
 import "../styles/settings.css";
 
@@ -58,6 +56,7 @@ export default function CourseLearningPage() {
   const { user, session } = useAuth();
   const navigate = useNavigate();
   const token = session?.access_token;
+  const userId = user?.id;
   const [course, setCourse] = useState<Course | null>(null);
   const [lesson, setLesson] = useState<z.infer<typeof lessonContentSchema> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -69,26 +68,83 @@ export default function CourseLearningPage() {
     if (!token || !courseId) return;
     let active = true;
     setLoading(true);
-    const lookup = /^\d+$/.test(courseId)
-      ? Promise.resolve(Number(courseId))
-      : !supabase
-        ? Promise.reject(new Error("Supabase is not configured"))
-        : Promise.resolve(supabase.from("khoa_hoc")
-            .select("ma_khoa_hoc, tieu_de")
-            .eq("tieu_de", courseTitles[courseId])
-            .eq("trang_thai", "DA_DANG")
-            .maybeSingle())
-            .then(({ data, error }) => {
-              if (error) throw error;
-              return data?.ma_khoa_hoc ?? null;
-            });
+    const lookup = !supabase
+      ? Promise.reject(new Error("Supabase is not configured"))
+      : (async () => {
+          const courseQuery = supabase
+            .from("khoa_hoc")
+            .select("ma_khoa_hoc, tieu_de, mo_ta, cap_do, chu_de, anh_dai_dien, ma_giao_vien")
+            .eq("trang_thai", "DA_DANG");
+          const { data: courseRows, error: courseError } = /^\d+$/.test(courseId)
+            ? await courseQuery.eq("ma_khoa_hoc", Number(courseId)).limit(1)
+            : await courseQuery.eq("tieu_de", courseTitles[courseId]).limit(1);
+          if (courseError) throw courseError;
+          const courseRow = courseRows?.[0];
+          if (!courseRow) return null;
+
+          const { data: enrollment, error: enrollmentError } = await supabase
+            .from("ghi_danh")
+            .select("trang_thai")
+            .eq("ma_khoa_hoc", courseRow.ma_khoa_hoc)
+            .eq("ma_nguoi_dung", userId)
+            .maybeSingle();
+          if (enrollmentError) throw enrollmentError;
+
+          const { data: chapters, error: chapterError } = await supabase
+            .from("chuong")
+            .select("ma_chuong, tieu_de, thu_tu")
+            .eq("ma_khoa_hoc", courseRow.ma_khoa_hoc)
+            .order("thu_tu");
+          if (chapterError && enrollment) throw chapterError;
+
+          const chapterRows = chapters ?? [];
+          const { data: lessons, error: lessonError } = chapterRows.length
+            ? await supabase.from("bai_hoc")
+              .select("ma_bai_hoc, ma_chuong, tieu_de, thu_tu")
+              .in("ma_chuong", chapterRows.map((chapter) => chapter.ma_chuong))
+              .order("thu_tu")
+            : { data: [], error: null };
+          if (lessonError && enrollment) throw lessonError;
+
+          const lessonRows = lessons ?? [];
+          const { data: progressRows, error: progressError } = await supabase
+            .from("tien_do_bai_hoc")
+            .select("ma_bai_hoc, trang_thai")
+            .eq("ma_nguoi_dung", userId)
+            .in("ma_bai_hoc", lessonRows.map((lesson) => lesson.ma_bai_hoc));
+          if (progressError && enrollment && lessonRows.length) throw progressError;
+          const progress = new Map((progressRows ?? []).map((row) => [row.ma_bai_hoc, row.trang_thai]));
+          const mappedChapters = chapterRows.map((chapter) => ({
+            ma_chuong: chapter.ma_chuong,
+            tieu_de: chapter.tieu_de,
+            thu_tu: chapter.thu_tu,
+            bai_hoc: lessonRows
+              .filter((lesson) => lesson.ma_chuong === chapter.ma_chuong)
+              .map((lesson) => ({
+                ma_bai_hoc: lesson.ma_bai_hoc,
+                tieu_de: lesson.tieu_de,
+                thu_tu: lesson.thu_tu,
+                trang_thai: progress.get(lesson.ma_bai_hoc) ?? "CHUA_HOC",
+              })),
+          }));
+          const completed = lessonRows.filter((lesson) => progress.get(lesson.ma_bai_hoc) === "DA_HOAN_THANH").length;
+          return {
+            ma_khoa_hoc: courseRow.ma_khoa_hoc,
+            tieu_de: courseRow.tieu_de,
+            mo_ta: courseRow.mo_ta,
+            cap_do: courseRow.cap_do,
+            chu_de: courseRow.chu_de,
+            da_ghi_danh: enrollment?.trang_thai === "DANG_HOC" || enrollment?.trang_thai === "HOAN_THANH",
+            phan_tram: lessonRows.length ? Math.round(completed * 100 / lessonRows.length) : 0,
+            chuong: mappedChapters,
+          };
+        })();
     void lookup.then((id) => {
       if (id === null) throw new Error("Course not found");
-      setResolvedCourseId(String(id));
-      return requestAdminApi(`/api/courses/${id}/learning`, { token });
-    })
-      .then((payload) => {
-        const parsed = courseSchema.parse(payload);
+      const parsed = courseSchema.parse(id);
+      setResolvedCourseId(String(parsed.ma_khoa_hoc));
+      return parsed;
+    }).then((parsed) => {
         if (active) setCourse(parsed);
       })
       .catch(() => active && setError("Không thể tải khóa học. Vui lòng thử lại."))
@@ -103,13 +159,33 @@ export default function CourseLearningPage() {
   const currentLessonId = Number(lessonId ?? lessons[0]?.ma_bai_hoc);
 
   useEffect(() => {
-    if (!token || !resolvedCourseId || !Number.isFinite(currentLessonId) || !course?.da_ghi_danh) return;
+    const client = supabase;
+    if (!token || !client || !resolvedCourseId || !Number.isFinite(currentLessonId) || !course?.da_ghi_danh || !userId) return;
     let active = true;
-    void requestAdminApi(`/api/courses/${resolvedCourseId}/lessons/${currentLessonId}`, { token })
-      .then((payload) => active && setLesson(lessonContentSchema.parse(payload)))
+    void Promise.resolve(client.from("bai_hoc")
+      .select("ma_bai_hoc, ma_chuong, tieu_de, noi_dung_van_ban, duong_dan_anh, lien_ket_video, bat_buoc")
+      .eq("ma_bai_hoc", currentLessonId)
+      .maybeSingle())
+      .then(({ data, error }) => {
+        if (error || !data) throw error ?? new Error("Lesson not found");
+        const chapter = course.chuong.find((item) => item.ma_chuong === data.ma_chuong);
+        if (!chapter) throw new Error("Lesson is outside this course");
+        return client.from("tien_do_bai_hoc").select("trang_thai")
+          .eq("ma_nguoi_dung", userId).eq("ma_bai_hoc", currentLessonId).maybeSingle()
+          .then(({ data: progress, error: progressError }) => {
+            if (progressError) throw progressError;
+            return lessonContentSchema.parse({
+              ...data,
+              ma_khoa_hoc: Number(resolvedCourseId),
+              trang_thai: progress?.trang_thai ?? "CHUA_HOC",
+              phan_tram: progress?.trang_thai === "DA_HOAN_THANH" ? 100 : 0,
+            });
+          });
+      })
+      .then((value) => active && setLesson(value))
       .catch(() => active && setError("Không thể tải nội dung bài học."));
     return () => { active = false; };
-  }, [resolvedCourseId, currentLessonId, course?.da_ghi_danh, token]);
+  }, [resolvedCourseId, currentLessonId, course?.da_ghi_danh, token, userId]);
 
   if (!user) return null;
   const displayName = user.user_metadata.display_name || user.email?.split("@")[0] || "Học viên LINEA";
@@ -119,7 +195,14 @@ export default function CourseLearningPage() {
     if (!token || !resolvedCourseId) return;
     setSaving(true);
     try {
-      await enrollInCourse(token, resolvedCourseId);
+      if (!supabase) throw new Error("Supabase is not configured");
+      const { error } = await supabase.from("ghi_danh").upsert({
+        ma_nguoi_dung: userId,
+        ma_khoa_hoc: Number(resolvedCourseId),
+        trang_thai: "DANG_HOC",
+        ngay_ghi_danh: new Date().toISOString(),
+      }, { onConflict: "ma_nguoi_dung,ma_khoa_hoc" });
+      if (error) throw error;
       setCourse((value) => value ? { ...value, da_ghi_danh: true } : value);
     } catch {
       setError("Không thể ghi danh khóa học.");
@@ -132,9 +215,16 @@ export default function CourseLearningPage() {
     if (!token || !resolvedCourseId || !lesson) return;
     setSaving(true);
     try {
-      await requestAdminApi(`/api/courses/${resolvedCourseId}/lessons/${lesson.ma_bai_hoc}/progress`, {
-        token, method: "PUT", body: { trang_thai: "DA_HOAN_THANH" },
-      });
+      if (!supabase) throw new Error("Supabase is not configured");
+      const now = new Date().toISOString();
+      const { error } = await supabase.from("tien_do_bai_hoc").upsert({
+        ma_nguoi_dung: userId,
+        ma_bai_hoc: lesson.ma_bai_hoc,
+        trang_thai: "DA_HOAN_THANH",
+        ngay_bat_dau: now,
+        ngay_hoan_thanh: now,
+      }, { onConflict: "ma_nguoi_dung,ma_bai_hoc" });
+      if (error) throw error;
       setCourse((value) => value ? { ...value, phan_tram: Math.max(value.phan_tram, 0) } : value);
       setLesson((value) => value ? { ...value, trang_thai: "DA_HOAN_THANH" } : value);
     } catch {
