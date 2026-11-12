@@ -8,21 +8,13 @@ import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
 import { getCourseLevelLabel, getCourseStatusLabel } from "../logic/courseEditor";
 import { useUserRole } from "../hooks/useUserRole";
+import { useStudentCourses } from "../hooks/useStudentCourses";
+import type { StudentCourseStatus } from "../lib/studentCourses";
 import "../styles/settings.css";
 import "../styles/teacher-course.css";
 
-type CourseStatus = "in-progress" | "completed";
-
-type EnrolledCourse = {
-  id: string;
-  title: string;
-  status: CourseStatus;
-};
-
-type CourseTab = "all" | CourseStatus;
+type CourseTab = "all" | StudentCourseStatus;
 type TeacherCourseTab = "all" | "owned";
-
-const enrolledCourses: EnrolledCourse[] = [];
 
 const teacherCourseSchema = z.object({
   ma_khoa_hoc: z.union([z.string(), z.number().int().safe()]).transform(String),
@@ -48,6 +40,7 @@ function getInitials(name: string): string {
 }
 
 function StudentCourses({ user, displayName }: { user: User; displayName: string }) {
+  const { courses: enrolledCourses, loading, error, retry } = useStudentCourses(user.id);
   const [activeTab, setActiveTab] = useState<CourseTab>("all");
   const counts = {
     all: enrolledCourses.length,
@@ -72,7 +65,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
             <div>
               <p className="settings-eyebrow">KHÔNG GIAN HỌC TẬP</p>
               <h1>Khóa học của tôi</h1>
-              <p>Một hành trình mới đang chờ nét vẽ đầu tiên của bạn.</p>
+              <p>Theo dõi những khóa học bạn đã đăng ký.</p>
             </div>
             <div className="settings-heading-actions">
               <Link className="button button-outline my-courses-bell" to="/notifications" aria-label="Thông báo">
@@ -93,7 +86,16 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
               </button>
             ))}
           </nav>
-          {visibleCourses.length === 0 ? (
+          {loading ? <p className="settings-card" role="status">Đang tải khóa học đã đăng ký...</p>
+          : error ? <section className="settings-card" aria-label="Lỗi tải khóa học">
+            <p role="alert">{error}</p>
+            <button className="button button-outline" type="button" onClick={retry}>Thử lại</button>
+          </section>
+          : visibleCourses.length === 0 && enrolledCourses.length > 0 ? (
+            <p className="settings-card" role="status">
+              {activeTab === "completed" ? "Bạn chưa có khóa học hoàn thành." : "Bạn chưa có khóa học đang học."}
+            </p>
+          ) : visibleCourses.length === 0 ? (
             <section className="my-courses-empty" aria-labelledby="my-courses-empty-title">
               <span className="my-courses-empty-icon">
                 <BookOpen aria-hidden="true" size={28} />
@@ -121,7 +123,13 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
               {visibleCourses.map((course) => (
                 <article className="settings-card my-courses-item" key={course.id}>
                   <BookOpen aria-hidden="true" size={20} />
-                  <span>{course.title}</span>
+                  <div className="student-course-details">
+                    <h2>{course.title}</h2>
+                    <p>{course.level ? `${getCourseLevelLabel(course.level)} · ` : ""}
+                      {course.status === "completed" ? "Hoàn thành" : "Đang học"}
+                    </p>
+                  </div>
+                  {course.available && <Link className="button button-outline" to="/dashboard">Xem tiến độ</Link>}
                 </article>
               ))}
             </section>
