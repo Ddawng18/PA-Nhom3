@@ -43,6 +43,10 @@ git ls-files .env   # phải rỗng
 public) từ **Supabase → Settings → API Keys** hoặc password manager của nhóm.
 Không đưa `service_role` vào frontend.
 
+Để dùng các chức năng quản trị cần API backend, đặt `VITE_API_URL` thành
+`http://localhost:4174` khi phát triển cục bộ hoặc URL HTTPS của backend khi triển
+khai. Để trống biến này thì chức năng duyệt sẽ báo máy chủ chưa được cấu hình.
+
 ## 4. Chọn CSDL cho backend
 
 ### Cách mặc định (khuyến nghị cho thành viên mới)
@@ -120,7 +124,9 @@ npm run build
 dotnet run --project server/Linea.Api.Tests
 ```
 
-Backend test chạy với SQLite tạm, không ghi vào Supabase. Kỳ vọng: `20/20 PASS`.
+Backend test chạy với SQLite tạm, không ghi vào Supabase. Kết quả Sprint 5: `36/36 PASS`.
+Frontend: `60/60 PASS`. Browser local: `npm.cmd run test:browser` sau khi build backend;
+xem [nhật ký và giới hạn kiểm thử](sprint5-implementation-log.md).
 
 ## 7. Quy tắc bảo mật
 

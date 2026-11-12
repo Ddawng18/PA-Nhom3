@@ -13,13 +13,16 @@ import {
   Sparkles,
   ShieldCheck,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
-import { useUserRole } from "../hooks/useUserRole";
 import Sidebar from "../components/Sidebar";
+import ApprovalsPanel from "../components/ApprovalsPanel";
+import { useUserRole } from "../hooks/useUserRole";
+import { useApprovals } from "../hooks/useApprovals";
 import { fetchVerifiedAccount, type VerifiedAccount } from "../lib/account";
+import { getSettingsTabs, parseSettingsView, type SettingsTab } from "../logic/approvals";
 import "../styles/settings.css";
 
 type ToggleSettingProps = {
@@ -70,8 +73,13 @@ const roleLabels = {
 
 export default function SettingsPage() {
   const { user, session, signOut } = useAuth();
-  const roleState = useUserRole();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const roleState = useUserRole();
+  const isAdmin = !roleState.loading && !roleState.error && roleState.role === "admin";
+  const view = parseSettingsView(location.search, roleState.role);
+  const approvals = useApprovals(view.tab === "phe-duyet" && isAdmin, isAdmin, session?.access_token);
   const [displayName, setDisplayName] = useState(user ? getDisplayName(user) : "");
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
@@ -92,11 +100,15 @@ export default function SettingsPage() {
     return () => controller.abort();
   }, [session?.access_token]);
 
+  useEffect(() => {
+    if (roleState.loading || roleState.role === "admin" || searchParams.get("tab") !== "phe-duyet") return;
+    navigate("/settings", { replace: true });
+  }, [navigate, roleState.loading, roleState.role, searchParams]);
+
   if (!user) return null;
 
   const userDisplayName = getDisplayName(user);
   const verifiedRole = verifiedAccount?.id === user.id ? verifiedAccount.role : null;
-  const role = verifiedRole ?? roleState.role;
   const initials = getInitials(userDisplayName);
 
   async function handleSignOut() {
@@ -117,6 +129,13 @@ export default function SettingsPage() {
     }
   }
 
+  function selectTab(tab: SettingsTab) {
+    const next = new URLSearchParams();
+    if (tab !== "ho-so") next.set("tab", tab);
+    if (tab === "phe-duyet") next.set("muc", view.muc);
+    setSearchParams(next);
+  }
+
   return (
     <div className="settings-shell">
       <Sidebar user={user} displayName={userDisplayName} initials={initials} />
@@ -128,7 +147,7 @@ export default function SettingsPage() {
               <p className="settings-eyebrow">TÀI KHOẢN CỦA BẠN</p>
               <h1>Hồ sơ &amp; Cài đặt</h1>
               <p>Quản lý thông tin cá nhân, sở thích học tập và các thiết lập của tài khoản.</p>
-              {role && <p>Vai trò: {roleLabels[role]}</p>}
+              {verifiedRole && <p>Vai trò: {{ student: "Học viên", teacher: "Giáo viên", admin: "Quản trị viên" }[verifiedRole]}</p>}
             </div>
             <div className="settings-heading-actions">
               <span className="avatar avatar-heading" aria-hidden="true">{initials}</span>
@@ -147,15 +166,51 @@ export default function SettingsPage() {
           {signOutError && <p className="settings-error" role="alert">{signOutError}</p>}
 
           <nav className="settings-tabs" aria-label="Các mục cài đặt">
-            <button className="settings-tab active" type="button" aria-current="page">Hồ sơ</button>
-            <button className="settings-tab" type="button">Ưa thích học tập</button>
-            <button className="settings-tab" type="button">Bảo mật</button>
-            <button className="settings-tab" type="button">Lịch sử mua hàng</button>
+            {getSettingsTabs(isAdmin ? roleState.role : "student").map((tab) => {
+              const labels: Record<SettingsTab, string> = {
+                "ho-so": "Hồ sơ",
+                "ua-thich": "Ưa thích học tập",
+                "bao-mat": "Bảo mật",
+                "lich-su-mua-hang": "Lịch sử mua hàng",
+                "phe-duyet": "Phê duyệt",
+              };
+              return (
+                <button
+                  className={`settings-tab${view.tab === tab ? " active" : ""}`}
+                  type="button"
+                  aria-current={view.tab === tab ? "page" : undefined}
+                  key={tab}
+                  onClick={() => selectTab(tab)}
+                >
+                  {labels[tab]}
+                  {tab === "phe-duyet" && approvals.counts.total > 0 && (
+                    <span
+                      className="appr-tab-count"
+                      aria-label={`${approvals.counts.total} mục đang chờ duyệt`}
+                    >
+                      {approvals.counts.total}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
 
-          <div className="settings-columns">
-            <div className="settings-column">
-              <section className="settings-card profile-card">
+          {view.tab === "phe-duyet" && isAdmin ? (
+            <ApprovalsPanel
+              section={view.muc}
+              setSection={(section) => {
+                const next = new URLSearchParams(searchParams);
+                next.set("tab", "phe-duyet");
+                next.set("muc", section);
+                setSearchParams(next);
+              }}
+              data={approvals}
+            />
+          ) : (
+          <div className={`settings-columns${view.tab === "ho-so" ? "" : " appr-settings-columns-single"}`}>
+            <div className="settings-column" hidden={view.tab === "ua-thich" || view.tab === "lich-su-mua-hang"}>
+              <section className="settings-card profile-card" hidden={view.tab !== "ho-so"}>
                 <div className="card-heading profile-card-heading">
                   <div>
                     <span className="card-icon"><span className="avatar avatar-card">{initials}</span></span>
@@ -182,7 +237,7 @@ export default function SettingsPage() {
                     <span>Vai trò tài khoản</span>
                     <input
                       type="text"
-                      value={role ? roleLabels[role] : roleState.loading ? "Đang tải..." : "Chưa xác định"}
+                      value={roleState.role ? roleLabels[roleState.role] : roleState.loading ? "Đang tải..." : "Chưa xác định"}
                       readOnly
                       aria-busy={roleState.loading}
                     />
@@ -202,7 +257,7 @@ export default function SettingsPage() {
                 </div>
               </section>
 
-              <section className="settings-card security-card">
+              <section className="settings-card security-card" hidden={view.tab !== "ho-so" && view.tab !== "bao-mat"}>
                 <div className="card-heading">
                   <span className="card-icon"><LockKeyhole aria-hidden="true" size={18} /></span>
                   <h2>Bảo mật</h2>
@@ -229,8 +284,8 @@ export default function SettingsPage() {
               </section>
             </div>
 
-            <div className="settings-column">
-              <section className="settings-card preferences-card">
+            <div className="settings-column" hidden={view.tab === "bao-mat"}>
+              <section className="settings-card preferences-card" hidden={view.tab !== "ho-so" && view.tab !== "ua-thich"}>
                 <div className="card-heading">
                   <span className="card-icon"><Sparkles aria-hidden="true" size={18} /></span>
                   <h2>Ưu thích học tập</h2>
@@ -259,7 +314,7 @@ export default function SettingsPage() {
                 </div>
               </section>
 
-              <section className="settings-card notifications-card">
+              <section className="settings-card notifications-card" hidden={view.tab !== "ho-so" && view.tab !== "ua-thich"}>
                 <div className="card-heading">
                   <span className="card-icon"><Bell aria-hidden="true" size={18} /></span>
                   <h2>Thông báo</h2>
@@ -287,7 +342,7 @@ export default function SettingsPage() {
                 </div>
               </section>
 
-              <section className="settings-card purchase-card">
+              <section className="settings-card purchase-card" hidden={view.tab !== "ho-so" && view.tab !== "lich-su-mua-hang"}>
                 <div className="card-heading purchase-heading">
                   <span className="card-icon"><CreditCard aria-hidden="true" size={18} /></span>
                   <h2>Lịch sử mua hàng</h2>
@@ -313,6 +368,7 @@ export default function SettingsPage() {
               </section>
             </div>
           </div>
+          )}
 
           <div className="settings-mobile-user">
             <MoreHorizontal aria-hidden="true" size={18} />
