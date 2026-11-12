@@ -185,6 +185,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
   const navigate = useNavigate();
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
+  const [courseProgress, setCourseProgress] = useState<Record<string, number>>({});
   const [activeSection, setActiveSection] = useState<"mine" | "discover">("mine");
   const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(true);
@@ -219,6 +220,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
       if (!courseIds.length) {
         if (active) {
           setEnrolledCourseIds([]);
+          setCourseProgress({});
           setEnrollmentError(null);
           setEnrollmentsLoading(false);
         }
@@ -238,10 +240,74 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
       }
 
       const titles = new Set((courses ?? []).map((course) => course.tieu_de));
+      const courseIdByTitle = new Map((courses ?? []).map((course) => [course.tieu_de, String(course.ma_khoa_hoc)]));
+      const chapterIdsByCourseId = new Map<string, string[]>();
+      const { data: chapterRows, error: chapterError } = await supabase
+        .from("chuong")
+        .select("ma_chuong, ma_khoa_hoc")
+        .in("ma_khoa_hoc", courseIds);
+      if (chapterError) {
+        if (active) {
+          setEnrollmentError("Không thể tải nội dung khóa học.");
+          setEnrollmentsLoading(false);
+        }
+        return;
+      }
+      (chapterRows ?? []).forEach((row) => {
+        const key = String(row.ma_khoa_hoc);
+        chapterIdsByCourseId.set(key, [...(chapterIdsByCourseId.get(key) ?? []), String(row.ma_chuong)]);
+      });
+
+      const chapterIds = (chapterRows ?? []).map((row) => row.ma_chuong);
+      const { data: lessonRows, error: lessonError } = chapterIds.length
+        ? await supabase.from("bai_hoc").select("ma_bai_hoc, ma_chuong").in("ma_chuong", chapterIds)
+        : { data: [], error: null };
+      if (lessonError) {
+        if (active) {
+          setEnrollmentError("Không thể tải bài học của khóa học.");
+          setEnrollmentsLoading(false);
+        }
+        return;
+      }
+      const chapterToCourseId = new Map<string, string>();
+      chapterIdsByCourseId.forEach((ids, courseId) => ids.forEach((id) => chapterToCourseId.set(id, courseId)));
+      const lessonToCourseId = new Map<string, string>();
+      (lessonRows ?? []).forEach((row) => {
+        const courseId = chapterToCourseId.get(String(row.ma_chuong));
+        if (courseId) lessonToCourseId.set(String(row.ma_bai_hoc), courseId);
+      });
+
+      const { data: progressRows, error: progressError } = await supabase
+        .from("tien_do_bai_hoc")
+        .select("ma_bai_hoc")
+        .eq("ma_nguoi_dung", user.id)
+        .eq("trang_thai", "DA_HOAN_THANH");
+      if (progressError) {
+        if (active) {
+          setEnrollmentError("Không thể tải tiến độ khóa học.");
+          setEnrollmentsLoading(false);
+        }
+        return;
+      }
+      const totalByCourseId: Record<string, number> = {};
+      lessonToCourseId.forEach((courseId) => { totalByCourseId[courseId] = (totalByCourseId[courseId] ?? 0) + 1; });
+      const completedByCourseId: Record<string, number> = {};
+      (progressRows ?? []).forEach((row) => {
+        const courseId = lessonToCourseId.get(String(row.ma_bai_hoc));
+        if (courseId) completedByCourseId[courseId] = (completedByCourseId[courseId] ?? 0) + 1;
+      });
+      const progressByDemoId: Record<string, number> = {};
+      availableCourses.forEach((course) => {
+        const courseId = courseIdByTitle.get(course.title);
+        const total = courseId ? totalByCourseId[courseId] ?? 0 : 0;
+        const completed = courseId ? completedByCourseId[courseId] ?? 0 : 0;
+        progressByDemoId[course.id] = total ? Math.round(completed / total * 100) : 0;
+      });
       if (active) {
         setEnrolledCourseIds(availableCourses
           .filter((course) => titles.has(course.title))
           .map((course) => course.id));
+        setCourseProgress(progressByDemoId);
         setEnrollmentError(null);
         setEnrollmentsLoading(false);
       }
@@ -288,9 +354,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
 
   if (selectedCourse) {
     const isEnrolled = enrolledCourseIds.includes(selectedCourse.id);
-    const progress = isEnrolled
-      ? Math.round((selectedCourse.completedLessons / selectedCourse.lessons) * 100)
-      : 0;
+    const progress = isEnrolled ? courseProgress[selectedCourse.id] ?? 0 : 0;
     return (
       <div className="settings-shell">
         <Sidebar user={user} displayName={displayName} initials={getInitials(displayName)} />
@@ -409,7 +473,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
           {activeSection === "mine" && !enrollmentsLoading && enrolledCourseIds.length > 0 && (
             <section className="course-path-grid" aria-label="Khóa học của tôi">
             {availableCourses.filter((course) => enrolledCourseIds.includes(course.id)).map((course) => {
-              const progress = Math.round((course.completedLessons / course.lessons) * 100);
+              const progress = courseProgress[course.id] ?? 0;
               const statusLabel = progress === 100 ? "Hoàn thành" : "Đang học";
               return (
                 <button className={`course-path-card ${course.status}`} type="button" key={course.id} onClick={() => navigate(`/courses/${course.id}`)}>
