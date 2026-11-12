@@ -8,6 +8,7 @@ import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
 import { getCourseLevelLabel, getCourseStatusLabel } from "../logic/courseEditor";
 import { useUserRole } from "../hooks/useUserRole";
+import { supabase } from "../lib/supabase";
 import "../styles/settings.css";
 import "../styles/teacher-course.css";
 
@@ -158,7 +159,7 @@ function CourseCatalogCard({
   course: DemoCourse;
   enrolled: boolean;
   onOpen: (courseId: string) => void;
-  onEnroll: (courseId: string) => void;
+  onEnroll: () => void;
 }) {
   return (
     <article className="course-catalog-card">
@@ -172,7 +173,7 @@ function CourseCatalogCard({
       </button>
       <div className="course-catalog-actions">
         <button className="button button-outline" type="button" onClick={() => onOpen(course.id)}>Xem chi tiết</button>
-        <button className="button button-primary" type="button" disabled={enrolled} onClick={() => onEnroll(course.id)}>
+        <button className="button button-primary" type="button" disabled={enrolled} onClick={onEnroll}>
           {enrolled ? "Đã thêm" : course.price === "Miễn phí" ? "Thêm vào của tôi" : "Đăng ký"}
         </button>
       </div>
@@ -184,7 +185,93 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
   const [activeSection, setActiveSection] = useState<"mine" | "discover">("mine");
+  const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
   const selectedCourse = availableCourses.find((course) => course.id === selectedCourseId);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadEnrollments() {
+      if (!supabase) {
+        if (active) setEnrollmentError("Ứng dụng chưa được cấu hình Supabase.");
+        return;
+      }
+
+      const { data: enrollments, error } = await supabase
+        .from("ghi_danh")
+        .select("ma_khoa_hoc")
+        .eq("ma_nguoi_dung", user.id)
+        .eq("trang_thai", "DANG_HOC");
+      if (error) {
+        if (active) setEnrollmentError("Không thể tải khóa học đã thêm.");
+        return;
+      }
+
+      const courseIds = (enrollments ?? []).map((row) => row.ma_khoa_hoc);
+      if (!courseIds.length) {
+        if (active) {
+          setEnrolledCourseIds([]);
+          setEnrollmentError(null);
+        }
+        return;
+      }
+
+      const { data: courses, error: coursesError } = await supabase
+        .from("khoa_hoc")
+        .select("ma_khoa_hoc, tieu_de")
+        .in("ma_khoa_hoc", courseIds);
+      if (coursesError) {
+        if (active) setEnrollmentError("Không thể tải thông tin khóa học đã thêm.");
+        return;
+      }
+
+      const titles = new Set((courses ?? []).map((course) => course.tieu_de));
+      if (active) {
+        setEnrolledCourseIds(availableCourses
+          .filter((course) => titles.has(course.title))
+          .map((course) => course.id));
+        setEnrollmentError(null);
+      }
+    }
+
+    void loadEnrollments();
+    return () => {
+      active = false;
+    };
+  }, [user.id]);
+
+  async function enroll(course: DemoCourse) {
+    if (!supabase) {
+      setEnrollmentError("Ứng dụng chưa được cấu hình Supabase.");
+      return;
+    }
+
+    const { data: courseRow, error: courseError } = await supabase
+      .from("khoa_hoc")
+      .select("ma_khoa_hoc")
+      .eq("tieu_de", course.title)
+      .eq("trang_thai", "DA_DANG")
+      .maybeSingle();
+    if (courseError || !courseRow) {
+      setEnrollmentError("Không tìm thấy khóa học trên Supabase.");
+      return;
+    }
+
+    const { error } = await supabase.from("ghi_danh").upsert({
+      ma_nguoi_dung: user.id,
+      ma_khoa_hoc: courseRow.ma_khoa_hoc,
+      trang_thai: "DANG_HOC",
+      ngay_ghi_danh: new Date().toISOString(),
+    }, { onConflict: "ma_nguoi_dung,ma_khoa_hoc" });
+    if (error) {
+      setEnrollmentError("Không thể lưu khóa học vào Supabase.");
+      return;
+    }
+
+    setEnrolledCourseIds((ids) => ids.includes(course.id) ? ids : [...ids, course.id]);
+    setActiveSection("mine");
+    setEnrollmentError(null);
+  }
 
   if (selectedCourse) {
     const isEnrolled = enrolledCourseIds.includes(selectedCourse.id);
@@ -224,12 +311,8 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
               <button
                 className="button button-primary"
                 type="button"
-                onClick={() => {
-                  if (!isEnrolled) {
-                    setEnrolledCourseIds((ids) => [...ids, selectedCourse.id]);
-                    setActiveSection("mine");
-                  }
-                }}
+                disabled={isEnrolled}
+                onClick={() => void enroll(selectedCourse)}
               >
                 {isEnrolled ? "Mở bài học" : selectedCourse.price === "Miễn phí" ? "Thêm vào khóa học của tôi" : "Đăng ký khóa học"}
                 <ChevronRight aria-hidden="true" size={16} />
@@ -288,6 +371,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
               </Link>
             </div>
           </header>
+          {enrollmentError && <p className="settings-error" role="alert">{enrollmentError}</p>}
           <nav className="course-section-tabs" aria-label="Khu vực khóa học">
             <button className={activeSection === "mine" ? "active" : ""} type="button" onClick={() => setActiveSection("mine")}>
               Khóa học của tôi ({enrolledCourseIds.length})
@@ -339,7 +423,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
                 </div>
                 <div className="course-path-grid">
                   {availableCourses.filter((course) => course.category === "basic").map((course) => (
-                    <CourseCatalogCard key={course.id} course={course} enrolled={enrolledCourseIds.includes(course.id)} onOpen={setSelectedCourseId} onEnroll={(id) => setEnrolledCourseIds((ids) => [...ids, id])} />
+                    <CourseCatalogCard key={course.id} course={course} enrolled={enrolledCourseIds.includes(course.id)} onOpen={setSelectedCourseId} onEnroll={() => void enroll(course)} />
                   ))}
                 </div>
               </div>
@@ -353,7 +437,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
                 </div>
                 <div className="course-path-grid">
                   {availableCourses.filter((course) => course.category === "paid").map((course) => (
-                    <CourseCatalogCard key={course.id} course={course} enrolled={enrolledCourseIds.includes(course.id)} onOpen={setSelectedCourseId} onEnroll={(id) => setEnrolledCourseIds((ids) => [...ids, id])} />
+                    <CourseCatalogCard key={course.id} course={course} enrolled={enrolledCourseIds.includes(course.id)} onOpen={setSelectedCourseId} onEnroll={() => void enroll(course)} />
                   ))}
                 </div>
               </div>
