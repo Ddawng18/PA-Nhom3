@@ -2,7 +2,7 @@ import { listCourses } from "../lib/courseApi";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Bell, BookOpen, Check, ChevronRight, LockKeyhole, PlayCircle, Plus } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
@@ -182,6 +182,7 @@ function CourseCatalogCard({
 }
 
 function StudentCourses({ user, displayName }: { user: User; displayName: string }) {
+  const navigate = useNavigate();
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
   const [activeSection, setActiveSection] = useState<"mine" | "discover">("mine");
@@ -411,7 +412,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
               const progress = Math.round((course.completedLessons / course.lessons) * 100);
               const statusLabel = progress === 100 ? "Hoàn thành" : "Đang học";
               return (
-                <button className={`course-path-card ${course.status}`} type="button" key={course.id} onClick={() => setSelectedCourseId(course.id)}>
+                <button className={`course-path-card ${course.status}`} type="button" key={course.id} onClick={() => navigate(`/courses/${course.id}`)}>
                   <span className="course-path-card-heading">
                     <span className="course-path-title">{course.title}</span>
                     <span className="course-status-chip">{statusLabel}</span>
@@ -438,7 +439,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
                 </div>
                 <div className="course-path-grid">
                   {availableCourses.filter((course) => course.category === "basic").map((course) => (
-                    <CourseCatalogCard key={course.id} course={course} enrolled={enrolledCourseIds.includes(course.id)} onOpen={setSelectedCourseId} onEnroll={() => void enroll(course)} />
+                    <CourseCatalogCard key={course.id} course={course} enrolled={enrolledCourseIds.includes(course.id)} onOpen={() => navigate(`/courses/${course.id}`)} onEnroll={() => void enroll(course)} />
                   ))}
                 </div>
               </div>
@@ -452,7 +453,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
                 </div>
                 <div className="course-path-grid">
                   {availableCourses.filter((course) => course.category === "paid").map((course) => (
-                    <CourseCatalogCard key={course.id} course={course} enrolled={enrolledCourseIds.includes(course.id)} onOpen={setSelectedCourseId} onEnroll={() => void enroll(course)} />
+                    <CourseCatalogCard key={course.id} course={course} enrolled={enrolledCourseIds.includes(course.id)} onOpen={() => navigate(`/courses/${course.id}`)} onEnroll={() => void enroll(course)} />
                   ))}
                 </div>
               </div>

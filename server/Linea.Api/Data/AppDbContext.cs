@@ -8,6 +8,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<User> Users => Set<User>();
     public DbSet<Course> Courses => Set<Course>();
     public DbSet<LearningCourse> LearningCourses => Set<LearningCourse>();
+    public DbSet<CourseEnrollment> CourseEnrollments => Set<CourseEnrollment>();
+    public DbSet<CourseChapter> CourseChapters => Set<CourseChapter>();
+    public DbSet<CourseLesson> CourseLessons => Set<CourseLesson>();
+    public DbSet<LessonProgress> LessonProgress => Set<LessonProgress>();
 
     public DbSet<TeacherProfile> TeacherProfiles => Set<TeacherProfile>();
 
@@ -69,6 +73,44 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         learningCourse.Property(item => item.Status).HasColumnName("trang_thai").HasMaxLength(20).IsRequired();
         learningCourse.Property(item => item.CreatedAt).HasColumnName("ngay_tao").IsRequired();
         learningCourse.HasIndex(item => item.TeacherId);
+
+        var enrollment = modelBuilder.Entity<CourseEnrollment>();
+        enrollment.ToTable("ghi_danh");
+        enrollment.HasKey(item => new { item.UserId, item.CourseId });
+        enrollment.Property(item => item.UserId).HasColumnName("ma_nguoi_dung");
+        enrollment.Property(item => item.CourseId).HasColumnName("ma_khoa_hoc");
+        enrollment.Property(item => item.Status).HasColumnName("trang_thai").HasMaxLength(20).IsRequired();
+        enrollment.Property(item => item.EnrolledAt).HasColumnName("ngay_ghi_danh").IsRequired();
+        enrollment.Property(item => item.CompletedAt).HasColumnName("ngay_hoan_thanh");
+
+        var chapter = modelBuilder.Entity<CourseChapter>();
+        chapter.ToTable("chuong");
+        chapter.HasKey(item => item.Id);
+        chapter.Property(item => item.Id).HasColumnName("ma_chuong");
+        chapter.Property(item => item.CourseId).HasColumnName("ma_khoa_hoc").IsRequired();
+        chapter.Property(item => item.Title).HasColumnName("tieu_de").HasMaxLength(200).IsRequired();
+        chapter.Property(item => item.Order).HasColumnName("thu_tu").IsRequired();
+
+        var lesson = modelBuilder.Entity<CourseLesson>();
+        lesson.ToTable("bai_hoc");
+        lesson.HasKey(item => item.Id);
+        lesson.Property(item => item.Id).HasColumnName("ma_bai_hoc");
+        lesson.Property(item => item.ChapterId).HasColumnName("ma_chuong").IsRequired();
+        lesson.Property(item => item.Title).HasColumnName("tieu_de").HasMaxLength(200).IsRequired();
+        lesson.Property(item => item.Order).HasColumnName("thu_tu").IsRequired();
+        lesson.Property(item => item.TextContent).HasColumnName("noi_dung_van_ban");
+        lesson.Property(item => item.ImagePath).HasColumnName("duong_dan_anh").HasMaxLength(500);
+        lesson.Property(item => item.VideoUrl).HasColumnName("lien_ket_video").HasMaxLength(500);
+        lesson.Property(item => item.Required).HasColumnName("bat_buoc").IsRequired();
+
+        var progress = modelBuilder.Entity<LessonProgress>();
+        progress.ToTable("tien_do_bai_hoc");
+        progress.HasKey(item => new { item.UserId, item.LessonId });
+        progress.Property(item => item.UserId).HasColumnName("ma_nguoi_dung");
+        progress.Property(item => item.LessonId).HasColumnName("ma_bai_hoc");
+        progress.Property(item => item.Status).HasColumnName("trang_thai").HasMaxLength(30).IsRequired();
+        progress.Property(item => item.StartedAt).HasColumnName("ngay_bat_dau");
+        progress.Property(item => item.CompletedAt).HasColumnName("ngay_hoan_thanh");
 
         var teacherProfile = modelBuilder.Entity<TeacherProfile>();
         teacherProfile.ToTable("ho_so_giao_vien");

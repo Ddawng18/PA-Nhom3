@@ -17,6 +17,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SettingsPage from "./pages/SettingsPage";
 import TeacherCourseFormPage from "./pages/TeacherCourseFormPage";
 import TeacherOnboardingPage from "./pages/TeacherOnboardingPage";
+import CourseLearningPage from "./pages/CourseLearningPage";
 
 function App() {
   return (
@@ -73,6 +74,14 @@ function App() {
                 <MyCoursesPage />
               </ProtectedRoute>
             }
+          />
+          <Route
+            path="/courses/:courseId"
+            element={<ProtectedRoute><CourseLearningPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/courses/:courseId/learn/:lessonId"
+            element={<ProtectedRoute><CourseLearningPage /></ProtectedRoute>}
           />
           <Route
             path="/notifications"
