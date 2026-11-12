@@ -17,7 +17,7 @@ Backend xác thực cho nền tảng LINEA. Project độc lập với frontend 
 `server/`.
 
 - **Runtime**: .NET 9 (ASP.NET Core Web API)
-- **ORM / CSDL**: Entity Framework Core + Supabase Postgres (khi có `SUPABASE_DB_URL`) hoặc SQLite (fallback/test)
+- **ORM / CSDL**: Entity Framework Core + Supabase Postgres khi chạy ứng dụng; SQLite chỉ dành cho harness test legacy độc lập
 - **Mật khẩu**: BCrypt (work factor 11)
 - **Phiên đăng nhập**: JWT HS256, có kiểm tra tài khoản bị khóa ở mỗi request
 - **Kiểm thử**: harness integration test tự chạy, không phụ thuộc package test bên ngoài
@@ -56,13 +56,13 @@ của nhóm — không qua Git/chat/issue.
 | `JWT_AUDIENCE` | Không | Mặc định `linea-client`. |
 | `JWT_EXPIRY_MINUTES` | Không | Mặc định `60`. |
 | `SUPABASE_DB_URL` | Không | Connection string PostgreSQL của Supabase, chỉ dùng server-side. Có giá trị thì backend dùng Supabase; để trống thì dùng SQLite. Không đặt tiền tố `VITE_` và không commit. |
-| `DB_CONNECTION` | Không | Chuỗi SQLite fallback, mặc định `Data Source=linea-dev.db`. |
+| `DB_CONNECTION` | Test | Chuỗi SQLite chỉ dùng khi chạy harness với `AUTH_MODE=legacy`, không dùng cho runtime ứng dụng. |
 | `RUN_MIGRATIONS` | Không | Đặt `true` trên hosting để chạy migration khi khởi động (lần deploy đầu). Development luôn chạy migration. |
-| `TEACHER_DOCS_PATH` | Không | Thư mục lưu ảnh hồ sơ giáo viên riêng tư. Mặc định `App_Data/teacher-docs` dưới content root của API. |
+| `TEACHER_DOCS_PATH` | Test | Thư mục ảnh tạm chỉ dùng khi chạy harness legacy; runtime ứng dụng bắt buộc dùng Supabase Storage. |
 | `SIGNED_URL_KEY` | Khuyến nghị | Khóa ký signed URL local. Nếu trống, dùng `JWT_KEY`, sau đó `SUPABASE_SERVICE_ROLE_KEY`, cuối cùng là khóa ngẫu nhiên (mất hiệu lực sau khi restart). |
 | `SUPABASE_SERVICE_ROLE_KEY` | Không | Khóa server-side để dùng Supabase Storage. Không đưa vào biến `VITE_` hoặc frontend. Có khóa này cùng `SUPABASE_URL` thì backend dùng Supabase Storage thay vì đĩa local. |
 | `SUPABASE_STORAGE_BUCKET` | Không | Bucket ảnh riêng tư, mặc định `teacher-docs`. |
-| `EMAIL_OUTBOX_PATH` | Không | Ghi email ra file trong thư mục này (dev/test) thay vì gửi SMTP. |
+| `EMAIL_OUTBOX_PATH` | Test | Ghi email ra file chỉ cho harness legacy; runtime nên cấu hình SMTP thật. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_ENABLE_SSL` | Không | Cấu hình gửi email thật sau khi commit. Thiếu cấu hình thì bỏ qua và ghi log. |
 | `CLIENT_ORIGIN` | Không | Origin được CORS, mặc định `http://localhost:5173`. |
 | `SEED_ADMIN_EMAIL` | Không | Tạo admin đầu tiên khi CSDL chưa có tài khoản này. |

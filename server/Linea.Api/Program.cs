@@ -15,6 +15,7 @@ using Npgsql;
 LoadDotEnvFile();
 
 var builder = WebApplication.CreateBuilder(args);
+var useLegacyAuth = builder.Environment.IsDevelopment() && builder.Configuration["AUTH_MODE"] == "legacy";
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
@@ -27,7 +28,7 @@ if (!string.IsNullOrWhiteSpace(supabaseDbUrl))
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(BuildPostgresConnectionString(supabaseDbUrl)));
 }
-else
+else if (useLegacyAuth)
 {
     var rawConnectionString = builder.Configuration["DB_CONNECTION"] ?? "Data Source=linea-dev.db";
     var sqliteBuilder = new SqliteConnectionStringBuilder(rawConnectionString);
@@ -40,8 +41,12 @@ else
 
     builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(sqliteBuilder.ToString()));
 }
+else
+{
+    throw new InvalidOperationException(
+        "SUPABASE_DB_URL is required. Runtime application data must be stored in Supabase.");
+}
 
-var useLegacyAuth = builder.Environment.IsDevelopment() && builder.Configuration["AUTH_MODE"] == "legacy";
 var jwtKey = builder.Configuration["JWT_KEY"];
 if (useLegacyAuth && (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32))
 {
@@ -73,6 +78,12 @@ builder.Services.AddSingleton<IPortfolioStorage>(services =>
         !string.IsNullOrWhiteSpace(configuration["SUPABASE_URL"]))
     {
         return ActivatorUtilities.CreateInstance<SupabasePortfolioStorage>(services);
+    }
+
+    if (!useLegacyAuth)
+    {
+        throw new InvalidOperationException(
+            "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required. Runtime files must be stored in Supabase Storage.");
     }
 
     return ActivatorUtilities.CreateInstance<LocalPortfolioStorage>(services);
