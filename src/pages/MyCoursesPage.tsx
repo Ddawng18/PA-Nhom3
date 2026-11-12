@@ -186,6 +186,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
   const [activeSection, setActiveSection] = useState<"mine" | "discover">("mine");
   const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
+  const [enrollmentsLoading, setEnrollmentsLoading] = useState(true);
   const selectedCourse = availableCourses.find((course) => course.id === selectedCourseId);
 
   useEffect(() => {
@@ -193,7 +194,10 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
 
     async function loadEnrollments() {
       if (!supabase) {
-        if (active) setEnrollmentError("Ứng dụng chưa được cấu hình Supabase.");
+        if (active) {
+          setEnrollmentError("Ứng dụng chưa được cấu hình Supabase.");
+          setEnrollmentsLoading(false);
+        }
         return;
       }
 
@@ -203,7 +207,10 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
         .eq("ma_nguoi_dung", user.id)
         .eq("trang_thai", "DANG_HOC");
       if (error) {
-        if (active) setEnrollmentError("Không thể tải khóa học đã thêm.");
+        if (active) {
+          setEnrollmentError("Không thể tải khóa học đã thêm.");
+          setEnrollmentsLoading(false);
+        }
         return;
       }
 
@@ -212,6 +219,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
         if (active) {
           setEnrolledCourseIds([]);
           setEnrollmentError(null);
+          setEnrollmentsLoading(false);
         }
         return;
       }
@@ -221,7 +229,10 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
         .select("ma_khoa_hoc, tieu_de")
         .in("ma_khoa_hoc", courseIds);
       if (coursesError) {
-        if (active) setEnrollmentError("Không thể tải thông tin khóa học đã thêm.");
+        if (active) {
+          setEnrollmentError("Không thể tải thông tin khóa học đã thêm.");
+          setEnrollmentsLoading(false);
+        }
         return;
       }
 
@@ -231,6 +242,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
           .filter((course) => titles.has(course.title))
           .map((course) => course.id));
         setEnrollmentError(null);
+        setEnrollmentsLoading(false);
       }
     }
 
@@ -380,7 +392,10 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
               Khám phá khóa học ({availableCourses.length})
             </button>
           </nav>
-          {activeSection === "mine" && enrolledCourseIds.length === 0 && (
+          {activeSection === "mine" && enrollmentsLoading && (
+            <p className="auth-loading" role="status">Đang tải khóa học của bạn...</p>
+          )}
+          {activeSection === "mine" && !enrollmentsLoading && enrolledCourseIds.length === 0 && (
             <section className="course-empty-state">
               <BookOpen aria-hidden="true" size={30} />
               <h2>Bạn chưa có khóa học nào</h2>
@@ -390,7 +405,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
               </button>
             </section>
           )}
-          {activeSection === "mine" && enrolledCourseIds.length > 0 && (
+          {activeSection === "mine" && !enrollmentsLoading && enrolledCourseIds.length > 0 && (
             <section className="course-path-grid" aria-label="Khóa học của tôi">
             {availableCourses.filter((course) => enrolledCourseIds.includes(course.id)).map((course) => {
               const progress = Math.round((course.completedLessons / course.lessons) * 100);
