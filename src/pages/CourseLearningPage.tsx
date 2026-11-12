@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Clock3, PlayCircle, Target } from "lucide-react";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
@@ -204,8 +204,8 @@ export default function CourseLearningPage() {
       }, { onConflict: "ma_nguoi_dung,ma_khoa_hoc" });
       if (error) throw error;
       setCourse((value) => value ? { ...value, da_ghi_danh: true } : value);
-    } catch {
-      setError("Không thể ghi danh khóa học.");
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Không thể ghi danh khóa học.");
     } finally {
       setSaving(false);
     }
@@ -225,10 +225,26 @@ export default function CourseLearningPage() {
         ngay_hoan_thanh: now,
       }, { onConflict: "ma_nguoi_dung,ma_bai_hoc" });
       if (error) throw error;
-      setCourse((value) => value ? { ...value, phan_tram: Math.max(value.phan_tram, 0) } : value);
+      setCourse((value) => {
+        if (!value) return value;
+        const totalLessons = lessons.length;
+        const completedLessons = lessons.filter((item) =>
+          item.ma_bai_hoc === lesson.ma_bai_hoc || item.trang_thai === "DA_HOAN_THANH").length;
+        return {
+          ...value,
+          phan_tram: totalLessons ? Math.round(completedLessons * 100 / totalLessons) : 0,
+          chuong: value.chuong.map((chapter) => ({
+            ...chapter,
+            bai_hoc: chapter.bai_hoc.map((item) =>
+              item.ma_bai_hoc === lesson.ma_bai_hoc
+                ? { ...item, trang_thai: "DA_HOAN_THANH" }
+                : item),
+          })),
+        };
+      });
       setLesson((value) => value ? { ...value, trang_thai: "DA_HOAN_THANH" } : value);
-    } catch {
-      setError("Không thể lưu tiến độ. Vui lòng thử lại.");
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Không thể lưu tiến độ. Vui lòng thử lại.");
     } finally {
       setSaving(false);
     }
@@ -250,23 +266,37 @@ export default function CourseLearningPage() {
               {!course.da_ghi_danh ? (
                 <button className="button button-primary" type="button" onClick={() => void enroll()} disabled={saving}>Tham gia khóa học</button>
               ) : (
-                <div className="course-detail-grid">
-                  <aside className="course-module-card">
-                    <h2>Nội dung khóa học · {course.phan_tram}%</h2>
-                    {course.chuong.map((chapter) => (
-                      <div className="course-module-list" key={chapter.ma_chuong}>
-                        <strong>{chapter.tieu_de}</strong>
-                        {chapter.bai_hoc.map((item) => (
-                          <button className="course-module" type="button" key={item.ma_bai_hoc} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${item.ma_bai_hoc}`)}>
-                            <span>{item.tieu_de}</span>{item.trang_thai === "DA_HOAN_THANH" && <Check size={15} />}
-                          </button>
-                        ))}
+                <div className="learner-course-layout">
+                  <section className="learner-course-hero">
+                    <div className="learner-course-hero-art"><PlayCircle size={42} /></div>
+                    <div className="learner-course-hero-copy">
+                      <p className="settings-eyebrow">TIẾP TỤC HÀNH TRÌNH CỦA BẠN</p>
+                      <h2>{lesson?.tieu_de || lessons[0]?.tieu_de || "Chưa có bài học"}</h2>
+                      <p>{lesson?.noi_dung_van_ban || "Chọn một bài học trong lộ trình để bắt đầu luyện tập."}</p>
+                      <div className="learner-course-hero-actions">
+                        {lesson && <button className="button button-primary" onClick={() => void completeLesson()} disabled={saving || lesson.trang_thai === "DA_HOAN_THANH"}>{lesson.trang_thai === "DA_HOAN_THANH" ? "Đã hoàn thành" : "Đánh dấu hoàn thành"}</button>}
+                        {lessons.length > 0 && <button className="button button-outline" onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex < 0 ? 0 : currentIndex].ma_bai_hoc}`)}>Học tiếp</button>}
                       </div>
-                    ))}
-                  </aside>
-                  <section className="course-resource-card">
-                    {lesson ? <><h2>{lesson.tieu_de}</h2><p>{lesson.noi_dung_van_ban || "Bài học chưa có nội dung văn bản."}</p><button className="button button-primary" onClick={() => void completeLesson()} disabled={saving || lesson.trang_thai === "DA_HOAN_THANH"}>{lesson.trang_thai === "DA_HOAN_THANH" ? "Đã hoàn thành" : "Đánh dấu hoàn thành"}</button><div><button className="button button-outline" disabled={currentIndex <= 0} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex - 1].ma_bai_hoc}`)}><ChevronLeft size={15} /> Bài trước</button> <button className="button button-outline" disabled={currentIndex < 0 || currentIndex >= lessons.length - 1} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex + 1].ma_bai_hoc}`)}>Bài sau <ChevronRight size={15} /></button></div></> : <p>Chọn một bài học để bắt đầu.</p>}
+                    </div>
                   </section>
+                  <div className="learner-course-pills"><span>Đang học</span><span>{course.cap_do}</span><span><Clock3 size={14} /> {lessons.length} bài học</span><span><Target size={14} /> {course.phan_tram}% hoàn thành</span></div>
+                  <div className="learner-course-columns">
+                    <section className="course-module-card">
+                      <div className="learner-card-heading"><div><h2>Nội dung khóa học</h2><p>{course.chuong.length} chương · {lessons.length} bài học</p></div><strong>{course.phan_tram}%</strong></div>
+                      {course.chuong.map((chapter) => {
+                        const done = chapter.bai_hoc.filter((item) => item.trang_thai === "DA_HOAN_THANH").length;
+                        return <div className="learner-chapter" key={chapter.ma_chuong}>
+                          <div className="learner-chapter-heading"><span className="learner-chapter-number">{String(chapter.thu_tu).padStart(2, "0")}</span><div><strong>{chapter.tieu_de}</strong><small>{done}/{chapter.bai_hoc.length} bài · {done ? "Đang học" : "Chưa bắt đầu"}</small></div><span>{done}/{chapter.bai_hoc.length}</span></div>
+                          {chapter.bai_hoc.map((item) => <button className={`learner-lesson${item.ma_bai_hoc === currentLessonId ? " active" : ""}`} type="button" key={item.ma_bai_hoc} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${item.ma_bai_hoc}`)}><span className="learner-lesson-check">{item.trang_thai === "DA_HOAN_THANH" ? <Check size={13} /> : item.thu_tu}</span><span><strong>Bài {String(item.thu_tu).padStart(2, "0")} · {item.tieu_de}</strong><small>{item.trang_thai === "DA_HOAN_THANH" ? "Đã hoàn thành" : item.ma_bai_hoc === currentLessonId ? "Đang học" : "Chưa bắt đầu"}</small></span><span>{item.ma_bai_hoc === currentLessonId ? "Học tiếp →" : item.trang_thai === "DA_HOAN_THANH" ? "Xem lại" : "Chưa mở"}</span></button>)}
+                        </div>;
+                      })}
+                    </section>
+                    <aside className="learner-course-sidebar">
+                      <section className="learner-side-card"><h2>Tiến độ của bạn</h2><strong className="learner-progress-number">{course.phan_tram}%</strong><p>{lessons.filter((item) => item.trang_thai === "DA_HOAN_THANH").length} / {lessons.length} bài học hoàn thành</p><div className="course-progress-track"><span style={{ width: `${course.phan_tram}%` }} /></div></section>
+                      <section className="learner-side-card"><h2>Bạn sẽ học được</h2><ul><li>Nắm các nguyên tắc cốt lõi</li><li>Thực hành qua bài tập ngắn</li><li>Hoàn thiện nét vẽ tự tin hơn</li></ul></section>
+                    </aside>
+                  </div>
+                  {lesson && <section className="learner-lesson-content"><div><h2>{lesson.tieu_de}</h2><p>{lesson.noi_dung_van_ban || "Bài học chưa có nội dung văn bản."}</p></div><div className="learner-lesson-navigation"><button className="button button-outline" disabled={currentIndex <= 0} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex - 1].ma_bai_hoc}`)}><ChevronLeft size={15} /> Bài trước</button><button className="button button-outline" disabled={currentIndex < 0 || currentIndex >= lessons.length - 1} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex + 1].ma_bai_hoc}`)}>Bài sau <ChevronRight size={15} /></button></div></section>}
                 </div>
               )}
             </>
