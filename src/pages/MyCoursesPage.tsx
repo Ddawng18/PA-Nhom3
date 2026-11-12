@@ -1,19 +1,18 @@
-import { listCourses } from "../lib/courseApi";
+import { courseRowSchema, listCourses } from "../lib/courseApi";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Bell, BookOpen, Check, ChevronRight, LockKeyhole, PlayCircle, Plus } from "lucide-react";
+import { Bell, Plus } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
 import { getCourseLevelLabel, getCourseStatusLabel } from "../logic/courseEditor";
 import { useUserRole } from "../hooks/useUserRole";
-import { useStudentCourses } from "../hooks/useStudentCourses";
-import type { StudentCourseStatus } from "../lib/studentCourses";
+import { loadMyCourses, learningError, type MyCourse } from "../lib/learningApi";
 import "../styles/settings.css";
 import "../styles/teacher-course.css";
 
-type CourseTab = "all" | StudentCourseStatus;
+type CourseTab = "all" | "in-progress" | "completed";
 type TeacherCourseTab = "all" | "owned";
 
 const teacherCourseSchema = z.object({
@@ -39,164 +38,55 @@ function getInitials(name: string): string {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase();
 }
 
-function CourseCatalogCard({
-  course,
-  enrolled,
-  onOpen,
-  onEnroll,
-}: {
-  course: DemoCourse;
-  enrolled: boolean;
-  onOpen: (courseId: string) => void;
-  onEnroll: () => void;
-}) {
-  return (
-    <article className="course-catalog-card">
-      <button className="course-catalog-main" type="button" onClick={() => onOpen(course.id)}>
-        <span className="course-path-card-heading">
-          <span className="course-path-title">{course.title}</span>
-          <span className="course-status-chip">{course.price}</span>
-        </span>
-        <span className="course-path-level">{course.level} · {course.lessons} bài học</span>
-        <span className="course-catalog-description">{course.description}</span>
-      </button>
-      <div className="course-catalog-actions">
-        <button className="button button-outline" type="button" onClick={() => onOpen(course.id)}>Xem chi tiết</button>
-        <button className="button button-primary" type="button" disabled={enrolled} onClick={onEnroll}>
-          {enrolled ? "Đã thêm" : course.price === "Miễn phí" ? "Thêm vào của tôi" : "Đăng ký"}
-        </button>
-      </div>
-    </article>
-  );
-}
-
 function StudentCourses({ user, displayName }: { user: User; displayName: string }) {
-  const { courses: enrolledCourses, loading, error, retry } = useStudentCourses(user.id);
+  const { session } = useAuth();
+  const token = session?.access_token;
+  const [courses, setCourses] = useState<MyCourse[]>([]);
+  const [catalog, setCatalog] = useState<z.infer<typeof courseRowSchema>[]>([]);
   const [activeTab, setActiveTab] = useState<CourseTab>("all");
-  const counts = {
-    all: enrolledCourses.length,
-    "in-progress": enrolledCourses.filter((course) => course.status === "in-progress").length,
-    completed: enrolledCourses.filter((course) => course.status === "completed").length,
-  };
-  const tabs: { id: CourseTab; label: string; count: number }[] = [
-    { id: "all", label: "Tất cả", count: counts.all },
-    { id: "in-progress", label: "Đang học", count: counts["in-progress"] },
-    { id: "completed", label: "Hoàn thành", count: counts.completed },
-  ];
-  const visibleCourses = activeTab === "all"
-    ? enrolledCourses
-    : enrolledCourses.filter((course) => course.status === activeTab);
-
-  return (
-    <div className="settings-shell">
-      <Sidebar user={user} displayName={displayName} initials={getInitials(displayName)} />
-      <main className="settings-main">
-        <div className="settings-content">
-          <header className="settings-page-heading">
-            <div>
-              <p className="settings-eyebrow">KHÔNG GIAN HỌC TẬP</p>
-              <h1>Khóa học của tôi</h1>
-              <p>Theo dõi những khóa học bạn đã đăng ký.</p>
-            </div>
-            <div className="settings-heading-actions">
-              <Link className="button button-outline my-courses-bell" to="/notifications" aria-label="Thông báo">
-                <Bell aria-hidden="true" size={18} />
-              </Link>
-            </div>
-          </header>
-          {enrollmentError && <p className="settings-error" role="alert">{enrollmentError}</p>}
-          <nav className="course-section-tabs" aria-label="Khu vực khóa học">
-            <button className={activeSection === "mine" ? "active" : ""} type="button" onClick={() => setActiveSection("mine")}>
-              Khóa học của tôi ({enrolledCourseIds.length})
-            </button>
-            <button className={activeSection === "discover" ? "active" : ""} type="button" onClick={() => setActiveSection("discover")}>
-              Khám phá khóa học ({availableCourses.length})
-            </button>
-          </nav>
-          {loading ? <p className="settings-card" role="status">Đang tải khóa học đã đăng ký...</p>
-          : error ? <section className="settings-card" aria-label="Lỗi tải khóa học">
-            <p role="alert">{error}</p>
-            <button className="button button-outline" type="button" onClick={retry}>Thử lại</button>
-          </section>
-          : visibleCourses.length === 0 && enrolledCourses.length > 0 ? (
-            <p className="settings-card" role="status">
-              {activeTab === "completed" ? "Bạn chưa có khóa học hoàn thành." : "Bạn chưa có khóa học đang học."}
-            </p>
-          ) : visibleCourses.length === 0 ? (
-            <section className="my-courses-empty" aria-labelledby="my-courses-empty-title">
-              <span className="my-courses-empty-icon">
-                <BookOpen aria-hidden="true" size={28} />
-              </span>
-              <h2 id="my-courses-empty-title">Bắt đầu bộ sưu tập kiến thức của bạn</h2>
-              <p>
-                Những khóa học đầu tiên sẽ giúp bạn biến ý tưởng thành nét vẽ.
-                Hãy chọn một chủ đề và bắt đầu hành trình sáng tạo của mình nhé.
-              </p>
-              <div className="my-courses-empty-actions">
-                <a className="button button-primary" href="#recommended-course">
-                  Khám phá khóa học
-                  <ChevronRight aria-hidden="true" size={16} />
-                </a>
-                <a className="button button-outline" href="#recommended-course">
-                  Tìm lộ trình phù hợp
-                </a>
-              </div>
-              <p className="my-courses-empty-note">
-                Bạn đã mua khóa học? <Link to="/settings">Xem thông tin tài khoản</Link>
-              </p>
-            </section>
-          ) : (
-            <section className="my-courses-list" aria-label="Khóa học đã đăng ký">
-              {visibleCourses.map((course) => (
-                <article className="settings-card my-courses-item" key={course.id}>
-                  <BookOpen aria-hidden="true" size={20} />
-                  <div className="student-course-details">
-                    <h2>{course.title}</h2>
-                    <p>{course.level ? `${getCourseLevelLabel(course.level)} · ` : ""}
-                      {course.status === "completed" ? "Hoàn thành" : "Đang học"}
-                    </p>
-                  </div>
-                  {course.available && <Link className="button button-outline" to="/dashboard">Xem tiến độ</Link>}
-                </article>
-              ))}
-            </section>
-          )}
-          {activeSection === "discover" && (
-            <section className="course-catalog" aria-label="Danh mục khóa học">
-              <div className="course-catalog-section">
-                <div className="course-catalog-heading">
-                  <div>
-                    <p className="settings-eyebrow">BẮT ĐẦU TỪ CƠ BẢN</p>
-                    <h2>Khóa học cơ bản miễn phí</h2>
-                  </div>
-                  <span>5 khóa học</span>
-                </div>
-                <div className="course-path-grid">
-                  {availableCourses.filter((course) => course.category === "basic").map((course) => (
-                    <CourseCatalogCard key={course.id} course={course} enrolled={enrolledCourseIds.includes(course.id)} onOpen={() => navigate(`/courses/${course.id}`)} onEnroll={() => void enroll(course)} />
-                  ))}
-                </div>
-              </div>
-              <div className="course-catalog-section">
-                <div className="course-catalog-heading">
-                  <div>
-                    <p className="settings-eyebrow">ĐI XA HƠN</p>
-                    <h2>Khóa học chuyên sâu</h2>
-                  </div>
-                  <span>Trả phí</span>
-                </div>
-                <div className="course-path-grid">
-                  {availableCourses.filter((course) => course.category === "paid").map((course) => (
-                    <CourseCatalogCard key={course.id} course={course} enrolled={enrolledCourseIds.includes(course.id)} onOpen={() => navigate(`/courses/${course.id}`)} onEnroll={() => void enroll(course)} />
-                  ))}
-                </div>
-              </div>
-            </section>
-          )}
-        </div>
-      </main>
-    </div>
-  );
+  const [discover, setDiscover] = useState(false);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (!token) return;
+    const controller = new AbortController();
+    setLoading(true); setError("");
+    Promise.all([loadMyCourses(token, controller.signal), listCourses(token, controller.signal)])
+      .then(([mine, available]) => { if (!controller.signal.aborted) { setCourses(mine); setCatalog(available.filter(c => c.trang_thai === "DA_DANG")); } })
+      .catch(e => { if (!controller.signal.aborted) setError(learningError(e)); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [token, attempt]);
+  const visible = courses.filter(c => activeTab === "all" || (activeTab === "completed" ? c.status === "HOAN_THANH" : c.status !== "HOAN_THANH"));
+  const found = catalog.filter(c => `${c.tieu_de} ${c.chu_de}`.toLocaleLowerCase("vi").includes(search.toLocaleLowerCase("vi")));
+  return <div className="settings-shell">
+    <Sidebar user={user} displayName={displayName} initials={getInitials(displayName)} />
+    <main className="settings-main"><div className="settings-content">
+      <header className="settings-page-heading"><div><p className="settings-eyebrow">KHÔNG GIAN HỌC TẬP</p><h1>Khóa học của tôi</h1><p>Học bài, nộp tác phẩm và theo dõi nhận xét của giáo viên.</p></div></header>
+      <nav className="settings-tabs" aria-label="Khu vực khóa học">
+        <button type="button" className={`settings-tab${!discover ? " active" : ""}`} onClick={() => setDiscover(false)}>Của tôi ({courses.length})</button>
+        <button type="button" className={`settings-tab${discover ? " active" : ""}`} onClick={() => setDiscover(true)}>Khám phá</button>
+      </nav>
+      {loading ? <p role="status">Đang tải khóa học...</p> : error ? <section className="settings-card"><p role="alert">{error}</p><button className="button button-outline" onClick={() => setAttempt(v => v + 1)}>Thử lại</button></section> : discover ? <>
+        <label>Tìm khóa học<input className="settings-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tên hoặc chủ đề" /></label>
+        <section className="my-courses-list" aria-label="Khóa học đã xuất bản">
+          {found.length === 0 && <p>Chưa có khóa học phù hợp.</p>}
+          {found.map(c => <article className="settings-card" key={c.ma_khoa_hoc}><h2>{c.tieu_de}</h2><p>{getCourseLevelLabel(c.cap_do)} · {c.chu_de}</p><p>{c.mo_ta}</p>
+            <Link className="button button-primary" to={`/courses/${c.ma_khoa_hoc}`}>{courses.some(m => m.id === c.ma_khoa_hoc) ? "Vào khóa học" : "Xem và ghi danh"}</Link></article>)}
+        </section>
+      </> : <>
+        <nav className="settings-tabs" aria-label="Lọc tiến độ">{([['all', 'Tất cả'], ['in-progress', 'Đang học'], ['completed', 'Hoàn thành']] as const).map(([id, label]) => <button type="button" key={id} className={`settings-tab${activeTab === id ? " active" : ""}`} onClick={() => setActiveTab(id)}>{label} ({courses.filter(c => id === "all" || (id === "completed" ? c.status === "HOAN_THANH" : c.status !== "HOAN_THANH")).length})</button>)}</nav>
+        {visible.length === 0 && <section className="settings-card"><p>Chưa có khóa học trong mục này.</p><button className="button button-primary" onClick={() => setDiscover(true)}>Khám phá khóa học</button></section>}
+        <section className="my-courses-list" aria-label="Khóa học đã ghi danh">{visible.map(c => <article className="settings-card" key={c.id}>
+          <h2>{c.title}</h2><p>{getCourseLevelLabel(c.level)} · {c.status === "HOAN_THANH" ? "Đã hoàn thành" : "Đang học"}</p>
+          <label>Tiến độ bài học: {c.percent}% <progress value={c.percent} max={100} /></label>
+          <div>{c.available ? <Link className="button button-primary" to={`/courses/${c.id}`}>Xem tiến độ / tiếp tục học</Link> : <p>Khóa học đang tạm ẩn. Liên hệ giáo viên để được hỗ trợ.</p>}</div>
+        </article>)}</section>
+      </>}
+    </div></main>
+  </div>;
 }
 
 function TeacherCourses({ user, displayName }: { user: User; displayName: string }) {
@@ -304,6 +194,7 @@ function TeacherCourses({ user, displayName }: { user: User; displayName: string
                       </div>
                       <span className={`teacher-course-status status-${course.trang_thai || "unknown"}`}>{course.trang_thai ? getCourseStatusLabel(course.trang_thai) : "Chưa có trạng thái"}</span>
                     </div>
+                    {isOwnedCourse && <Link className="button button-outline" to={`/teacher/courses/${course.ma_khoa_hoc}/submissions`}>Bài tập và chấm bài</Link>}
                     {isOwnedCourse && (
                       <Link
                         className="teacher-course-edit"

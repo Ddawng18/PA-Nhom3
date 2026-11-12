@@ -133,7 +133,7 @@ export default function DashboardPage() {
                 <p className="dash-data-error" role="alert">{courseError}</p>
               ) : course ? (
                 <>
-                  <Link className="dash-continue-link" to="/my-courses">
+                  <Link className="dash-continue-link" to={`/courses/${course.id}`}>
                     <span className="dash-course-art" aria-hidden="true">
                       <span className="dash-course-art-circle" />
                       <span className="dash-course-art-path" />

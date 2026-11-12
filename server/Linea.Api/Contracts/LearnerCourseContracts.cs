@@ -24,7 +24,8 @@ public sealed record LearnerCourseResponse(
     [property: JsonPropertyName("ma_giao_vien")] Guid TeacherId,
     [property: JsonPropertyName("da_ghi_danh")] bool Enrolled,
     [property: JsonPropertyName("phan_tram")] int Percent,
-    [property: JsonPropertyName("chuong")] IReadOnlyList<LearnerChapterSummary> Chapters);
+    [property: JsonPropertyName("chuong")] IReadOnlyList<LearnerChapterSummary> Chapters,
+    [property: JsonPropertyName("trang_thai_ghi_danh")] string? EnrollmentStatus);
 
 public sealed record LearnerLessonResponse(
     [property: JsonPropertyName("ma_bai_hoc")] long Id,

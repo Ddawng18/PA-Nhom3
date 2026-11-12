@@ -1,350 +1,120 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Clock3, PlayCircle, Target } from "lucide-react";
-import { z } from "zod";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
-import { supabase } from "../lib/supabase";
+import LessonAssignments from "../components/LessonAssignments";
+import { enrollInCourse } from "../lib/courseApi";
+import { loadLearningCourse, loadLesson, updateLesson, learningError, type LearningCourse, type LessonContent } from "../lib/learningApi";
+import { getCourseLevelLabel } from "../logic/courseEditor";
 import "../styles/settings.css";
+import "../styles/learning.css";
 
-const lessonSchema = z.object({
-  ma_bai_hoc: z.number().int(),
-  tieu_de: z.string(),
-  thu_tu: z.number().int(),
-  trang_thai: z.string(),
-});
-const chapterSchema = z.object({
-  ma_chuong: z.number().int(),
-  tieu_de: z.string(),
-  thu_tu: z.number().int(),
-  bai_hoc: z.array(lessonSchema),
-});
-const courseSchema = z.object({
-  ma_khoa_hoc: z.number().int(),
-  tieu_de: z.string(),
-  mo_ta: z.string(),
-  cap_do: z.string(),
-  chu_de: z.string(),
-  da_ghi_danh: z.boolean(),
-  phan_tram: z.number().int(),
-  chuong: z.array(chapterSchema),
-});
-const lessonContentSchema = z.object({
-  ma_bai_hoc: z.number().int(),
-  ma_khoa_hoc: z.number().int(),
-  ma_chuong: z.number().int(),
-  tieu_de: z.string(),
-  thu_tu: z.number().int(),
-  noi_dung_van_ban: z.string().nullable(),
-  duong_dan_anh: z.string().nullable(),
-  lien_ket_video: z.string().nullable(),
-  trang_thai: z.string(),
-});
-type Course = z.infer<typeof courseSchema>;
-
-function getVideoEmbedUrl(url: string | null): string | null {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname === "youtu.be") {
-      const id = parsed.pathname.slice(1);
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-    if (parsed.hostname.endsWith("youtube.com")) {
-      const id = parsed.searchParams.get("v") ?? parsed.pathname.split("/").filter(Boolean).pop();
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-    if (parsed.hostname === "player.vimeo.com") return url;
-  } catch {
-    return null;
-  }
-  return null;
+function safeHttps(value: string | null) {
+  try { const url = new URL(value ?? ""); return url.protocol === "https:" ? url.href : undefined; } catch { return undefined; }
 }
-
-const courseTitles: Record<string, string> = {
-  "line-control": "Kiểm soát nét",
-  "shape-form": "Hình khối và dựng hình",
-  "perspective-space": "Phối cảnh và không gian",
-  "light-color": "Ánh sáng và sắc độ",
-  "character-design": "Nhân vật và nét viền",
-  "gesture-masterclass": "Gesture và dáng chuyển động",
-  "digital-color": "Màu kỹ thuật số cho minh họa",
-};
+function embedVideo(value: string | null) {
+  const href = safeHttps(value); if (!href) return undefined;
+  const url = new URL(href);
+  const hosts = ["youtube.com", "www.youtube.com", "m.youtube.com", "www.youtube-nocookie.com"];
+  const videoId = url.hostname === "youtu.be" ? url.pathname.slice(1) : hosts.includes(url.hostname)
+    ? url.searchParams.get("v") ?? url.pathname.match(/^\/(?:embed|shorts)\/([^/]+)$/)?.[1] : undefined;
+  if (videoId && /^[\w-]{11}$/.test(videoId)) return `https://www.youtube-nocookie.com/embed/${videoId}`;
+  if (url.hostname === "player.vimeo.com" && /^\/video\/\d+$/.test(url.pathname)) return url.href;
+  if (url.hostname === "vimeo.com" && /^\/\d+$/.test(url.pathname)) return `https://player.vimeo.com/video${url.pathname}`;
+  return undefined;
+}
 
 export default function CourseLearningPage() {
   const { courseId, lessonId } = useParams();
+  return <CourseLearningView key={`${courseId}:${lessonId ?? "overview"}`} />;
+}
+
+function CourseLearningView() {
   const { user, session } = useAuth();
-  const navigate = useNavigate();
   const token = session?.access_token;
-  const userId = user?.id;
-  const [course, setCourse] = useState<Course | null>(null);
-  const [lesson, setLesson] = useState<z.infer<typeof lessonContentSchema> | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { courseId = "", lessonId } = useParams();
+  const [course, setCourse] = useState<LearningCourse | null>(null);
+  const [lesson, setLesson] = useState<LessonContent | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [resolvedCourseId, setResolvedCourseId] = useState(courseId);
-
+  const [lessonLoading, setLessonLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [lessonError, setLessonError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [lessonAttempt, setLessonAttempt] = useState(0);
   useEffect(() => {
-    if (!token || !courseId) return;
-    let active = true;
-    setLoading(true);
-    const lookup = !supabase
-      ? Promise.reject(new Error("Supabase is not configured"))
-      : (async () => {
-          const courseQuery = supabase
-            .from("khoa_hoc")
-            .select("ma_khoa_hoc, tieu_de, mo_ta, cap_do, chu_de, anh_dai_dien, ma_giao_vien")
-            .eq("trang_thai", "DA_DANG");
-          const { data: courseRows, error: courseError } = /^\d+$/.test(courseId)
-            ? await courseQuery.eq("ma_khoa_hoc", Number(courseId)).limit(1)
-            : await courseQuery.eq("tieu_de", courseTitles[courseId]).limit(1);
-          if (courseError) throw courseError;
-          const courseRow = courseRows?.[0];
-          if (!courseRow) return null;
-
-          const { data: enrollment, error: enrollmentError } = await supabase
-            .from("ghi_danh")
-            .select("trang_thai")
-            .eq("ma_khoa_hoc", courseRow.ma_khoa_hoc)
-            .eq("ma_nguoi_dung", userId)
-            .maybeSingle();
-          if (enrollmentError) throw enrollmentError;
-
-          const { data: chapters, error: chapterError } = await supabase
-            .from("chuong")
-            .select("ma_chuong, tieu_de, thu_tu")
-            .eq("ma_khoa_hoc", courseRow.ma_khoa_hoc)
-            .order("thu_tu");
-          if (chapterError && enrollment) throw chapterError;
-
-          const chapterRows = chapters ?? [];
-          const { data: lessons, error: lessonError } = chapterRows.length
-            ? await supabase.from("bai_hoc")
-              .select("ma_bai_hoc, ma_chuong, tieu_de, thu_tu")
-              .in("ma_chuong", chapterRows.map((chapter) => chapter.ma_chuong))
-              .order("thu_tu")
-            : { data: [], error: null };
-          if (lessonError && enrollment) throw lessonError;
-
-          const lessonRows = lessons ?? [];
-          const { data: progressRows, error: progressError } = await supabase
-            .from("tien_do_bai_hoc")
-            .select("ma_bai_hoc, trang_thai")
-            .eq("ma_nguoi_dung", userId)
-            .in("ma_bai_hoc", lessonRows.map((lesson) => lesson.ma_bai_hoc));
-          if (progressError && enrollment && lessonRows.length) throw progressError;
-          const progress = new Map((progressRows ?? []).map((row) => [row.ma_bai_hoc, row.trang_thai]));
-          const mappedChapters = chapterRows.map((chapter) => ({
-            ma_chuong: chapter.ma_chuong,
-            tieu_de: chapter.tieu_de,
-            thu_tu: chapter.thu_tu,
-            bai_hoc: lessonRows
-              .filter((lesson) => lesson.ma_chuong === chapter.ma_chuong)
-              .map((lesson) => ({
-                ma_bai_hoc: lesson.ma_bai_hoc,
-                tieu_de: lesson.tieu_de,
-                thu_tu: lesson.thu_tu,
-                trang_thai: progress.get(lesson.ma_bai_hoc) ?? "CHUA_HOC",
-              })),
-          }));
-          const completed = lessonRows.filter((lesson) => progress.get(lesson.ma_bai_hoc) === "DA_HOAN_THANH").length;
-          return {
-            ma_khoa_hoc: courseRow.ma_khoa_hoc,
-            tieu_de: courseRow.tieu_de,
-            mo_ta: courseRow.mo_ta,
-            cap_do: courseRow.cap_do,
-            chu_de: courseRow.chu_de,
-            da_ghi_danh: enrollment?.trang_thai === "DANG_HOC" || enrollment?.trang_thai === "HOAN_THANH",
-            phan_tram: lessonRows.length ? Math.round(completed * 100 / lessonRows.length) : 0,
-            chuong: mappedChapters,
-          };
-        })();
-    void lookup.then((id) => {
-      if (id === null) throw new Error("Course not found");
-      const parsed = courseSchema.parse(id);
-      setResolvedCourseId(String(parsed.ma_khoa_hoc));
-      return parsed;
-    }).then((parsed) => {
-        if (active) setCourse(parsed);
-      })
-      .catch(() => active && setError("Không thể tải khóa học. Vui lòng thử lại."))
-      .finally(() => active && setLoading(false));
-    return () => { active = false; };
-  }, [courseId, token]);
-
-  const lessons = useMemo(
-    () => course?.chuong.flatMap((chapter) => chapter.bai_hoc) ?? [],
-    [course],
-  );
-  const currentLessonId = Number(lessonId ?? lessons[0]?.ma_bai_hoc);
-
+    if (!token) return;
+    const controller = new AbortController(); setLoading(true); setCourse(null); setError(""); setActionError("");
+    void loadLearningCourse(token, courseId, controller.signal).then(data => { if (!controller.signal.aborted) setCourse(data); })
+      .catch(e => { if (!controller.signal.aborted) setError(learningError(e)); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [token, courseId, attempt]);
+  const enrolled = Boolean(course?.da_ghi_danh);
   useEffect(() => {
-    const client = supabase;
-    if (!token || !client || !resolvedCourseId || !Number.isFinite(currentLessonId) || !course?.da_ghi_danh || !userId) return;
-    let active = true;
-    void Promise.resolve(client.from("bai_hoc")
-      .select("ma_bai_hoc, ma_chuong, tieu_de, thu_tu, noi_dung_van_ban, duong_dan_anh, lien_ket_video, bat_buoc")
-      .eq("ma_bai_hoc", currentLessonId)
-      .maybeSingle())
-      .then(({ data, error }) => {
-        if (error || !data) throw error ?? new Error("Lesson not found");
-        const chapter = course.chuong.find((item) => item.ma_chuong === data.ma_chuong);
-        if (!chapter) throw new Error("Lesson is outside this course");
-        return client.from("tien_do_bai_hoc").select("trang_thai")
-          .eq("ma_nguoi_dung", userId).eq("ma_bai_hoc", currentLessonId).maybeSingle()
-          .then(({ data: progress, error: progressError }) => {
-            if (progressError) throw progressError;
-            return lessonContentSchema.parse({
-              ...data,
-              ma_khoa_hoc: Number(resolvedCourseId),
-              trang_thai: progress?.trang_thai ?? "CHUA_HOC",
-              phan_tram: progress?.trang_thai === "DA_HOAN_THANH" ? 100 : 0,
-            });
-          });
-      })
-      .then((value) => active && setLesson(value))
-      .catch(() => active && setError("Không thể tải nội dung bài học."));
-    return () => { active = false; };
-  }, [resolvedCourseId, currentLessonId, course?.da_ghi_danh, token, userId]);
-
-  if (!user) return null;
-  const displayName = user.user_metadata.display_name || user.email?.split("@")[0] || "Học viên LINEA";
-  const currentIndex = lessons.findIndex((item) => item.ma_bai_hoc === currentLessonId);
-  const videoEmbedUrl = getVideoEmbedUrl(lesson?.lien_ket_video ?? null);
-
+    setLesson(null); setLessonError("");
+    if (!token || !lessonId || !enrolled) return;
+    const controller = new AbortController(); setLessonLoading(true);
+    async function load() {
+      const data = await loadLesson(token!, courseId, lessonId!, controller.signal);
+      if (controller.signal.aborted) return;
+      setLesson(data);
+      if (data.trang_thai !== "DA_HOAN_THANH") await updateLesson(token!, courseId, lessonId!, "DANG_HOC", controller.signal);
+    }
+    void load().catch(e => { if (!controller.signal.aborted) setLessonError(learningError(e)); })
+      .finally(() => { if (!controller.signal.aborted) setLessonLoading(false); });
+    return () => controller.abort();
+  }, [token, courseId, lessonId, enrolled, lessonAttempt]);
+  if (!user || !token) return null;
+  const name = typeof user.user_metadata.display_name === "string" ? user.user_metadata.display_name : user.email ?? "Học viên";
+  const lessons = course?.chuong.flatMap(c => c.bai_hoc) ?? [];
+  const currentIndex = lessons.findIndex(l => String(l.ma_bai_hoc) === lessonId);
+  const resume = lessons.find(l => l.trang_thai === "DANG_HOC") ?? lessons.find(l => l.trang_thai !== "DA_HOAN_THANH") ?? lessons[0];
+  const video = embedVideo(lesson?.lien_ket_video ?? null);
   async function enroll() {
-    if (!token || !resolvedCourseId) return;
-    setSaving(true);
-    try {
-      if (!supabase) throw new Error("Supabase is not configured");
-      const { error } = await supabase.from("ghi_danh").upsert({
-        ma_nguoi_dung: userId,
-        ma_khoa_hoc: Number(resolvedCourseId),
-        trang_thai: "DANG_HOC",
-        ngay_ghi_danh: new Date().toISOString(),
-      }, { onConflict: "ma_nguoi_dung,ma_khoa_hoc" });
-      if (error) throw error;
-      setCourse((value) => value ? { ...value, da_ghi_danh: true } : value);
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Không thể ghi danh khóa học.");
-    } finally {
-      setSaving(false);
-    }
+    setBusy(true); setActionError("");
+    try { await enrollInCourse(token!, courseId); setAttempt(v => v + 1); } catch (e) { setActionError(learningError(e)); } finally { setBusy(false); }
   }
-
-  async function completeLesson() {
-    if (!token || !resolvedCourseId || !lesson) return;
-    setSaving(true);
+  async function complete() {
+    setBusy(true); setActionError("");
     try {
-      if (!supabase) throw new Error("Supabase is not configured");
-      const now = new Date().toISOString();
-      const { error } = await supabase.from("tien_do_bai_hoc").upsert({
-        ma_nguoi_dung: userId,
-        ma_bai_hoc: lesson.ma_bai_hoc,
-        trang_thai: "DA_HOAN_THANH",
-        ngay_bat_dau: now,
-        ngay_hoan_thanh: now,
-      }, { onConflict: "ma_nguoi_dung,ma_bai_hoc" });
-      if (error) throw error;
-      setCourse((value) => {
-        if (!value) return value;
-        const totalLessons = lessons.length;
-        const completedLessons = lessons.filter((item) =>
-          item.ma_bai_hoc === lesson.ma_bai_hoc || item.trang_thai === "DA_HOAN_THANH").length;
-        return {
-          ...value,
-          phan_tram: totalLessons ? Math.round(completedLessons * 100 / totalLessons) : 0,
-          chuong: value.chuong.map((chapter) => ({
-            ...chapter,
-            bai_hoc: chapter.bai_hoc.map((item) =>
-              item.ma_bai_hoc === lesson.ma_bai_hoc
-                ? { ...item, trang_thai: "DA_HOAN_THANH" }
-                : item),
-          })),
-        };
-      });
-      setLesson((value) => value ? { ...value, trang_thai: "DA_HOAN_THANH" } : value);
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Không thể lưu tiến độ. Vui lòng thử lại.");
-    } finally {
-      setSaving(false);
-    }
+      await updateLesson(token!, courseId, lessonId!, "DA_HOAN_THANH");
+      const updated = await loadLearningCourse(token!, courseId);
+      setCourse(updated); setLesson(l => l ? { ...l, trang_thai: "DA_HOAN_THANH" } : l);
+    } catch (e) { setActionError(learningError(e)); } finally { setBusy(false); }
   }
-
-  return (
-    <div className="settings-shell">
-      <Sidebar user={user} displayName={displayName} initials={displayName.slice(0, 2).toUpperCase()} />
-      <main className="settings-main">
-        <div className="settings-content course-detail">
-          <Link className="course-back-button" to="/my-courses"><ArrowLeft size={16} /> Khóa học của tôi</Link>
-          {loading && <p className="auth-loading" role="status">Đang tải khóa học...</p>}
-          {error && <p className="settings-error" role="alert">{error}</p>}
-          {!loading && course && (
-            <>
-              <header className="course-detail-heading">
-                <div><p className="settings-eyebrow">{course.chu_de} · {course.cap_do}</p><h1>{course.tieu_de}</h1><p>{course.mo_ta}</p></div>
-              </header>
-              {!course.da_ghi_danh ? (
-                <button className="button button-primary" type="button" onClick={() => void enroll()} disabled={saving}>Tham gia khóa học</button>
-              ) : lessonId ? (
-                <article className="learner-lesson-page">
-                  <Link className="course-back-button" to={`/courses/${course.ma_khoa_hoc}`}> <ArrowLeft size={16} /> Nội dung khóa học</Link>
-                  {lesson ? (
-                    <>
-                      <p className="settings-eyebrow">BÀI {String(lesson.thu_tu).padStart(2, "0")} · {course.chu_de}</p>
-                      <h1>{lesson.tieu_de}</h1>
-                      <p className="learner-lesson-intro">Học lý thuyết, xem hướng dẫn và thực hành từng bước trước khi đánh dấu hoàn thành.</p>
-                      {videoEmbedUrl && <div className="learner-video learner-video-large"><iframe src={videoEmbedUrl} title={`Video bài học: ${lesson.tieu_de}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>}
-                      <section className="learner-theory-card">
-                        <p className="settings-eyebrow">LÝ THUYẾT CỐT LÕI</p>
-                        <h2>Quan sát trước, thực hành sau</h2>
-                        <p>{lesson.noi_dung_van_ban || "Hãy quan sát hướng dẫn, chú ý điểm bắt đầu và kết thúc của nét vẽ. Thực hành chậm, giữ lực tay ổn định và lặp lại cho đến khi đường nét có chủ đích."}</p>
-                        <h3>Các bước thực hành</h3>
-                        <ol><li>Quan sát video và xác định nguyên tắc chính.</li><li>Thực hành lại theo từng bước, không vội tăng tốc.</li><li>Đối chiếu kết quả và ghi chú điều cần cải thiện.</li></ol>
-                      </section>
-                      <div className="learner-lesson-page-actions">
-                        <button className="button button-primary" type="button" onClick={() => void completeLesson()} disabled={saving || lesson.trang_thai === "DA_HOAN_THANH"}>{lesson.trang_thai === "DA_HOAN_THANH" ? "Đã hoàn thành" : "Đánh dấu hoàn thành"} <Check size={15} /></button>
-                        <div className="learner-lesson-navigation"><button className="button button-outline" disabled={currentIndex <= 0} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex - 1].ma_bai_hoc}`)}><ChevronLeft size={15} /> Bài trước</button><button className="button button-outline" disabled={currentIndex < 0 || currentIndex >= lessons.length - 1} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex + 1].ma_bai_hoc}`)}>Bài sau <ChevronRight size={15} /></button></div>
-                      </div>
-                    </>
-                  ) : <p className="auth-loading">Đang tải bài học...</p>}
-                </article>
-              ) : (
-                <div className="learner-course-layout">
-                  <section className="learner-course-hero">
-                    <div className="learner-course-hero-art"><PlayCircle size={42} /></div>
-                    <div className="learner-course-hero-copy">
-                      <p className="settings-eyebrow">TIẾP TỤC HÀNH TRÌNH CỦA BẠN</p>
-                      <h2>{lesson?.tieu_de || lessons[0]?.tieu_de || "Chưa có bài học"}</h2>
-                      <p>{lesson?.noi_dung_van_ban || "Chọn một bài học trong lộ trình để bắt đầu luyện tập."}</p>
-                      <div className="learner-course-hero-actions">
-                        {lessons.length > 0 && <button className="button button-primary" onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${lessons[currentIndex < 0 ? 0 : currentIndex].ma_bai_hoc}`)}>Học tiếp</button>}
-                      </div>
-                    </div>
-                  </section>
-                  <div className="learner-course-pills"><span>Đang học</span><span>{course.cap_do}</span><span><Clock3 size={14} /> {lessons.length} bài học</span><span><Target size={14} /> {course.phan_tram}% hoàn thành</span></div>
-                  <div className="learner-course-columns">
-                    <section className="course-module-card">
-                      <div className="learner-card-heading"><div><h2>Nội dung khóa học</h2><p>{course.chuong.length} chương · {lessons.length} bài học</p></div><strong>{course.phan_tram}%</strong></div>
-                      {course.chuong.map((chapter) => {
-                        const done = chapter.bai_hoc.filter((item) => item.trang_thai === "DA_HOAN_THANH").length;
-                        return <div className="learner-chapter" key={chapter.ma_chuong}>
-                          <div className="learner-chapter-heading"><span className="learner-chapter-number">{String(chapter.thu_tu).padStart(2, "0")}</span><div><strong>{chapter.tieu_de}</strong><small>{done}/{chapter.bai_hoc.length} bài · {done ? "Đang học" : "Chưa bắt đầu"}</small></div><span>{done}/{chapter.bai_hoc.length}</span></div>
-                          {chapter.bai_hoc.map((item) => <button className={`learner-lesson${item.ma_bai_hoc === currentLessonId ? " active" : ""}`} type="button" key={item.ma_bai_hoc} onClick={() => navigate(`/courses/${course.ma_khoa_hoc}/learn/${item.ma_bai_hoc}`)}><span className="learner-lesson-check">{item.trang_thai === "DA_HOAN_THANH" ? <Check size={13} /> : item.thu_tu}</span><span><strong>Bài {String(item.thu_tu).padStart(2, "0")} · {item.tieu_de}</strong><small>{item.trang_thai === "DA_HOAN_THANH" ? "Đã hoàn thành" : item.ma_bai_hoc === currentLessonId ? "Đang học" : "Chưa bắt đầu"}</small></span><span>{item.ma_bai_hoc === currentLessonId ? "Học tiếp →" : item.trang_thai === "DA_HOAN_THANH" ? "Xem lại" : "Chưa mở"}</span></button>)}
-                        </div>;
-                      })}
-                    </section>
-                    <aside className="learner-course-sidebar">
-                      <section className="learner-side-card"><h2>Tiến độ của bạn</h2><strong className="learner-progress-number">{course.phan_tram}%</strong><p>{lessons.filter((item) => item.trang_thai === "DA_HOAN_THANH").length} / {lessons.length} bài học hoàn thành</p><div className="course-progress-track"><span style={{ width: `${course.phan_tram}%` }} /></div></section>
-                      <section className="learner-side-card"><h2>Bạn sẽ học được</h2><ul><li>Nắm các nguyên tắc cốt lõi</li><li>Thực hành qua bài tập ngắn</li><li>Hoàn thiện nét vẽ tự tin hơn</li></ul></section>
-                    </aside>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </main>
-    </div>
-  );
+  return <div className="settings-shell"><Sidebar user={user} displayName={name} initials={name.slice(0, 2).toUpperCase()} />
+    <main className="settings-main"><div className="settings-content learning-content">
+      <Link to={lessonId ? `/courses/${courseId}` : "/my-courses"}>← {lessonId ? "Nội dung khóa học" : "Khóa học của tôi"}</Link>
+      {loading ? <p role="status">Đang tải khóa học...</p> : error ? <section className="settings-card"><p role="alert">{error}</p><button onClick={() => setAttempt(v => v + 1)}>Thử lại</button></section> : course && <>
+        <header className="settings-page-heading"><div><p className="settings-eyebrow">{getCourseLevelLabel(course.cap_do)} · {course.chu_de}</p><h1>{course.tieu_de}</h1></div></header>
+        {actionError && <p className="settings-error" role="alert">{actionError}</p>}
+        {!enrolled ? <section className="settings-card"><p className="learning-text">{course.mo_ta}</p><p>Ghi danh để học và nộp bài tập.</p><button className="button button-primary" disabled={busy} onClick={() => void enroll()}>{busy ? "Đang ghi danh..." : "Ghi danh khóa học"}</button></section>
+          : <section className="settings-card"><label>Tiến độ bài học: {course.phan_tram}% <progress value={course.phan_tram} max={100} /></label>
+            <p>{course.trang_thai_ghi_danh === "HOAN_THANH" ? "Bạn đã hoàn thành khóa học. Bạn có thể xem lại toàn bộ bài học." : "Hoàn thành các bài học bắt buộc và được chấm tất cả bài tập bắt buộc để hoàn thành khóa."}</p>
+            {resume && !lessonId && <Link className="button button-primary" to={`/courses/${courseId}/learn/${resume.ma_bai_hoc}`}>{course.trang_thai_ghi_danh === "HOAN_THANH" ? "Xem lại bài học" : "Tiếp tục học"}</Link>}
+          </section>}
+        {lessonId && enrolled ? <>
+          {lessonLoading ? <p role="status">Đang tải bài học...</p> : lessonError ? <section className="settings-card"><p role="alert">{lessonError}</p><button onClick={() => setLessonAttempt(v => v + 1)}>Thử lại</button></section> : lesson && <>
+            <article className="settings-card"><h2>{lesson.tieu_de}</h2>
+              {video ? <iframe className="learning-video" src={video} title={lesson.tieu_de} allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
+                : safeHttps(lesson.lien_ket_video) && <a className="button button-outline" href={safeHttps(lesson.lien_ket_video)} target="_blank" rel="noreferrer">Mở video bài học</a>}
+              {safeHttps(lesson.duong_dan_anh) && <img className="learning-illustration" src={safeHttps(lesson.duong_dan_anh)} alt={`Minh họa: ${lesson.tieu_de}`} />}
+              {lesson.noi_dung_van_ban ? <p className="learning-text">{lesson.noi_dung_van_ban}</p> : <p>Giáo viên chưa thêm nội dung văn bản cho bài học này.</p>}
+              <button className="button button-primary" disabled={busy || lesson.trang_thai === "DA_HOAN_THANH"} onClick={() => void complete()}>{busy ? "Đang lưu..." : lesson.trang_thai === "DA_HOAN_THANH" ? "Đã hoàn thành bài học" : "Đánh dấu hoàn thành"}</button>
+            </article>
+            <LessonAssignments key={lesson.ma_bai_hoc} token={token} lessonId={lesson.ma_bai_hoc} onChanged={() => { void loadLearningCourse(token, courseId).then(setCourse).catch(e => setActionError(learningError(e))); }} />
+            <nav className="learning-actions" aria-label="Chuyển bài">
+              {currentIndex > 0 && <Link className="button button-outline" to={`/courses/${courseId}/learn/${lessons[currentIndex - 1].ma_bai_hoc}`}>← Bài trước</Link>}
+              {currentIndex >= 0 && currentIndex < lessons.length - 1 && <Link className="button button-primary" to={`/courses/${courseId}/learn/${lessons[currentIndex + 1].ma_bai_hoc}`}>Bài tiếp theo →</Link>}
+            </nav>
+          </>}
+        </> : <><section className="settings-card"><h2>Giới thiệu khóa học</h2><p className="learning-text">{course.mo_ta}</p></section>
+          {course.chuong.length === 0 && <p>Khóa học chưa có nội dung bài học.</p>}
+          {course.chuong.map(c => <section className="settings-card" key={c.ma_chuong}><h2>{c.tieu_de}</h2><ol className="learning-lessons">{c.bai_hoc.map(l => <li key={l.ma_bai_hoc}>{enrolled ? <Link to={`/courses/${courseId}/learn/${l.ma_bai_hoc}`}>{l.tieu_de}</Link> : <span>{l.tieu_de}</span>} <span>{l.trang_thai === "DA_HOAN_THANH" ? "✓ Đã học" : l.trang_thai === "DANG_HOC" ? "Đang học" : "Chưa học"}</span></li>)}</ol></section>)}
+        </>}
+      </>}
+    </div></main>
+  </div>;
 }

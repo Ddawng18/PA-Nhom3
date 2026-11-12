@@ -89,6 +89,8 @@ builder.Services.AddSingleton<IPortfolioStorage>(services =>
     return ActivatorUtilities.CreateInstance<LocalPortfolioStorage>(services);
 });
 builder.Services.AddScoped<AccountDirectory>();
+builder.Services.AddScoped<LearningProgressService>();
+builder.Services.AddSingleton<AssignmentStorage>();
 
 builder.Services
     .AddAuthentication(useLegacyAuth ? JwtBearerDefaults.AuthenticationScheme : "Supabase")

@@ -17,6 +17,83 @@ namespace Linea.Api.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.22");
 
+            modelBuilder.Entity("Linea.Api.Models.Assignment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_bai_tap");
+
+                    b.Property<DateTimeOffset?>("Deadline")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("han_nop");
+
+                    b.Property<long>("LessonId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_bai_hoc");
+
+                    b.Property<string>("Prompt")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("de_bai");
+
+                    b.Property<bool>("Required")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("bat_buoc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LessonId");
+
+                    b.ToTable("bai_tap", (string)null);
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.AssignmentSubmission", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_bai_nop");
+
+                    b.Property<long>("AssignmentId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_bai_tap");
+
+                    b.Property<string>("ImagePath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("duong_dan_anh");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("trang_thai");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_nop");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_cap_nhat");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ma_nguoi_dung");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("AssignmentId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("bai_nop", (string)null);
+                });
+
             modelBuilder.Entity("Linea.Api.Models.Course", b =>
                 {
                     b.Property<Guid>("Id")
@@ -383,6 +460,43 @@ namespace Linea.Api.Migrations
                     b.ToTable("lich_su_trang_thai", (string)null);
                 });
 
+            modelBuilder.Entity("Linea.Api.Models.SubmissionGrade", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_ket_qua");
+
+                    b.Property<string>("Feedback")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("nhan_xet");
+
+                    b.Property<DateTimeOffset>("GradedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_cham");
+
+                    b.Property<Guid>("GraderId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ma_nguoi_cham");
+
+                    b.Property<decimal>("Score")
+                        .HasPrecision(4, 2)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("diem");
+
+                    b.Property<long>("SubmissionId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_bai_nop");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubmissionId")
+                        .IsUnique();
+
+                    b.ToTable("ket_qua_cham", (string)null);
+                });
+
             modelBuilder.Entity("Linea.Api.Models.TeacherProfile", b =>
                 {
                     b.Property<long>("Id")
@@ -491,6 +605,24 @@ namespace Linea.Api.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Linea.Api.Models.Assignment", b =>
+                {
+                    b.HasOne("Linea.Api.Models.CourseLesson", null)
+                        .WithMany()
+                        .HasForeignKey("LessonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.AssignmentSubmission", b =>
+                {
+                    b.HasOne("Linea.Api.Models.Assignment", null)
+                        .WithMany()
+                        .HasForeignKey("AssignmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Linea.Api.Models.PortfolioImage", b =>
                 {
                     b.HasOne("Linea.Api.Models.TeacherProfile", "Profile")
@@ -500,6 +632,15 @@ namespace Linea.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Profile");
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.SubmissionGrade", b =>
+                {
+                    b.HasOne("Linea.Api.Models.AssignmentSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Linea.Api.Models.TeacherProfile", b =>
