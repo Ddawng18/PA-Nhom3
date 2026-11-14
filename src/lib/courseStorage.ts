@@ -1,52 +1,48 @@
+import { requestAdminApi } from "./adminApi";
 import { supabase } from "./supabase";
 import type { DetectedFileKind } from "../logic/courseEditor";
 
-const mediaBucket = import.meta.env.VITE_SUPABASE_MEDIA_BUCKET?.trim() ?? "";
 const attachmentsBucket = import.meta.env.VITE_SUPABASE_ATTACHMENTS_BUCKET?.trim() ?? "";
 
-export const isCourseMediaConfigured = Boolean(mediaBucket);
-export const isCourseAttachmentConfigured = Boolean(
-  mediaBucket && attachmentsBucket && attachmentsBucket !== mediaBucket
-);
+export const isCourseMediaConfigured = Boolean(import.meta.env.VITE_API_URL);
+export const isCourseAttachmentConfigured = Boolean(import.meta.env.VITE_API_URL);
 
 export type CourseStorageBucket = "media" | "attachments";
 
-function getStorageClient(bucketKind: CourseStorageBucket) {
-  if (!supabase) throw new Error("Ứng dụng chưa được cấu hình Supabase.");
-  const bucket = bucketKind === "media" ? mediaBucket : attachmentsBucket;
-  if (!bucket || !mediaBucket || (bucketKind === "attachments" && bucket === mediaBucket)) {
-    throw new Error("Tải tệp chưa được cấu hình.");
-  }
-  return { client: supabase, bucket };
-}
-
 export async function uploadCourseMedia(
-  path: string,
+  token: string,
+  courseId: string | number,
   file: File,
   fileKind: DetectedFileKind,
   bucketKind: CourseStorageBucket
 ) {
-  const { client, bucket } = getStorageClient(bucketKind);
-  const { data, error } = await client.storage.from(bucket).upload(path, file, {
-    contentType: file.type,
-    upsert: false,
-  });
-  if (error) throw error;
-  const publicUrl = bucketKind === "media"
-    ? client.storage.from(bucket).getPublicUrl(data.path).data.publicUrl
-    : null;
-  return { path: data.path, publicUrl, fileKind };
+  const body = new FormData();
+  body.append("file", file);
+  const result = await requestAdminApi(`/api/courses/${courseId}/media/${bucketKind}`, {
+    token,
+    method: "POST",
+    body,
+  }) as { path: string; publicUrl: string | null };
+  return { ...result, fileKind };
 }
 
-export async function removeCourseMedia(paths: string | string[], bucketKind: CourseStorageBucket): Promise<void> {
-  const { client, bucket } = getStorageClient(bucketKind);
-  const { error } = await client.storage.from(bucket).remove(Array.isArray(paths) ? paths : [paths]);
-  if (error) throw error;
+export async function removeCourseMedia(
+  token: string,
+  courseId: string | number,
+  paths: string | string[],
+  bucketKind: CourseStorageBucket
+): Promise<void> {
+  for (const path of Array.isArray(paths) ? paths : [paths]) {
+    await requestAdminApi(`/api/courses/${courseId}/media/${bucketKind}`, {
+      token,
+      method: "DELETE",
+    }, { path });
+  }
 }
 
 export async function createCourseMediaSignedUrl(path: string): Promise<string> {
-  const { client, bucket } = getStorageClient("attachments");
-  const { data, error } = await client.storage.from(bucket).createSignedUrl(path, 600);
+  if (!supabase || !attachmentsBucket) throw new Error("Tải tệp chưa được cấu hình.");
+  const { data, error } = await supabase.storage.from(attachmentsBucket).createSignedUrl(path, 600);
   if (error) throw error;
   return data.signedUrl;
 }
