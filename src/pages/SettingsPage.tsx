@@ -22,6 +22,7 @@ import ApprovalsPanel from "../components/ApprovalsPanel";
 import { useUserRole } from "../hooks/useUserRole";
 import { useApprovals } from "../hooks/useApprovals";
 import { fetchVerifiedAccount, type VerifiedAccount } from "../lib/account";
+import { loadUserProfile, saveUserProfile } from "../lib/userProfile";
 import { getSettingsTabs, parseSettingsView, type SettingsTab } from "../logic/approvals";
 import "../styles/settings.css";
 
@@ -81,6 +82,10 @@ export default function SettingsPage() {
   const view = parseSettingsView(location.search, roleState.role);
   const approvals = useApprovals(view.tab === "phe-duyet" && isAdmin, isAdmin, session?.access_token);
   const [displayName, setDisplayName] = useState(user ? getDisplayName(user) : "");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [verifiedAccount, setVerifiedAccount] = useState<VerifiedAccount | null>(null);
@@ -89,6 +94,19 @@ export default function SettingsPage() {
     weekly: false,
     streak: true,
   });
+
+  useEffect(() => {
+    if (!user) return;
+    const controller = new AbortController();
+    void loadUserProfile(user.id).then((profile) => {
+      if (controller.signal.aborted || !profile) return;
+      setDisplayName(profile.display_name || getDisplayName(user));
+      setAvatarUrl(profile.avatar_url || "");
+    }).catch(() => {
+      if (!controller.signal.aborted) setProfileError("Không thể tải thông tin hồ sơ.");
+    });
+    return () => controller.abort();
+  }, [user]);
 
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL;
@@ -106,6 +124,7 @@ export default function SettingsPage() {
   }, [navigate, roleState.loading, roleState.role, searchParams]);
 
   if (!user) return null;
+  const currentUser = user;
 
   const userDisplayName = getDisplayName(user);
   const verifiedRole = verifiedAccount?.id === user.id ? verifiedAccount.role : null;
@@ -122,10 +141,28 @@ export default function SettingsPage() {
       } else {
         navigate("/login", { replace: true });
       }
+
     } catch (error) {
       setSignOutError(getAuthErrorMessage(error instanceof Error ? error.message : undefined));
     } finally {
       setIsSigningOut(false);
+    }
+  }
+
+  async function handleSaveProfile() {
+    if (isSavingProfile) return;
+    setIsSavingProfile(true);
+    setProfileError(null);
+    setProfileMessage(null);
+    try {
+      const saved = await saveUserProfile(currentUser.id, { display_name: displayName, avatar_url: avatarUrl });
+      setDisplayName(saved.display_name || currentUser.email?.split("@")[0] || "Học viên LINEA");
+      setAvatarUrl(saved.avatar_url || "");
+      setProfileMessage("Đã lưu hồ sơ.");
+    } catch {
+      setProfileError("Không thể lưu hồ sơ. Vui lòng thử lại.");
+    } finally {
+      setIsSavingProfile(false);
     }
   }
 
@@ -164,6 +201,7 @@ export default function SettingsPage() {
           </header>
 
           {signOutError && <p className="settings-error" role="alert">{signOutError}</p>}
+          {profileError && <p className="settings-error" role="alert">{profileError}</p>}
 
           <nav className="settings-tabs" aria-label="Các mục cài đặt">
             {getSettingsTabs(isAdmin ? roleState.role : "student").map((tab) => {
@@ -234,6 +272,15 @@ export default function SettingsPage() {
                     <input type="email" value={user.email ?? ""} readOnly />
                   </label>
                   <label className="settings-field">
+                    <span>Ảnh đại diện (URL)</span>
+                    <input
+                      type="url"
+                      value={avatarUrl}
+                      placeholder="https://..."
+                      onChange={(event) => setAvatarUrl(event.target.value)}
+                    />
+                  </label>
+                  <label className="settings-field">
                     <span>Vai trò tài khoản</span>
                     <input
                       type="text"
@@ -252,9 +299,12 @@ export default function SettingsPage() {
                   </label>
                 </div>
                 <div className="profile-actions">
-                  <button className="button button-primary" type="button">Lưu thay đổi</button>
-                  <button className="button button-outline" type="button">Bỏ qua</button>
+                  <button className="button button-primary" type="button" disabled={isSavingProfile} onClick={() => void handleSaveProfile()}>
+                    {isSavingProfile ? "Đang lưu..." : "Lưu thay đổi"}
+                  </button>
+                  <button className="button button-outline" type="button" onClick={() => { setDisplayName(userDisplayName); setAvatarUrl(""); setProfileMessage(null); }}>Bỏ qua</button>
                 </div>
+                {profileMessage && <p role="status">{profileMessage}</p>}
               </section>
 
               <section className="settings-card security-card" hidden={view.tab !== "ho-so" && view.tab !== "bao-mat"}>
