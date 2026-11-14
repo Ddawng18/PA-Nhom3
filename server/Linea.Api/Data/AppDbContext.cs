@@ -8,6 +8,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<User> Users => Set<User>();
     public DbSet<Course> Courses => Set<Course>();
     public DbSet<LearningCourse> LearningCourses => Set<LearningCourse>();
+    public DbSet<CourseEnrollment> CourseEnrollments => Set<CourseEnrollment>();
+    public DbSet<CourseChapter> CourseChapters => Set<CourseChapter>();
+    public DbSet<CourseLesson> CourseLessons => Set<CourseLesson>();
+    public DbSet<LessonProgress> LessonProgress => Set<LessonProgress>();
+    public DbSet<Assignment> Assignments => Set<Assignment>();
+    public DbSet<AssignmentSubmission> Submissions => Set<AssignmentSubmission>();
+    public DbSet<SubmissionGrade> Grades => Set<SubmissionGrade>();
 
     public DbSet<TeacherProfile> TeacherProfiles => Set<TeacherProfile>();
 
@@ -70,7 +77,80 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         learningCourse.Property(item => item.CreatedAt).HasColumnName("ngay_tao").IsRequired();
         learningCourse.HasIndex(item => item.TeacherId);
 
+        var enrollment = modelBuilder.Entity<CourseEnrollment>();
+        enrollment.ToTable("ghi_danh");
+        enrollment.HasKey(item => new { item.UserId, item.CourseId });
+        enrollment.Property(item => item.UserId).HasColumnName("ma_nguoi_dung");
+        enrollment.Property(item => item.CourseId).HasColumnName("ma_khoa_hoc");
+        enrollment.Property(item => item.Status).HasColumnName("trang_thai").HasMaxLength(20).IsRequired();
+        enrollment.Property(item => item.EnrolledAt).HasColumnName("ngay_ghi_danh").IsRequired();
+        enrollment.Property(item => item.CompletedAt).HasColumnName("ngay_hoan_thanh");
+
+        var chapter = modelBuilder.Entity<CourseChapter>();
+        chapter.ToTable("chuong");
+        chapter.HasKey(item => item.Id);
+        chapter.Property(item => item.Id).HasColumnName("ma_chuong");
+        chapter.Property(item => item.CourseId).HasColumnName("ma_khoa_hoc").IsRequired();
+        chapter.Property(item => item.Title).HasColumnName("tieu_de").HasMaxLength(200).IsRequired();
+        chapter.Property(item => item.Order).HasColumnName("thu_tu").IsRequired();
+
+        var lesson = modelBuilder.Entity<CourseLesson>();
+        lesson.ToTable("bai_hoc");
+        lesson.HasKey(item => item.Id);
+        lesson.Property(item => item.Id).HasColumnName("ma_bai_hoc");
+        lesson.Property(item => item.ChapterId).HasColumnName("ma_chuong").IsRequired();
+        lesson.Property(item => item.Title).HasColumnName("tieu_de").HasMaxLength(200).IsRequired();
+        lesson.Property(item => item.Order).HasColumnName("thu_tu").IsRequired();
+        lesson.Property(item => item.TextContent).HasColumnName("noi_dung_van_ban");
+        lesson.Property(item => item.ImagePath).HasColumnName("duong_dan_anh").HasMaxLength(500);
+        lesson.Property(item => item.VideoUrl).HasColumnName("lien_ket_video").HasMaxLength(500);
+        lesson.Property(item => item.Required).HasColumnName("bat_buoc").IsRequired();
+
+        var progress = modelBuilder.Entity<LessonProgress>();
+        progress.ToTable("tien_do_bai_hoc");
+        progress.HasKey(item => new { item.UserId, item.LessonId });
+        progress.Property(item => item.UserId).HasColumnName("ma_nguoi_dung");
+        progress.Property(item => item.LessonId).HasColumnName("ma_bai_hoc");
+        progress.Property(item => item.Status).HasColumnName("trang_thai").HasMaxLength(30).IsRequired();
+        progress.Property(item => item.StartedAt).HasColumnName("ngay_bat_dau");
+        progress.Property(item => item.CompletedAt).HasColumnName("ngay_hoan_thanh");
+
         var teacherProfile = modelBuilder.Entity<TeacherProfile>();
+        var assignment = modelBuilder.Entity<Assignment>();
+        assignment.ToTable("bai_tap");
+        assignment.HasKey(x => x.Id);
+        assignment.Property(x => x.Id).HasColumnName("ma_bai_tap");
+        assignment.Property(x => x.LessonId).HasColumnName("ma_bai_hoc");
+        assignment.Property(x => x.Prompt).HasColumnName("de_bai").IsRequired();
+        assignment.Property(x => x.Deadline).HasColumnName("han_nop");
+        assignment.Property(x => x.Required).HasColumnName("bat_buoc");
+        assignment.HasIndex(x => x.LessonId);
+        assignment.HasOne<CourseLesson>().WithMany().HasForeignKey(x => x.LessonId).OnDelete(DeleteBehavior.Cascade);
+        var submission = modelBuilder.Entity<AssignmentSubmission>();
+        submission.ToTable("bai_nop");
+        submission.HasKey(x => x.Id);
+        submission.Property(x => x.Id).HasColumnName("ma_bai_nop");
+        submission.Property(x => x.AssignmentId).HasColumnName("ma_bai_tap");
+        submission.Property(x => x.UserId).HasColumnName("ma_nguoi_dung");
+        submission.Property(x => x.ImagePath).HasColumnName("duong_dan_anh").HasMaxLength(500).IsRequired();
+        submission.Property(x => x.Status).HasColumnName("trang_thai").HasMaxLength(20).IsRequired();
+        submission.Property(x => x.SubmittedAt).HasColumnName("ngay_nop");
+        submission.Property(x => x.UpdatedAt).HasColumnName("ngay_cap_nhat").IsConcurrencyToken();
+        submission.HasIndex(x => new { x.AssignmentId, x.UserId }).IsUnique();
+        submission.HasIndex(x => x.UserId);
+        submission.HasOne<Assignment>().WithMany().HasForeignKey(x => x.AssignmentId).OnDelete(DeleteBehavior.Cascade);
+        var grade = modelBuilder.Entity<SubmissionGrade>();
+        grade.ToTable("ket_qua_cham");
+        grade.HasKey(x => x.Id);
+        grade.Property(x => x.Id).HasColumnName("ma_ket_qua");
+        grade.Property(x => x.SubmissionId).HasColumnName("ma_bai_nop");
+        grade.Property(x => x.GraderId).HasColumnName("ma_nguoi_cham");
+        grade.Property(x => x.Score).HasColumnName("diem").HasPrecision(4, 2);
+        grade.Property(x => x.Feedback).HasColumnName("nhan_xet").IsRequired();
+        grade.Property(x => x.GradedAt).HasColumnName("ngay_cham");
+        grade.HasIndex(x => x.SubmissionId).IsUnique();
+        grade.HasOne<AssignmentSubmission>().WithMany().HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Cascade);
+
         teacherProfile.ToTable("ho_so_giao_vien");
         teacherProfile.HasKey(item => item.Id);
         teacherProfile.Property(item => item.Id).HasColumnName("ma_ho_so");
