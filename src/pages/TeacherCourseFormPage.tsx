@@ -439,6 +439,8 @@ export default function TeacherCourseFormPage() {
     if (!file || !courseId || !selectedLesson?.ma_bai_hoc || !supabase || !isCourseAttachmentConfigured) return;
     setUploading(true);
     setUploadMessage(null);
+    let uploadedPath: string | null = null;
+    let attachmentSaved = false;
     try {
       const validation = await validateUpload("attachment", file, selectedLesson.tep_dinh_kem.length);
       if (!validation.success) {
@@ -446,6 +448,7 @@ export default function TeacherCourseFormPage() {
         return;
       }
       const uploaded = await uploadCourseMedia(session?.access_token ?? "", courseId, file, validation.fileKind, "attachments");
+      uploadedPath = uploaded.path;
       const attachment = {
         ma_bai_hoc: selectedLesson.ma_bai_hoc,
         ten_tep: await cleanCourseMediaName(file.name),
@@ -457,8 +460,15 @@ export default function TeacherCourseFormPage() {
       const data = await requestAdminApi(`/api/courses/${courseId}/attachments`, {
         token: session.access_token,
         method: "POST",
-        body: attachment,
+        body: {
+          lessonId: attachment.ma_bai_hoc,
+          name: attachment.ten_tep,
+          path: attachment.duong_dan,
+          type: attachment.loai_tep,
+          size: attachment.dung_luong,
+        },
       });
+      attachmentSaved = true;
       const parsed = z.object({
         ma_tep: z.union([z.string(), z.number()]),
         ma_bai_hoc: z.union([z.string(), z.number()]),
@@ -468,12 +478,16 @@ export default function TeacherCourseFormPage() {
         dung_luong: z.number(),
       }).safeParse(data);
       if (!parsed.success) {
-        await removeUploadedMedia(uploaded.path, "attachments");
         throw new Error("Dữ liệu tệp không đúng định dạng.");
       }
       updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, tep_dinh_kem: [...lesson.tep_dinh_kem, parsed.data] }));
       setHasUnsavedChanges(false);
+      editor.reload();
     } catch (error) {
+      if (uploadedPath && !attachmentSaved) {
+        try { await removeUploadedMedia(uploadedPath, "attachments"); }
+        catch { setUploadMessage("Không lưu được thông tin tệp và chưa dọn được ảnh đã tải. Vui lòng liên hệ quản trị viên."); return; }
+      }
       setUploadMessage(error instanceof Error && error.message === "Không thể dọn tệp vừa tải lên khỏi bộ lưu trữ."
         ? error.message
         : "Không thể tải tệp lên. Vui lòng kiểm tra kết nối và thử lại.");
@@ -505,6 +519,7 @@ export default function TeacherCourseFormPage() {
         token: session.access_token,
         method: "DELETE",
       });
+      editor.reload();
       await removeCourseMedia(session.access_token, courseId, attachment.duong_dan, "attachments");
       if (selectedLesson) {
         updateLesson(selectedLesson.localId, (lesson) => ({

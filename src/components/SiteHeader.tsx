@@ -3,7 +3,7 @@ import { Heart, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { getUserChip, type UserChip, type UserDisplayProfile } from "../lib/userDisplay";
-import { loadUserProfile } from "../lib/userProfile";
+import { loadUserProfile, subscribeUserProfile } from "../lib/userProfile";
 
 const navigationItems = [
   { label: "Khám phá", href: null },
@@ -27,20 +27,27 @@ export default function SiteHeader() {
       isCurrent = false;
     };
 
+    let changed = false;
+    const unsubscribe = subscribeUserProfile(userId, (value) => {
+      changed = true;
+      setProfile(value);
+      setProfileError(null);
+    });
     async function loadProfile(activeUserId: string) {
       try {
         const data = await loadUserProfile(activeUserId);
-        if (!isCurrent) return;
+        if (!isCurrent || changed) return;
         if (data === null) return;
         setProfile(data);
       } catch {
-        if (isCurrent) setProfileError("Không thể tải thông tin hồ sơ.");
+        if (isCurrent && !changed) setProfileError("Không thể tải thông tin hồ sơ.");
       }
     }
 
     void loadProfile(userId);
     return () => {
       isCurrent = false;
+      unsubscribe();
     };
   }, [userId]);
 

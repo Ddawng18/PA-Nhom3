@@ -9,21 +9,33 @@ const profileSchema = z.object({
 
 export type UserProfile = z.infer<typeof profileSchema>;
 
-export async function loadUserProfile(_userId: string): Promise<UserProfile | null> {
+const profileChanged = "linea:profile-changed";
+export function subscribeUserProfile(userId: string, listener: (profile: UserProfile) => void) {
+  const handle = (event: Event) => {
+    const { userId: savedUserId, profile } = (event as CustomEvent<{ userId: string; profile: UserProfile }>).detail;
+    if (savedUserId === userId) listener(profile);
+  };
+  window.addEventListener(profileChanged, handle);
+  return () => window.removeEventListener(profileChanged, handle);
+}
+
+export async function loadUserProfile(userId: string): Promise<UserProfile | null> {
   if (!supabase) throw new Error("Supabase chưa được cấu hình.");
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) throw new Error("Phiên đăng nhập đã hết hạn.");
+  if (sessionData.session.user.id !== userId) throw new Error("Tài khoản đăng nhập đã thay đổi.");
   const data = await requestAdminApi("/api/profile/me", { token: sessionData.session.access_token });
   return profileSchema.parse(data);
 }
 
 export async function saveUserProfile(
-  _userId: string,
+  userId: string,
   profile: UserProfile
 ): Promise<UserProfile> {
   if (!supabase) throw new Error("Supabase chưa được cấu hình.");
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) throw new Error("Phiên đăng nhập đã hết hạn.");
+  if (sessionData.session.user.id !== userId) throw new Error("Tài khoản đăng nhập đã thay đổi.");
   const data = await requestAdminApi("/api/profile/me", {
     token: sessionData.session.access_token,
     method: "PUT",
@@ -32,5 +44,9 @@ export async function saveUserProfile(
       avatar_url: profile.avatar_url?.trim() || null,
     },
   });
-  return profileSchema.parse(data);
+  const saved = profileSchema.parse(data);
+  window.dispatchEvent(new CustomEvent(profileChanged, {
+    detail: { userId: sessionData.session.user.id, profile: saved },
+  }));
+  return saved;
 }
