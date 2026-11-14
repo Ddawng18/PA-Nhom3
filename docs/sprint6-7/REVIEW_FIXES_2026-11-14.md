@@ -1,5 +1,15 @@
 # Bàn giao sửa review Sprint 6 — 14/11/2026
 
+## Đồng bộ develop sau khi PR #6 được merge
+
+- Base mới: `dadfda0` (merge PR #6, commit nguồn `da4d98f`). Đã merge base này vào nhánh PR #9 để giải quyết conflict.
+- Ba file xung đột: `src/main.tsx`, `src/pages/CourseLearningPage.tsx`, `src/pages/MyCoursesPage.tsx`.
+- Giữ router đầy đủ của Sprint 6, mỗi route học chỉ khai báo một lần; giữ Khách/catalog, progress, assignments và teacher submissions.
+- Giữ client API học thực tế, nội dung/tiến độ đúng khóa, ảnh/video HTTPS và phần nộp bài. Bản PR #6 còn mapping tên khóa/slug và màn học chưa tích hợp bài tập.
+- Giữ danh sách khóa theo ghi danh/API thật và đường dẫn giáo viên chấm bài; không đưa lại catalog/giá mẫu vào luồng dữ liệu thật.
+- Đã đối chiếu `src/lib/courseApi.ts` và `src/styles/settings.css`: hai file của PR #6 đã có nguyên vẹn trên nhánh fullsoft, không có khác biệt với develop ở hai file này.
+- Đây là giải quyết tích hợp Git; không thay thế nghiệm thu chức năng hoặc xác minh deploy.
+
 Nguồn review: `d20c272`, PR #9 (`fullsoft` → `develop`). Đây là phần sửa mã cho S6-01–04 và tài liệu DoD, không triển khai toàn bộ S6-05–15.
 
 ## Đã sửa trong mã
