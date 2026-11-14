@@ -47,9 +47,6 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
             item => item.Id == courseId && item.TeacherId == userId, ct);
         if (course is null) return NotFound();
         if (course.Status != "NHAP") return Conflict(new { detail = "Chỉ có thể sửa nội dung khóa học nháp." });
-        var currentVersion = await ComputeVersion(courseId, ct);
-        if (!string.Equals(request.ExpectedVersion, currentVersion, StringComparison.Ordinal))
-            return Conflict(new { detail = "Nội dung đã thay đổi. Tải lại trước khi lưu.", code = "EDITOR_VERSION_CONFLICT" });
         if (request.Chapters.Count > 200 || request.Lessons.Count > 1000 ||
             request.Assignments.Count > 1000 || request.Attachments.Count > 2000 || request.Rubrics.Count > 5000)
             return BadRequest(new { detail = "Nội dung khóa học vượt quá giới hạn." });
@@ -63,9 +60,13 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
             request.Rubrics.Any(item => item.AssignmentId is not null && !assignmentIds.Contains(item.AssignmentId.Value)))
             return BadRequest(new { detail = "Quan hệ nội dung không hợp lệ." });
 
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable, ct);
+        var currentVersion = await ComputeVersion(courseId, ct);
+        if (!string.Equals(request.ExpectedVersion, currentVersion, StringComparison.Ordinal))
+            return Conflict(new { detail = "Nội dung đã thay đổi. Tải lại trước khi lưu.", code = "EDITOR_VERSION_CONFLICT" });
         db.CourseAttachments.RemoveRange(await db.CourseAttachments.Where(item =>
-            db.CourseLessons.Any(lesson => lesson.ChapterId == item.LessonId && db.CourseChapters.Any(chapter => chapter.Id == lesson.ChapterId && chapter.CourseId == courseId))).ToListAsync(ct));
+            db.CourseLessons.Any(lesson => lesson.Id == item.LessonId && db.CourseChapters.Any(chapter => chapter.Id == lesson.ChapterId && chapter.CourseId == courseId))).ToListAsync(ct));
         db.CourseRubrics.RemoveRange(await db.CourseRubrics.Where(item =>
             db.Assignments.Any(assignment => assignment.Id == item.AssignmentId && db.CourseLessons.Any(lesson => lesson.Id == assignment.LessonId && db.CourseChapters.Any(chapter => chapter.Id == lesson.ChapterId && chapter.CourseId == courseId)))).ToListAsync(ct));
         db.Assignments.RemoveRange(await db.Assignments.Where(item =>
