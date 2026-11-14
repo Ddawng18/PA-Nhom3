@@ -20,7 +20,6 @@ import { courseLevels, courseTopics } from "../data/courseEditorOptions";
 import { useCourseEditor, type CourseEditorChapter, type CourseEditorLesson, type CourseEditorModel } from "../hooks/useCourseEditor";
 import { supabase } from "../lib/supabase";
 import {
-  buildStorageKey,
   canEditCourse,
   getCourseStatusLabel,
   getSubmitBlockers,
@@ -33,6 +32,7 @@ import {
 } from "../logic/courseEditor";
 import type { CourseEditorAttachment, CourseEditorRubric } from "../hooks/useCourseEditor";
 import { cleanCourseMediaName, createCourseMediaSignedUrl, isCourseAttachmentConfigured, isCourseMediaConfigured, removeCourseMedia, uploadCourseMedia } from "../lib/courseStorage";
+import { requestAdminApi } from "../lib/adminApi";
 import "../styles/teacher-course.css";
 
 type LocalLesson = CourseEditorLesson & { localId: string };
@@ -163,7 +163,7 @@ export default function TeacherCourseFormPage() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const userId = user?.id ?? "";
   const editor = useCourseEditor(courseId, userId);
   const [course, setCourse] = useState<LocalCourse>(() => emptyCourse(userId));
@@ -372,8 +372,7 @@ export default function TeacherCourseFormPage() {
         setUploadMessage(validation.message);
         return;
       }
-      const path = buildStorageKey({ kind: "cover", courseId, fileKind: validation.fileKind });
-      const uploaded = await uploadCourseMedia(path, file, validation.fileKind, "media");
+      const uploaded = await uploadCourseMedia(session?.access_token ?? "", courseId, file, validation.fileKind, "media");
       const publicUrl = uploaded.publicUrl;
       if (!publicUrl) {
         await removeUploadedMedia(uploaded.path, "media");
@@ -414,13 +413,7 @@ export default function TeacherCourseFormPage() {
         setUploadMessage(validation.message);
         return;
       }
-      const path = buildStorageKey({
-        kind: "lesson",
-        courseId,
-        lessonId: selectedLesson.ma_bai_hoc,
-        fileKind: validation.fileKind,
-      });
-      const uploaded = await uploadCourseMedia(path, file, validation.fileKind, "media");
+      const uploaded = await uploadCourseMedia(session?.access_token ?? "", courseId, file, validation.fileKind, "media");
       const publicUrl = uploaded.publicUrl;
       if (!publicUrl) {
         await removeUploadedMedia(uploaded.path, "media");
@@ -446,19 +439,16 @@ export default function TeacherCourseFormPage() {
     if (!file || !courseId || !selectedLesson?.ma_bai_hoc || !supabase || !isCourseAttachmentConfigured) return;
     setUploading(true);
     setUploadMessage(null);
+    let uploadedPath: string | null = null;
+    let attachmentSaved = false;
     try {
       const validation = await validateUpload("attachment", file, selectedLesson.tep_dinh_kem.length);
       if (!validation.success) {
         setUploadMessage(validation.message);
         return;
       }
-      const path = buildStorageKey({
-        kind: "attachment",
-        courseId,
-        lessonId: selectedLesson.ma_bai_hoc,
-        fileKind: validation.fileKind,
-      });
-      const uploaded = await uploadCourseMedia(path, file, validation.fileKind, "attachments");
+      const uploaded = await uploadCourseMedia(session?.access_token ?? "", courseId, file, validation.fileKind, "attachments");
+      uploadedPath = uploaded.path;
       const attachment = {
         ma_bai_hoc: selectedLesson.ma_bai_hoc,
         ten_tep: await cleanCourseMediaName(file.name),
@@ -466,14 +456,19 @@ export default function TeacherCourseFormPage() {
         loai_tep: ["jpeg", "png", "webp"].includes(validation.fileKind) ? "IMAGE" : "DOCUMENT",
         dung_luong: file.size,
       } as const;
-      const { data, error } = await supabase.from("tep_dinh_kem_bai_hoc")
-        .insert(attachment)
-        .select("ma_tep, ma_bai_hoc, ten_tep, duong_dan, loai_tep, dung_luong")
-        .single();
-      if (error) {
-        await removeUploadedMedia(uploaded.path, "attachments");
-        throw error;
-      }
+      if (!session?.access_token) throw new Error("Phiên đăng nhập đã hết hạn.");
+      const data = await requestAdminApi(`/api/courses/${courseId}/attachments`, {
+        token: session.access_token,
+        method: "POST",
+        body: {
+          lessonId: attachment.ma_bai_hoc,
+          name: attachment.ten_tep,
+          path: attachment.duong_dan,
+          type: attachment.loai_tep,
+          size: attachment.dung_luong,
+        },
+      });
+      attachmentSaved = true;
       const parsed = z.object({
         ma_tep: z.union([z.string(), z.number()]),
         ma_bai_hoc: z.union([z.string(), z.number()]),
@@ -483,13 +478,16 @@ export default function TeacherCourseFormPage() {
         dung_luong: z.number(),
       }).safeParse(data);
       if (!parsed.success) {
-        await supabase.from("tep_dinh_kem_bai_hoc").delete().eq("duong_dan", uploaded.path);
-        await removeUploadedMedia(uploaded.path, "attachments");
         throw new Error("Dữ liệu tệp không đúng định dạng.");
       }
       updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, tep_dinh_kem: [...lesson.tep_dinh_kem, parsed.data] }));
       setHasUnsavedChanges(false);
+      editor.reload();
     } catch (error) {
+      if (uploadedPath && !attachmentSaved) {
+        try { await removeUploadedMedia(uploadedPath, "attachments"); }
+        catch { setUploadMessage("Không lưu được thông tin tệp và chưa dọn được ảnh đã tải. Vui lòng liên hệ quản trị viên."); return; }
+      }
       setUploadMessage(error instanceof Error && error.message === "Không thể dọn tệp vừa tải lên khỏi bộ lưu trữ."
         ? error.message
         : "Không thể tải tệp lên. Vui lòng kiểm tra kết nối và thử lại.");
@@ -506,19 +504,23 @@ export default function TeacherCourseFormPage() {
 
   async function removeUploadedMedia(path: string, bucketKind: "media" | "attachments") {
     try {
-      await removeCourseMedia(path, bucketKind);
+      if (!session?.access_token || !courseId) throw new Error("Phiên đăng nhập đã hết hạn.");
+      await removeCourseMedia(session.access_token, courseId, path, bucketKind);
     } catch {
       throw new Error("Không thể dọn tệp vừa tải lên khỏi bộ lưu trữ.");
     }
   }
 
   async function removeAttachment(attachment: CourseEditorAttachment) {
-    if (!supabase) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from("tep_dinh_kem_bai_hoc").delete().eq("ma_tep", attachment.ma_tep);
-      if (error) throw error;
-      await removeCourseMedia(attachment.duong_dan, "attachments");
+      if (!session?.access_token || !courseId) throw new Error("Phiên đăng nhập đã hết hạn.");
+      await requestAdminApi(`/api/courses/${courseId}/attachments/${attachment.ma_tep}`, {
+        token: session.access_token,
+        method: "DELETE",
+      });
+      editor.reload();
+      await removeCourseMedia(session.access_token, courseId, attachment.duong_dan, "attachments");
       if (selectedLesson) {
         updateLesson(selectedLesson.localId, (lesson) => ({
           ...lesson,

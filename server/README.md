@@ -62,6 +62,9 @@ của nhóm — không qua Git/chat/issue.
 | `SIGNED_URL_KEY` | Khuyến nghị | Khóa ký signed URL local. Nếu trống, dùng `JWT_KEY`, sau đó `SUPABASE_SERVICE_ROLE_KEY`, cuối cùng là khóa ngẫu nhiên (mất hiệu lực sau khi restart). |
 | `SUPABASE_SERVICE_ROLE_KEY` | Không | Khóa server-side để dùng Supabase Storage. Không đưa vào biến `VITE_` hoặc frontend. Có khóa này cùng `SUPABASE_URL` thì backend dùng Supabase Storage thay vì đĩa local. |
 | `SUPABASE_STORAGE_BUCKET` | Không | Bucket ảnh riêng tư, mặc định `teacher-docs`. |
+| `ASSIGNMENT_STORAGE_BUCKET` | Không | Bucket riêng tư cho ảnh bài nộp, mặc định `assignment-submissions`; không dùng chung với hồ sơ giáo viên. |
+| `SUPABASE_MEDIA_BUCKET` | Không | Bucket media khóa học; bắt buộc khi giáo viên tải ảnh bìa hoặc ảnh bài học qua API. |
+| `SUPABASE_ATTACHMENTS_BUCKET` | Không | Bucket private tệp đính kèm khóa học; bắt buộc khi giáo viên tải tài liệu qua API. |
 | `EMAIL_OUTBOX_PATH` | Không | Ghi email ra file trong thư mục này (dev/test) thay vì gửi SMTP. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_ENABLE_SSL` | Không | Cấu hình gửi email thật sau khi commit. Thiếu cấu hình thì bỏ qua và ghi log. |
 | `CLIENT_ORIGIN` | Không | Origin được CORS, mặc định `http://localhost:5173`. |
@@ -126,6 +129,12 @@ Signed URL local dùng HMAC-SHA256 với `SIGNED_URL_KEY`; signed URL Supabase d
 Storage cấp với `expiresIn = 300`. Local lưu path `teacher-docs/<uuid>.<ext>`,
 Supabase Storage lưu `<uuid>.<ext>` trong bucket; khi đổi kho lưu cần di chuyển
 object và cập nhật `anh_tac_pham.duong_dan_anh`.
+
+Ảnh bài nộp dùng bucket riêng `assignment-submissions`, luôn private, giới hạn
+10 MB và chỉ nhận JPG/PNG/WEBP. Chạy migration
+`supabase/20261114110000_assignment_storage.sql` trước khi bật nộp bài; backend
+dùng service role key ở server để upload và tạo phản hồi private, không đưa key
+này vào frontend.
 
 Sau khi commit, backend gửi email best-effort cho người gửi khi gửi/duyệt/từ
 chối/yêu cầu bổ sung. Đặt `EMAIL_OUTBOX_PATH` để ghi email ra file khi dev/test,
