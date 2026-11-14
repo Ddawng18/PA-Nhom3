@@ -15,6 +15,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Assignment> Assignments => Set<Assignment>();
     public DbSet<AssignmentSubmission> Submissions => Set<AssignmentSubmission>();
     public DbSet<SubmissionGrade> Grades => Set<SubmissionGrade>();
+    public DbSet<CourseAttachmentContent> CourseAttachments => Set<CourseAttachmentContent>();
+    public DbSet<CourseRubricContent> CourseRubrics => Set<CourseRubricContent>();
 
     public DbSet<TeacherProfile> TeacherProfiles => Set<TeacherProfile>();
 
@@ -150,6 +152,25 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         grade.Property(x => x.GradedAt).HasColumnName("ngay_cham");
         grade.HasIndex(x => x.SubmissionId).IsUnique();
         grade.HasOne<AssignmentSubmission>().WithMany().HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Cascade);
+
+        var attachment = modelBuilder.Entity<CourseAttachmentContent>();
+        attachment.ToTable("tep_dinh_kem_bai_hoc");
+        attachment.HasKey(item => item.Id);
+        attachment.Property(item => item.Id).HasColumnName("ma_tep");
+        attachment.Property(item => item.LessonId).HasColumnName("ma_bai_hoc").IsRequired();
+        attachment.Property(item => item.Name).HasColumnName("ten_tep").HasMaxLength(255).IsRequired();
+        attachment.Property(item => item.Path).HasColumnName("duong_dan").HasMaxLength(500).IsRequired();
+        attachment.Property(item => item.Type).HasColumnName("loai_tep").HasMaxLength(50).IsRequired();
+        attachment.Property(item => item.Size).HasColumnName("dung_luong").IsRequired();
+
+        var rubric = modelBuilder.Entity<CourseRubricContent>();
+        rubric.ToTable("tieu_chi_cham_diem");
+        rubric.HasKey(item => item.Id);
+        rubric.Property(item => item.Id).HasColumnName("ma_tieu_chi");
+        rubric.Property(item => item.AssignmentId).HasColumnName("ma_bai_tap").IsRequired();
+        rubric.Property(item => item.Name).HasColumnName("ten_tieu_chi").HasMaxLength(255).IsRequired();
+        rubric.Property(item => item.Weight).HasColumnName("ty_trong").IsRequired();
+        rubric.Property(item => item.Order).HasColumnName("thu_tu").IsRequired();
 
         teacherProfile.ToTable("ho_so_giao_vien");
         teacherProfile.HasKey(item => item.Id);
