@@ -78,7 +78,10 @@ builder.Services.AddSingleton<IPortfolioStorage>(services =>
     return ActivatorUtilities.CreateInstance<LocalPortfolioStorage>(services);
 });
 builder.Services.AddScoped<AccountDirectory>();
+builder.Services.AddScoped<ActiveAccountHandler>();
 builder.Services.AddScoped<LearningProgressService>();
+builder.Services.AddScoped<AdminManagementService>();
+builder.Services.AddScoped<AdminOrderService>();
 builder.Services.AddSingleton<AssignmentStorage>();
 
 builder.Services
@@ -111,19 +114,23 @@ builder.Services
                     return;
                 }
 
-                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-                var user = await db.Users
-                    .AsNoTracking()
-                    .SingleOrDefaultAsync(candidate => candidate.Id == userId);
+                var accounts = context.HttpContext.RequestServices.GetRequiredService<ActiveAccountHandler>();
+                var status = await accounts.CheckAsync(userId, context.HttpContext.RequestAborted);
 
-                if (user is null || user.IsLocked)
+                if (!status.Available)
+                {
+                    context.Fail("The account state could not be verified.");
+                    return;
+                }
+
+                if (!status.Found || status.IsLocked)
                 {
                     context.Fail("The account is unavailable or locked.");
                     return;
                 }
 
                 var tokenRole = context.Principal?.FindFirstValue("role");
-                if (!string.Equals(tokenRole, user.Role.ToString(), StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(tokenRole, status.Role, StringComparison.OrdinalIgnoreCase))
                 {
                     context.Fail("The account role has changed. Sign in again.");
                 }
@@ -211,7 +218,21 @@ app.MapGet("/api/account/me", async (HttpRequest request, IConfiguration configu
     client.BaseAddress = uri;
     var result = await new SupabaseAccountService(client, publicKey).GetAccountAsync(header.Parameter, cancellationToken);
     if (result.Unavailable) return Results.Problem("Không thể xác minh tài khoản lúc này.", statusCode: 503);
-    return result.Account is null ? Results.Unauthorized() : Results.Ok(result.Account);
+    if (result.Account is null) return Results.Unauthorized();
+    if (result.Account.IsLocked)
+        return Results.Problem("Tài khoản đã bị khóa.", statusCode: StatusCodes.Status403Forbidden);
+    var accountDb = request.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+    if (accountDb.Database.IsNpgsql())
+    {
+        var status = await request.HttpContext.RequestServices.GetRequiredService<ActiveAccountHandler>()
+            .CheckAsync(result.Account.Id, cancellationToken);
+        if (!status.Available)
+            return Results.Problem("Không thể xác minh trạng thái tài khoản lúc này.", statusCode: 503);
+        if (!status.Found || status.IsLocked)
+            return Results.Problem("Tài khoản đã bị khóa hoặc không còn hiệu lực.",
+                statusCode: StatusCodes.Status403Forbidden);
+    }
+    return Results.Ok(result.Account);
 });
 
 app.MapGet("/api/health", async (AppDbContext db, IConfiguration configuration, IHttpClientFactory clients, CancellationToken cancellationToken) =>
@@ -228,9 +249,18 @@ app.MapGet("/api/health", async (AppDbContext db, IConfiguration configuration, 
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Add("apikey", key);
             using var response = await clients.CreateClient().SendAsync(request, cancellationToken);
-            return response.IsSuccessStatusCode
-                ? Results.Ok(new { status = "ok", auth = "connected" })
-                : Results.Problem("Không thể kết nối Supabase Auth.", statusCode: 503);
+            if (!response.IsSuccessStatusCode)
+                return Results.Problem("Không thể kết nối Supabase Auth.", statusCode: 503);
+
+            var databaseConnected = await db.Database.CanConnectAsync(cancellationToken);
+            return Results.Ok(new
+            {
+                status = databaseConnected ? "ok" : "degraded",
+                auth = "connected",
+                database = databaseConnected ? "connected" : "unavailable",
+                databaseMode = db.Database.IsNpgsql() ? "postgres" : "sqlite",
+                preflight = "/api/health/preflight"
+            });
         }
         catch (HttpRequestException)
         {
@@ -254,6 +284,15 @@ if (runMigrations)
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
+    if (db.Database.IsNpgsql())
+    {
+        // Sprint 6 admin/order columns and the D05 completion backfill are kept
+        // as reviewed, idempotent SQL so they do not modify the EF model snapshot.
+        await db.Database.ExecuteSqlRawAsync(
+            ReadEmbeddedSql("Linea.Api.Data.Sql.admin-management.sql"), app.Lifetime.ApplicationStopping);
+        await db.Database.ExecuteSqlRawAsync(
+            ReadEmbeddedSql("Linea.Api.Data.Sql.progress-completion-d05.sql"), app.Lifetime.ApplicationStopping);
+    }
     await DbSeeder.SeedAdminAsync(
         scope.ServiceProvider,
         app.Configuration,
@@ -261,6 +300,14 @@ if (runMigrations)
 }
 
 app.Run();
+
+static string ReadEmbeddedSql(string name)
+{
+    using var stream = typeof(AppDbContext).Assembly.GetManifestResourceStream(name)
+        ?? throw new InvalidOperationException($"Missing embedded SQL resource {name}.");
+    using var reader = new StreamReader(stream);
+    return reader.ReadToEnd();
+}
 
 static string BuildPostgresConnectionString(string url)
 {

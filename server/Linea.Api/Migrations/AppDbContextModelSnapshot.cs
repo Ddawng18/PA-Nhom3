@@ -142,6 +142,173 @@ namespace Linea.Api.Migrations
                     b.ToTable("courses", (string)null);
                 });
 
+            modelBuilder.Entity("Linea.Api.Models.CourseAttachmentContent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_tep");
+
+                    b.Property<long>("LessonId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_bai_hoc");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ten_tep");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("duong_dan");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("dung_luong");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("loai_tep");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("tep_dinh_kem_bai_hoc", (string)null);
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.CourseChapter", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_chuong");
+
+                    b.Property<long>("CourseId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_khoa_hoc");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("thu_tu");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tieu_de");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("chuong", (string)null);
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.CourseEnrollment", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ma_nguoi_dung");
+
+                    b.Property<long>("CourseId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_khoa_hoc");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_hoan_thanh");
+
+                    b.Property<DateTimeOffset>("EnrolledAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_ghi_danh");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("trang_thai");
+
+                    b.HasKey("UserId", "CourseId");
+
+                    b.ToTable("ghi_danh", (string)null);
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.CourseLesson", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_bai_hoc");
+
+                    b.Property<long>("ChapterId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_chuong");
+
+                    b.Property<string>("ImagePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("duong_dan_anh");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("thu_tu");
+
+                    b.Property<bool>("Required")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("bat_buoc");
+
+                    b.Property<string>("TextContent")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("noi_dung_van_ban");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tieu_de");
+
+                    b.Property<string>("VideoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("lien_ket_video");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("bai_hoc", (string)null);
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.CourseRubricContent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_tieu_chi");
+
+                    b.Property<long>("AssignmentId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_bai_tap");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ten_tieu_chi");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("thu_tu");
+
+                    b.Property<int>("Weight")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ty_trong");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("tieu_chi_cham_diem", (string)null);
+                });
+
             modelBuilder.Entity("Linea.Api.Models.LearningCourse", b =>
                 {
                     b.Property<long>("Id")
@@ -196,6 +363,35 @@ namespace Linea.Api.Migrations
                     b.HasIndex("TeacherId");
 
                     b.ToTable("khoa_hoc", (string)null);
+                });
+
+            modelBuilder.Entity("Linea.Api.Models.LessonProgress", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ma_nguoi_dung");
+
+                    b.Property<long>("LessonId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ma_bai_hoc");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_hoan_thanh");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ngay_bat_dau");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("trang_thai");
+
+                    b.HasKey("UserId", "LessonId");
+
+                    b.ToTable("tien_do_bai_hoc", (string)null);
                 });
 
             modelBuilder.Entity("Linea.Api.Models.NotificationMessage", b =>

@@ -15,7 +15,7 @@ declare
   target_table text;
   target_column text;
 begin
-  foreach target_table in array array['nguoi_dung', 'chuong', 'bai_hoc', 'bai_tap', 'tep_dinh_kem_bai_hoc', 'tieu_chi_cham_diem']
+  foreach target_table in array array['nguoi_dung', 'khoa_hoc', 'chuong', 'bai_hoc', 'bai_tap', 'tep_dinh_kem_bai_hoc', 'tieu_chi_cham_diem']
   loop
     if to_regclass(format('public.%I', target_table)) is null then
       raise exception 'Required Sprint 6 table missing: %', target_table;
@@ -52,5 +52,5 @@ select role_name, table_name, privilege,
   has_table_privilege(role_name, format('public.%I', table_name), privilege) as table_write,
   has_any_column_privilege(role_name, format('public.%I', table_name), privilege) as column_write
 from unnest(array['anon','authenticated']) as role_name
-cross join unnest(array['nguoi_dung','chuong','bai_hoc','bai_tap','tep_dinh_kem_bai_hoc','tieu_chi_cham_diem']) as table_name
+cross join unnest(array['nguoi_dung','khoa_hoc','chuong','bai_hoc','bai_tap','tep_dinh_kem_bai_hoc','tieu_chi_cham_diem']) as table_name
 cross join unnest(array['INSERT','UPDATE']) as privilege;

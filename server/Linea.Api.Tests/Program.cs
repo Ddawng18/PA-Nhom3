@@ -300,7 +300,8 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
             ("Supabase storage builds upload, validation and signed URL requests", SupabaseStorageRequestsAsync),
             ("portfolio upload rejects invalid type and oversized files", PortfolioUploadValidationAsync),
             ("course API enforces ownership, validation and draft privacy", CourseAccessAsync),
-            ("course review updates canonical data, history and notifications atomically", CourseWorkflowAsync)
+            ("course review updates canonical data, history and notifications atomically", CourseWorkflowAsync),
+            ("D05 progress completes after required submission without grading", ProgressD05Async)
         };
 
         var passed = 0;
@@ -599,6 +600,18 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
             { BaseAddress = new Uri("https://supabase.example/") };
         var unavailable = await new SupabaseAccountService(failed, "public-key").GetAccountAsync("token", default);
         Expect(unavailable.Account is null && unavailable.Unavailable, "upstream failure was not reported");
+
+        using var locked = new HttpClient(new FakeSupabaseHandler(request =>
+        {
+            if (request.RequestUri!.AbsolutePath == "/auth/v1/user")
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = userId }) };
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new[] { new { id = userId, display_name = "Test", role = "student", is_locked = true } })
+            };
+        })) { BaseAddress = new Uri("https://supabase.example/") };
+        var lockedAccount = await new SupabaseAccountService(locked, "public-key").GetAccountAsync("valid-token", default);
+        Expect(lockedAccount.Account is { IsLocked: true }, "locked profile was not reported");
     }
 
     private async Task InvalidRoleAsync()
@@ -1522,6 +1535,154 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
         Expect((await db.LearningCourses.SingleAsync(item => item.Id == _courseId)).Status == "DA_DANG", "wrong persisted status");
         Expect(await db.StatusHistory.CountAsync(item => item.ObjectType == "KHOA_HOC" && item.ObjectId == _courseId.ToString()) == 4, "missing or duplicated course history");
         Expect(await db.Notifications.CountAsync(item => item.Type == "KHOA_HOC" && item.UserId == _firstTeacherStudentId) == 2, "missing or duplicated course notifications");
+    }
+
+    private async Task ProgressD05Async()
+    {
+        long lessonId;
+        long assignmentId;
+        await using (var db = CreateDb())
+        {
+            try
+            {
+                // The legacy SQLite harness does not run the Supabase canonical
+                // learner-content schema. Create the same child tables locally so
+                // this smoke test exercises the API/D05 rule without touching a
+                // shared database.
+                await db.Database.ExecuteSqlRawAsync("""
+                    create table if not exists chuong (
+                      ma_chuong integer primary key autoincrement,
+                      ma_khoa_hoc integer not null,
+                      tieu_de text not null,
+                      thu_tu integer not null
+                    );
+                    create table if not exists bai_hoc (
+                      ma_bai_hoc integer primary key autoincrement,
+                      ma_chuong integer not null,
+                      tieu_de text not null,
+                      thu_tu integer not null,
+                      noi_dung_van_ban text,
+                      duong_dan_anh text,
+                      lien_ket_video text,
+                      bat_buoc integer not null default 1
+                    );
+                    create table if not exists ghi_danh (
+                      ma_nguoi_dung text not null,
+                      ma_khoa_hoc integer not null,
+                      trang_thai text not null,
+                      ngay_ghi_danh text not null,
+                      ngay_hoan_thanh text,
+                      primary key (ma_nguoi_dung, ma_khoa_hoc)
+                    );
+                    create table if not exists tien_do_bai_hoc (
+                      ma_nguoi_dung text not null,
+                      ma_bai_hoc integer not null,
+                      trang_thai text not null,
+                      ngay_bat_dau text,
+                      ngay_hoan_thanh text,
+                      primary key (ma_nguoi_dung, ma_bai_hoc)
+                    );
+                    """);
+                var chapter = new CourseChapter { CourseId = _courseId, Title = "Chương tiến độ", Order = 1 };
+                db.CourseChapters.Add(chapter);
+                await db.SaveChangesAsync();
+                var lesson = new CourseLesson
+                {
+                    ChapterId = chapter.Id, Title = "Bài bắt buộc", Order = 1, Required = true
+                };
+                db.CourseLessons.Add(lesson);
+                await db.SaveChangesAsync();
+                var assignment = new Assignment
+                {
+                    LessonId = lesson.Id, Prompt = "Vẽ bài luyện tập", Required = true
+                };
+                db.Assignments.Add(assignment);
+                await db.SaveChangesAsync();
+                lessonId = lesson.Id;
+                assignmentId = assignment.Id;
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException(
+                    $"could not seed progress content: {exception.InnerException?.Message ?? exception.Message}",
+                    exception);
+            }
+        }
+
+        var student = await RegisterStudentAsync("progress-d05");
+        var (enrollStatus, enrollBody) = await SendAsync(
+            HttpMethod.Post, $"/api/courses/{_courseId}/enroll", token: student.Token);
+        Expect(enrollStatus == HttpStatusCode.OK, $"enroll returned {(int)enrollStatus}: {enrollBody}");
+
+        var (beforeStatus, beforeBody) = await SendAsync(
+            HttpMethod.Get, $"/api/progress?courseId={_courseId}", token: student.Token);
+        Expect(beforeStatus == HttpStatusCode.OK, $"progress returned {(int)beforeStatus}: {beforeBody}");
+        using (var before = JsonDocument.Parse(beforeBody))
+        {
+            var root = before.RootElement;
+            Expect(root.GetProperty("requiredLessons").GetInt32() == 1, "required lesson count is wrong");
+            Expect(root.GetProperty("completedRequiredLessons").GetInt32() == 0, "lesson started completed");
+            Expect(root.GetProperty("requiredAssignments").GetInt32() == 1, "required assignment count is wrong");
+            Expect(root.GetProperty("submittedRequiredAssignments").GetInt32() == 0, "submission was counted early");
+            Expect(!root.GetProperty("completed").GetBoolean(), "course completed before required work");
+        }
+
+        var (lessonStatus, lessonBody) = await SendAsync(
+            HttpMethod.Put,
+            $"/api/courses/{_courseId}/lessons/{lessonId}/progress",
+            new { trang_thai = "DA_HOAN_THANH" },
+            student.Token);
+        Expect(lessonStatus == HttpStatusCode.OK, $"lesson progress returned {(int)lessonStatus}: {lessonBody}");
+
+        var (lessonsDoneStatus, lessonsDoneBody) = await SendAsync(
+            HttpMethod.Get, $"/api/progress?courseId={_courseId}", token: student.Token);
+        Expect(lessonsDoneStatus == HttpStatusCode.OK, $"progress returned {(int)lessonsDoneStatus}: {lessonsDoneBody}");
+        using (var lessonsDone = JsonDocument.Parse(lessonsDoneBody))
+        {
+            var root = lessonsDone.RootElement;
+            Expect(root.GetProperty("lessonPercent").GetInt32() == 100, "lesson percent is not 100");
+            Expect(!root.GetProperty("completed").GetBoolean(), "course completed without required submission");
+        }
+
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(TinyPng);
+        file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(file, "file", "progress.png");
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post, $"/api/assignments/{assignmentId}/submission")
+        {
+            Content = form
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", student.Token);
+        using var submitResponse = await client.SendAsync(request);
+        var submitBody = await submitResponse.Content.ReadAsStringAsync();
+        Expect(submitResponse.StatusCode == HttpStatusCode.OK,
+            $"submission returned {(int)submitResponse.StatusCode}: {submitBody}");
+
+        var (afterStatus, afterBody) = await SendAsync(
+            HttpMethod.Get, $"/api/progress?courseId={_courseId}", token: student.Token);
+        Expect(afterStatus == HttpStatusCode.OK, $"progress returned {(int)afterStatus}: {afterBody}");
+        using (var after = JsonDocument.Parse(afterBody))
+        {
+            var root = after.RootElement;
+            Expect(root.GetProperty("submittedRequiredAssignments").GetInt32() == 1,
+                "required submission was not counted");
+            Expect(root.GetProperty("gradedRequiredAssignments").GetInt32() == 0,
+                "test unexpectedly graded the submission");
+            Expect(root.GetProperty("completed").GetBoolean(),
+                "course did not complete after required submission without grading");
+            Expect(GetString(root, "enrollmentStatus") == "HOAN_THANH",
+                "enrollment status did not become HOAN_THANH");
+        }
+
+        await using (var db = CreateDb())
+        {
+            var enrollment = await db.CourseEnrollments.SingleAsync(item =>
+                item.UserId == student.Id && item.CourseId == _courseId);
+            Expect(enrollment.Status == "HOAN_THANH", "database enrollment is not HOAN_THANH");
+            Expect(enrollment.CompletedAt is not null, "completion timestamp is missing");
+            Expect(!await db.Grades.AnyAsync(), "grading was required by the completion test");
+        }
     }
 
     private static JsonElement SingleItem(string body, long expectedId)
