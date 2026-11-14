@@ -18,10 +18,6 @@ import SettingsPage from "./pages/SettingsPage";
 import TeacherCourseFormPage from "./pages/TeacherCourseFormPage";
 import TeacherOnboardingPage from "./pages/TeacherOnboardingPage";
 import CourseLearningPage from "./pages/CourseLearningPage";
-import TeacherSubmissionsPage from "./pages/TeacherSubmissionsPage";
-import StudentLearningOverviewPage from "./pages/StudentLearningOverviewPage";
-import HomeRoute from "./components/HomeRoute";
-import CoursesPage from "./pages/CoursesPage";
 
 function App() {
   return (
@@ -80,6 +76,14 @@ function App() {
             }
           />
           <Route path="/courses" element={<CoursesPage />} />
+          <Route
+            path="/courses/:courseId"
+            element={<ProtectedRoute><CourseLearningPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/courses/:courseId/learn/:lessonId"
+            element={<ProtectedRoute><CourseLearningPage /></ProtectedRoute>}
+          />
           <Route
             path="/courses/:courseId"
             element={<ProtectedRoute><CourseLearningPage /></ProtectedRoute>}
