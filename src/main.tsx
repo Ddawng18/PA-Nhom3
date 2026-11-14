@@ -20,6 +20,8 @@ import TeacherOnboardingPage from "./pages/TeacherOnboardingPage";
 import CourseLearningPage from "./pages/CourseLearningPage";
 import TeacherSubmissionsPage from "./pages/TeacherSubmissionsPage";
 import StudentLearningOverviewPage from "./pages/StudentLearningOverviewPage";
+import HomeRoute from "./components/HomeRoute";
+import CoursesPage from "./pages/CoursesPage";
 
 function App() {
   return (
@@ -41,7 +43,7 @@ function App() {
           />
           <Route
             path="/"
-            element={<Navigate to="/dashboard" replace />}
+            element={<HomeRoute />}
           />
           <Route
             path="/dashboard"
@@ -77,6 +79,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/courses" element={<CoursesPage />} />
           <Route
             path="/courses/:courseId"
             element={<ProtectedRoute><CourseLearningPage /></ProtectedRoute>}

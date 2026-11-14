@@ -50,6 +50,11 @@ Có thể dùng migration EF nếu hệ thống triển khai đang quản lý l�
 
 Backend cần `SUPABASE_DB_URL` (kết nối server có quyền đọc/ghi các bảng; môi trường hiện tại dùng pooler), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Key server chỉ ở Render, không đặt trong biến VITE. Bucket bài tập cố định riêng, không dùng `SUPABASE_STORAGE_BUCKET` của hồ sơ giáo viên. Frontend giữ `VITE_API_URL` trỏ backend và cấu hình Supabase Auth hiện có.
 
+Course editor hiện lưu toàn bộ nội dung qua `PUT /api/courses/{id}/editor`.
+Endpoint chỉ cho giáo viên sở hữu khóa học nháp thao tác, chạy trong transaction
+và yêu cầu `expectedVersion` lấy từ `GET /api/courses/{id}/editor/version`;
+version conflict trả về `409` để tránh ghi đè thay đổi của người khác.
+
 Nên triển khai backend/frontend cùng phiên bản, sau khi chuẩn bị SQL. Bản frontend cũ ghi thẳng Supabase sẽ bị từ chối ghi sau thay đổi quyền. Nếu deploy thủ công với SQL, giữ cấu hình chạy migration tự động theo quy trình đang dùng; không bật `RUN_MIGRATIONS=true` chỉ để thử khi chưa đối chiếu toàn bộ lịch sử EF cũ.
 
 ## An toàn dữ liệu và giới hạn
