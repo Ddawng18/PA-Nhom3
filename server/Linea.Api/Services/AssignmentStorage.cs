@@ -4,26 +4,33 @@ namespace Linea.Api.Services;
 // bucket so teacher portfolio paths cannot be reused as learner submissions.
 public sealed class AssignmentStorage
 {
-    public IPortfolioStorage Files { get; }
     private readonly IConfiguration config;
     private readonly IHttpClientFactory clients;
     private readonly ILogger<AssignmentStorage> logger;
+    private readonly Lazy<IPortfolioStorage> files;
 
     public AssignmentStorage(IServiceProvider services, IConfiguration configuration, IWebHostEnvironment environment)
     {
         config = new ConfigurationBuilder().AddConfiguration(configuration)
             .AddInMemoryCollection(new Dictionary<string, string?> {
-                ["SUPABASE_STORAGE_BUCKET"] = "assignment-submissions",
+                ["SUPABASE_STORAGE_BUCKET"] = configuration["ASSIGNMENT_STORAGE_BUCKET"] ?? "assignment-submissions",
                 ["TEACHER_DOCS_PATH"] = Path.Combine(environment.ContentRootPath, "App_Data", "assignment-submissions")
             }).Build();
         clients = services.GetRequiredService<IHttpClientFactory>();
         logger = services.GetRequiredService<ILogger<AssignmentStorage>>();
-        if (!string.IsNullOrWhiteSpace(config["SUPABASE_URL"]) && !string.IsNullOrWhiteSpace(config["SUPABASE_SERVICE_ROLE_KEY"]))
-            Files = ActivatorUtilities.CreateInstance<SupabasePortfolioStorage>(services, config);
-        else if (environment.IsDevelopment() && configuration["AUTH_MODE"] == "legacy")
-            Files = ActivatorUtilities.CreateInstance<LocalPortfolioStorage>(services, config);
-        else throw new InvalidOperationException("Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for assignment storage.");
+        files = new Lazy<IPortfolioStorage>(() =>
+        {
+            if (!string.IsNullOrWhiteSpace(config["SUPABASE_URL"]) &&
+                !string.IsNullOrWhiteSpace(config["SUPABASE_SERVICE_ROLE_KEY"]))
+                return ActivatorUtilities.CreateInstance<SupabasePortfolioStorage>(services, config);
+            if (environment.IsDevelopment() && configuration["AUTH_MODE"] == "legacy")
+                return ActivatorUtilities.CreateInstance<LocalPortfolioStorage>(services, config);
+            throw new InvalidOperationException(
+                "Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for assignment storage.");
+        });
     }
+
+    public IPortfolioStorage Files => files.Value;
 
     public async Task DeleteReplacedAsync(string? path)
     {

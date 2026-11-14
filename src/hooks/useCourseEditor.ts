@@ -4,9 +4,8 @@ import { useAuth } from "../auth/useAuth";
 import { getCourse, saveCourseInfo, submitCourse } from "../lib/courseApi";
 import { AdminApiError } from "../lib/adminApi";
 import { supabase } from "../lib/supabase";
-import { removeCourseMedia } from "../lib/courseStorage";
-import { saveCourseEditor } from "../lib/courseEditorApi";
-import { buildReorderPlan, type CourseInfo } from "../logic/courseEditor";
+import { loadCourseEditorVersion, saveCourseEditor } from "../lib/courseEditorApi";
+import { type CourseInfo } from "../logic/courseEditor";
 
 const rowIdSchema = z.union([z.string(), z.number().int()]);
 const courseSchema = z.object({
@@ -100,6 +99,7 @@ export type CourseEditorModel = {
 
 type EditorState = {
   course: CourseEditorModel | null;
+  version: string | null;
   loading: boolean;
   error: string | null;
   notFound: boolean;
@@ -107,7 +107,6 @@ type EditorState = {
 };
 
 const genericLoadError = "Không thể tải khóa học. Vui lòng kiểm tra kết nối và thử lại.";
-const missingCourseMessage = "Không tìm thấy khóa học hoặc bạn không có quyền truy cập.";
 const saveErrorMessage = "Chưa thể lưu thay đổi. Vui lòng kiểm tra kết nối và thử lại.";
 const isMissingRubricTable = (message: string) => message.includes("tieu_chi_cham_diem")
   && (message.includes("does not exist") || message.includes("Could not find the table") || message.includes("schema cache"));
@@ -117,6 +116,7 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
   const token = session?.access_token;
   const [state, setState] = useState<EditorState>({
     course: null,
+    version: null,
     loading: Boolean(courseId),
     error: null,
     notFound: false,
@@ -129,18 +129,18 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
   useEffect(() => {
     let active = true;
     if (!courseId) {
-      setState({ course: null, loading: false, error: null, notFound: false, rubricUnavailable: false });
+      setState({ course: null, version: null, loading: false, error: null, notFound: false, rubricUnavailable: false });
       return () => {
         active = false;
       };
     }
     if (!supabase) {
-      setState({ course: null, loading: false, error: genericLoadError, notFound: false, rubricUnavailable: false });
+      setState({ course: null, version: null, loading: false, error: genericLoadError, notFound: false, rubricUnavailable: false });
       return () => {
         active = false;
       };
     }
-    setState({ course: null, loading: true, error: null, notFound: false, rubricUnavailable: false });
+    setState({ course: null, version: null, loading: true, error: null, notFound: false, rubricUnavailable: false });
     void (async () => {
       try {
         if (!token) throw new Error(genericLoadError);
@@ -148,7 +148,7 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
         const parsedCourse = courseSchema.safeParse(courseRow);
         if (!parsedCourse.success) throw new Error(genericLoadError);
         if (parsedCourse.data.ma_giao_vien !== userId) {
-          if (active) setState({ course: null, loading: false, error: null, notFound: true, rubricUnavailable: false });
+          if (active) setState({ course: null, version: null, loading: false, error: null, notFound: true, rubricUnavailable: false });
           return;
         }
         const course = parsedCourse.data;
@@ -228,12 +228,14 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
           }),
         }));
         if (active) {
+          const version = await loadCourseEditorVersion(token, course.ma_khoa_hoc);
           setState({
             course: {
               ...course,
               anh_dai_dien: course.anh_dai_dien ?? "",
               chuong: chapters,
             },
+            version,
             loading: false,
             error: null,
             notFound: false,
@@ -241,7 +243,7 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
           });
         }
       } catch (error) {
-        if (active) setState({ course: null, loading: false, error: error instanceof AdminApiError && error.status === 404 ? null : genericLoadError, notFound: error instanceof AdminApiError && error.status === 404, rubricUnavailable: false });
+        if (active) setState({ course: null, version: null, loading: false, error: error instanceof AdminApiError && error.status === 404 ? null : genericLoadError, notFound: error instanceof AdminApiError && error.status === 404, rubricUnavailable: false });
       }
     })();
     return () => {
@@ -273,218 +275,106 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
         ? [...course.chuong, { ...chapter, ma_khoa_hoc: course.ma_khoa_hoc }]
         : course.chuong.map((item) => item.ma_chuong === chapter.ma_chuong ? chapter : item),
     };
-    await saveCourseEditor(token, nextCourse);
+    const saved = await saveCourseEditor(token, nextCourse, state.version ?? "");
     reload();
-    return chapter.ma_chuong;
-  }, [assertEditable, reload, token]);
+    const index = nextCourse.chuong.findIndex((item) => item === chapter || item.ma_chuong === chapter.ma_chuong);
+    return saved.chapterIds[index] ?? chapter.ma_chuong;
+  }, [assertEditable, reload, state.version, token]);
 
   const saveLesson = useCallback(async (lesson: CourseEditorLesson) => {
-    assertEditable();
-    const values = {
-      ma_chuong: lesson.ma_chuong,
-      tieu_de: lesson.tieu_de.trim(),
-      thu_tu: lesson.thu_tu,
-      noi_dung_van_ban: lesson.noi_dung_van_ban,
-      duong_dan_anh: lesson.duong_dan_anh || null,
-      lien_ket_video: lesson.lien_ket_video || null,
-      bat_buoc: lesson.bat_buoc,
+    const course = assertEditable();
+    if (!token || !state.version) throw new Error(saveErrorMessage);
+    const nextCourse = {
+      ...course,
+      chuong: course.chuong.map((chapter) => ({
+        ...chapter,
+        bai_hoc: chapter.bai_hoc.map((item) => item.ma_bai_hoc === lesson.ma_bai_hoc ? lesson : item),
+      })),
     };
-    let lessonId = lesson.ma_bai_hoc;
-    if (lessonId === null) {
-      const { data, error } = await supabase!.from("bai_hoc").insert(values).select("ma_bai_hoc").single();
-      if (error || !rowIdSchema.safeParse(data?.ma_bai_hoc).success) throw new Error(saveErrorMessage);
-      lessonId = data.ma_bai_hoc;
-    } else {
-      const { data, error } = await supabase!.from("bai_hoc").update(values)
-        .eq("ma_bai_hoc", lessonId).select("ma_bai_hoc").maybeSingle();
-      if (error || !z.object({ ma_bai_hoc: rowIdSchema }).safeParse(data).success) throw new Error(saveErrorMessage);
-    }
-    if (lesson.bai_tap) {
-      const assignmentValues = {
-        ma_bai_hoc: lessonId,
-        de_bai: lesson.bai_tap.de_bai.trim(),
-        han_nop: lesson.bai_tap.han_nop || null,
-        bat_buoc: lesson.bai_tap.bat_buoc,
-      };
-      let assignmentId = lesson.bai_tap.ma_bai_tap;
-      if (assignmentId === null) {
-        const { data, error } = await supabase!.from("bai_tap").insert(assignmentValues).select("ma_bai_tap").single();
-        if (error || !rowIdSchema.safeParse(data?.ma_bai_tap).success) throw new Error(saveErrorMessage);
-        assignmentId = data.ma_bai_tap;
-      } else {
-        const { data, error } = await supabase!.from("bai_tap").update(assignmentValues)
-          .eq("ma_bai_tap", assignmentId).select("ma_bai_tap").maybeSingle();
-        if (error || !z.object({ ma_bai_tap: rowIdSchema }).safeParse(data).success) throw new Error(saveErrorMessage);
-      }
-      const deleteResult = await supabase!.from("tieu_chi_cham_diem").delete().eq("ma_bai_tap", assignmentId);
-      if (deleteResult.error && !isMissingRubricTable(deleteResult.error.message)) throw new Error(saveErrorMessage);
-      if (deleteResult.error && lesson.bai_tap.tieu_chi.length) {
-        setState((current) => ({ ...current, rubricUnavailable: true }));
-      } else if (lesson.bai_tap.tieu_chi.length) {
-        const { error } = await supabase!.from("tieu_chi_cham_diem").insert(
-          lesson.bai_tap.tieu_chi.map(({ ten_tieu_chi, ty_trong, thu_tu }) => ({
-            ma_bai_tap: assignmentId,
-            ten_tieu_chi,
-            ty_trong,
-            thu_tu,
-          }))
-        );
-        if (error && isMissingRubricTable(error.message)) setState((current) => ({ ...current, rubricUnavailable: true }));
-        else if (error) throw new Error(saveErrorMessage);
-      }
-    } else if (lessonId !== null) {
-      const { data: assignmentRows, error: assignmentLoadError } = await supabase!.from("bai_tap")
-        .select("ma_bai_tap").eq("ma_bai_hoc", lessonId);
-      if (assignmentLoadError) throw new Error(saveErrorMessage);
-      const assignments = z.array(z.object({ ma_bai_tap: rowIdSchema })).safeParse(assignmentRows);
-      if (!assignments.success) throw new Error(saveErrorMessage);
-      if (assignments.data.length) {
-        const ids = assignments.data.map((item) => item.ma_bai_tap);
-        const rubricDelete = await supabase!.from("tieu_chi_cham_diem").delete().in("ma_bai_tap", ids);
-        if (rubricDelete.error && !isMissingRubricTable(rubricDelete.error.message)) throw new Error(saveErrorMessage);
-        const assignmentDelete = await supabase!.from("bai_tap").delete().in("ma_bai_tap", ids);
-        if (assignmentDelete.error) throw new Error(saveErrorMessage);
-      }
-    }
+    const chapter = nextCourse.chuong.find((item) => item.ma_chuong === lesson.ma_chuong);
+    if (!chapter) throw new Error(saveErrorMessage);
+    if (!chapter.bai_hoc.some((item) => item === lesson)) chapter.bai_hoc = [...chapter.bai_hoc, lesson];
+    const saved = await saveCourseEditor(token, nextCourse, state.version);
     reload();
-    return lessonId;
-  }, [assertEditable, reload]);
+    const index = nextCourse.chuong.flatMap((item) => item.bai_hoc).findIndex((item) => item === lesson);
+    return saved.lessonIds[index] ?? lesson.ma_bai_hoc;
+  }, [assertEditable, reload, state.version, token]);
 
   const saveLessonImage = useCallback(async (lessonId: string | number, url: string) => {
-    assertEditable();
-    const { data, error } = await supabase!.from("bai_hoc").update({ duong_dan_anh: url })
-      .eq("ma_bai_hoc", lessonId).select("ma_bai_hoc").maybeSingle();
-    if (error || !z.object({ ma_bai_hoc: rowIdSchema }).safeParse(data).success) throw new Error(saveErrorMessage);
+    const course = assertEditable();
+    if (!token || !state.version) throw new Error(saveErrorMessage);
+    const nextCourse = {
+      ...course,
+      chuong: course.chuong.map((chapter) => ({
+        ...chapter,
+        bai_hoc: chapter.bai_hoc.map((lesson) => lesson.ma_bai_hoc === lessonId
+          ? { ...lesson, duong_dan_anh: url }
+          : lesson),
+      })),
+    };
+    await saveCourseEditor(token, nextCourse, state.version);
     reload();
-  }, [assertEditable, reload]);
+  }, [assertEditable, reload, state.version, token]);
 
   const reorderItems = useCallback(async (
     table: "chuong" | "bai_hoc",
     items: Array<{ id: string | number; thu_tu: number }>,
-    parentKey: "ma_khoa_hoc" | "ma_chuong",
     parentId: string | number
   ) => {
-    assertEditable();
-    const [temporary, finalOrder] = buildReorderPlan(items);
-    try {
-      for (const step of temporary) {
-        const key = table === "chuong" ? "ma_chuong" : "ma_bai_hoc";
-        const { data, error } = await supabase!.from(table).update({ thu_tu: step.thu_tu })
-          .eq(table === "chuong" ? "ma_chuong" : "ma_bai_hoc", step.id)
-          .eq(parentKey, parentId).select(key).maybeSingle();
-        if (error || !z.object({ [key]: rowIdSchema }).safeParse(data).success) throw error ?? new Error(saveErrorMessage);
-      }
-      for (const step of finalOrder) {
-        const key = table === "chuong" ? "ma_chuong" : "ma_bai_hoc";
-        const { data, error } = await supabase!.from(table).update({ thu_tu: step.thu_tu })
-          .eq(table === "chuong" ? "ma_chuong" : "ma_bai_hoc", step.id)
-          .eq(parentKey, parentId).select(key).maybeSingle();
-        if (error || !z.object({ [key]: rowIdSchema }).safeParse(data).success) throw error ?? new Error(saveErrorMessage);
-      }
-      reload();
-    } catch {
-      reload();
-      throw new Error("Không thể đổi thứ tự lúc này. Vui lòng thử lại.");
-    }
-  }, [assertEditable, reload]);
+    const course = assertEditable();
+    if (!token || !state.version) throw new Error(saveErrorMessage);
+    const orderById = new Map(items.map((item) => [item.id, item.thu_tu]));
+    const nextCourse = {
+      ...course,
+      chuong: course.chuong.map((chapter) => ({
+        ...chapter,
+        thu_tu: table === "chuong" && chapter.ma_chuong !== null
+          ? orderById.get(chapter.ma_chuong) ?? chapter.thu_tu
+          : chapter.thu_tu,
+        bai_hoc: table === "bai_hoc" && chapter.ma_chuong === parentId
+          ? chapter.bai_hoc.map((lesson) => ({
+            ...lesson,
+            thu_tu: lesson.ma_bai_hoc === null
+              ? lesson.thu_tu
+              : orderById.get(lesson.ma_bai_hoc) ?? lesson.thu_tu,
+          }))
+          : chapter.bai_hoc,
+      })),
+    };
+    await saveCourseEditor(token, nextCourse, state.version);
+    reload();
+  }, [assertEditable, reload, state.version, token]);
 
   const reorderChapters = useCallback((items: Array<{ id: string | number; thu_tu: number }>) => {
     const course = assertEditable();
-    return reorderItems("chuong", items, "ma_khoa_hoc", course.ma_khoa_hoc);
+    return reorderItems("chuong", items, course.ma_khoa_hoc);
   }, [assertEditable, reorderItems]);
 
   const reorderLessons = useCallback((chapterId: string | number, items: Array<{ id: string | number; thu_tu: number }>) => {
-    return reorderItems("bai_hoc", items, "ma_chuong", chapterId);
+    return reorderItems("bai_hoc", items, chapterId);
   }, [reorderItems]);
 
   const deleteLesson = useCallback(async (lessonId: string | number) => {
-    assertEditable();
-    if (!supabase) throw new Error(saveErrorMessage);
-    try {
-      const { data: assignments, error: assignmentLoadError } = await supabase
-        .from("bai_tap").select("ma_bai_tap").eq("ma_bai_hoc", lessonId);
-      if (assignmentLoadError) throw assignmentLoadError;
-      const parsedAssignments = z.array(z.object({ ma_bai_tap: rowIdSchema })).safeParse(assignments);
-      if (!parsedAssignments.success) throw new Error(saveErrorMessage);
-      if (parsedAssignments.data.length) {
-        const assignmentIds = parsedAssignments.data.map((item) => item.ma_bai_tap);
-        const { error: rubricError } = await supabase.from("tieu_chi_cham_diem").delete().in("ma_bai_tap", assignmentIds);
-        if (rubricError && !isMissingRubricTable(rubricError.message)) throw rubricError;
-      }
-      const { data: attachments, error: attachmentError } = await supabase
-        .from("tep_dinh_kem_bai_hoc").select("ma_tep, duong_dan").eq("ma_bai_hoc", lessonId);
-      if (attachmentError) throw attachmentError;
-      const parsedAttachments = z.array(z.object({ ma_tep: rowIdSchema, duong_dan: z.string() })).safeParse(attachments);
-      if (!parsedAttachments.success) throw new Error(saveErrorMessage);
-      if (parsedAttachments.data.length) {
-        const { error } = await supabase.from("tep_dinh_kem_bai_hoc").delete().in("ma_tep", parsedAttachments.data.map((item) => item.ma_tep));
-        if (error) throw error;
-        await removeCourseMedia(parsedAttachments.data.map((item) => item.duong_dan), "attachments");
-      }
-      if (parsedAssignments.data.length) {
-        const { error } = await supabase.from("bai_tap").delete().in("ma_bai_tap", parsedAssignments.data.map((item) => item.ma_bai_tap));
-        if (error) throw error;
-      }
-      const { error } = await supabase.from("bai_hoc").delete().eq("ma_bai_hoc", lessonId);
-      if (error) throw error;
-      const chapter = state.course?.chuong.find((item) => item.bai_hoc.some((lesson) => lesson.ma_bai_hoc === lessonId));
-      const remainingLessons = chapter?.bai_hoc
-        .filter((lesson) => lesson.ma_bai_hoc !== lessonId)
-        .filter((lesson): lesson is CourseEditorLesson & { ma_bai_hoc: string | number } => lesson.ma_bai_hoc !== null)
-        .map((lesson) => ({ id: lesson.ma_bai_hoc, thu_tu: lesson.thu_tu })) ?? [];
-      if (chapter?.ma_chuong && remainingLessons.length) {
-        await reorderItems("bai_hoc", remainingLessons, "ma_chuong", chapter.ma_chuong);
-      }
-      reload();
-    } catch (error) {
-      if (error instanceof Error && error.message === "Không thể đổi thứ tự lúc này. Vui lòng thử lại.") throw error;
-      throw new Error("Không thể xóa nội dung này vì đã có dữ liệu liên quan.");
-    }
-  }, [assertEditable, reload, reorderItems, state.course]);
+    const course = assertEditable();
+    if (!token || !state.version) throw new Error(saveErrorMessage);
+    const nextCourse = {
+      ...course,
+      chuong: course.chuong.map((chapter) => ({
+        ...chapter,
+        bai_hoc: chapter.bai_hoc.filter((lesson) => lesson.ma_bai_hoc !== lessonId),
+      })),
+    };
+    await saveCourseEditor(token, nextCourse, state.version);
+    reload();
+  }, [assertEditable, reload, state.version, token]);
 
   const deleteChapter = useCallback(async (chapterId: string | number) => {
     const course = assertEditable();
-    const chapter = course.chuong.find((item) => item.ma_chuong === chapterId);
-    if (!chapter || !supabase) throw new Error(missingCourseMessage);
-    try {
-      for (const lesson of chapter.bai_hoc) {
-        let assignmentIds: Array<string | number> = [];
-        if (lesson.bai_tap?.ma_bai_tap !== null && lesson.bai_tap) {
-          const { error } = await supabase.from("tieu_chi_cham_diem").delete().eq("ma_bai_tap", lesson.bai_tap.ma_bai_tap);
-          if (error && !isMissingRubricTable(error.message)) throw error;
-          assignmentIds = [lesson.bai_tap.ma_bai_tap];
-        }
-        const { data: attachmentRows, error: attachmentLoadError } = await supabase
-          .from("tep_dinh_kem_bai_hoc").select("ma_tep, duong_dan").eq("ma_bai_hoc", lesson.ma_bai_hoc);
-        if (attachmentLoadError) throw attachmentLoadError;
-        const parsedAttachments = z.array(z.object({ ma_tep: rowIdSchema, duong_dan: z.string() })).safeParse(attachmentRows);
-        if (!parsedAttachments.success) throw new Error(saveErrorMessage);
-        const { data: attachments, error: attachmentError } = await supabase
-          .from("tep_dinh_kem_bai_hoc").delete().eq("ma_bai_hoc", lesson.ma_bai_hoc).select("ma_tep");
-        if (attachmentError) throw attachmentError;
-        const deletedAttachments = z.array(z.object({ ma_tep: rowIdSchema })).safeParse(attachments);
-        if (!deletedAttachments.success) throw new Error(saveErrorMessage);
-        if (parsedAttachments.data.length) await removeCourseMedia(parsedAttachments.data.map((item) => item.duong_dan), "attachments");
-        if (assignmentIds.length) {
-          const { error } = await supabase.from("bai_tap").delete().in("ma_bai_tap", assignmentIds);
-          if (error) throw error;
-        }
-        const { error: lessonError } = await supabase.from("bai_hoc").delete().eq("ma_bai_hoc", lesson.ma_bai_hoc);
-        if (lessonError) throw lessonError;
-      }
-      const { error } = await supabase.from("chuong").delete()
-        .eq("ma_chuong", chapterId).eq("ma_khoa_hoc", course.ma_khoa_hoc);
-      if (error) throw error;
-      const remainingChapters = course.chuong.filter((item) => item.ma_chuong !== chapterId)
-        .filter((item): item is CourseEditorChapter & { ma_chuong: string | number } => item.ma_chuong !== null)
-        .map((item) => ({ id: item.ma_chuong, thu_tu: item.thu_tu }));
-      if (remainingChapters.length) await reorderItems("chuong", remainingChapters, "ma_khoa_hoc", course.ma_khoa_hoc);
-      reload();
-    } catch (error) {
-      if (error instanceof Error && error.message === "Không thể đổi thứ tự lúc này. Vui lòng thử lại.") throw error;
-      throw new Error("Không thể xóa nội dung này vì đã có dữ liệu liên quan.");
-    }
-  }, [assertEditable, reload, reorderItems]);
+    if (!token || !state.version) throw new Error(saveErrorMessage);
+    const nextCourse = { ...course, chuong: course.chuong.filter((chapter) => chapter.ma_chuong !== chapterId) };
+    await saveCourseEditor(token, nextCourse, state.version);
+    reload();
+  }, [assertEditable, reload, state.version, token]);
 
   const submitForReview = useCallback(async () => {
     const course = assertEditable();
