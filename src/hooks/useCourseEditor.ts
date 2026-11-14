@@ -5,6 +5,7 @@ import { getCourse, saveCourseInfo, submitCourse } from "../lib/courseApi";
 import { AdminApiError } from "../lib/adminApi";
 import { supabase } from "../lib/supabase";
 import { removeCourseMedia } from "../lib/courseStorage";
+import { saveCourseEditor } from "../lib/courseEditorApi";
 import { buildReorderPlan, type CourseInfo } from "../logic/courseEditor";
 
 const rowIdSchema = z.union([z.string(), z.number().int()]);
@@ -265,21 +266,17 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
 
   const saveChapter = useCallback(async (chapter: CourseEditorChapter) => {
     const course = assertEditable();
-    const values = { ma_khoa_hoc: course.ma_khoa_hoc, tieu_de: chapter.tieu_de.trim(), thu_tu: chapter.thu_tu };
-    if (chapter.ma_chuong === null) {
-      const { data, error } = await supabase!.from("chuong").insert(values).select("ma_chuong").single();
-      if (error || !rowIdSchema.safeParse(data?.ma_chuong).success) throw new Error(saveErrorMessage);
-      reload();
-      return data.ma_chuong;
-    } else {
-      const { data, error } = await supabase!.from("chuong").update(values)
-        .eq("ma_chuong", chapter.ma_chuong).eq("ma_khoa_hoc", course.ma_khoa_hoc)
-        .select("ma_chuong").maybeSingle();
-      if (error || !z.object({ ma_chuong: rowIdSchema }).safeParse(data).success) throw new Error(saveErrorMessage);
-    }
+    if (!token) throw new Error(saveErrorMessage);
+    const nextCourse = {
+      ...course,
+      chuong: chapter.ma_chuong === null
+        ? [...course.chuong, { ...chapter, ma_khoa_hoc: course.ma_khoa_hoc }]
+        : course.chuong.map((item) => item.ma_chuong === chapter.ma_chuong ? chapter : item),
+    };
+    await saveCourseEditor(token, nextCourse);
     reload();
     return chapter.ma_chuong;
-  }, [assertEditable, reload]);
+  }, [assertEditable, reload, token]);
 
   const saveLesson = useCallback(async (lesson: CourseEditorLesson) => {
     assertEditable();

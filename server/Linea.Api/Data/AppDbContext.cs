@@ -8,6 +8,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<User> Users => Set<User>();
     public DbSet<Course> Courses => Set<Course>();
     public DbSet<LearningCourse> LearningCourses => Set<LearningCourse>();
+    public DbSet<CourseChapterContent> CourseChapters => Set<CourseChapterContent>();
+    public DbSet<CourseLessonContent> CourseLessons => Set<CourseLessonContent>();
+    public DbSet<CourseAssignmentContent> CourseAssignments => Set<CourseAssignmentContent>();
+    public DbSet<CourseAttachmentContent> CourseAttachments => Set<CourseAttachmentContent>();
+    public DbSet<CourseRubricContent> CourseRubrics => Set<CourseRubricContent>();
 
     public DbSet<TeacherProfile> TeacherProfiles => Set<TeacherProfile>();
 
@@ -69,6 +74,54 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         learningCourse.Property(item => item.Status).HasColumnName("trang_thai").HasMaxLength(20).IsRequired();
         learningCourse.Property(item => item.CreatedAt).HasColumnName("ngay_tao").IsRequired();
         learningCourse.HasIndex(item => item.TeacherId);
+
+        var chapter = modelBuilder.Entity<CourseChapterContent>();
+        chapter.ToTable("chuong");
+        chapter.HasKey(item => item.Id);
+        chapter.Property(item => item.Id).HasColumnName("ma_chuong");
+        chapter.Property(item => item.CourseId).HasColumnName("ma_khoa_hoc").IsRequired();
+        chapter.Property(item => item.Title).HasColumnName("tieu_de").HasMaxLength(200).IsRequired();
+        chapter.Property(item => item.Order).HasColumnName("thu_tu").IsRequired();
+
+        var lesson = modelBuilder.Entity<CourseLessonContent>();
+        lesson.ToTable("bai_hoc");
+        lesson.HasKey(item => item.Id);
+        lesson.Property(item => item.Id).HasColumnName("ma_bai_hoc");
+        lesson.Property(item => item.ChapterId).HasColumnName("ma_chuong").IsRequired();
+        lesson.Property(item => item.Title).HasColumnName("tieu_de").HasMaxLength(200).IsRequired();
+        lesson.Property(item => item.Order).HasColumnName("thu_tu").IsRequired();
+        lesson.Property(item => item.TextContent).HasColumnName("noi_dung_van_ban");
+        lesson.Property(item => item.ImagePath).HasColumnName("duong_dan_anh").HasMaxLength(500);
+        lesson.Property(item => item.VideoUrl).HasColumnName("lien_ket_video").HasMaxLength(500);
+        lesson.Property(item => item.Required).HasColumnName("bat_buoc").IsRequired();
+
+        var assignment = modelBuilder.Entity<CourseAssignmentContent>();
+        assignment.ToTable("bai_tap");
+        assignment.HasKey(item => item.Id);
+        assignment.Property(item => item.Id).HasColumnName("ma_bai_tap");
+        assignment.Property(item => item.LessonId).HasColumnName("ma_bai_hoc").IsRequired();
+        assignment.Property(item => item.Prompt).HasColumnName("de_bai").IsRequired();
+        assignment.Property(item => item.Deadline).HasColumnName("han_nop");
+        assignment.Property(item => item.Required).HasColumnName("bat_buoc").IsRequired();
+
+        var attachment = modelBuilder.Entity<CourseAttachmentContent>();
+        attachment.ToTable("tep_dinh_kem_bai_hoc");
+        attachment.HasKey(item => item.Id);
+        attachment.Property(item => item.Id).HasColumnName("ma_tep");
+        attachment.Property(item => item.LessonId).HasColumnName("ma_bai_hoc").IsRequired();
+        attachment.Property(item => item.Name).HasColumnName("ten_tep").HasMaxLength(255).IsRequired();
+        attachment.Property(item => item.Path).HasColumnName("duong_dan").HasMaxLength(500).IsRequired();
+        attachment.Property(item => item.Type).HasColumnName("loai_tep").HasMaxLength(50).IsRequired();
+        attachment.Property(item => item.Size).HasColumnName("dung_luong").IsRequired();
+
+        var rubric = modelBuilder.Entity<CourseRubricContent>();
+        rubric.ToTable("tieu_chi_cham_diem");
+        rubric.HasKey(item => item.Id);
+        rubric.Property(item => item.Id).HasColumnName("ma_tieu_chi");
+        rubric.Property(item => item.AssignmentId).HasColumnName("ma_bai_tap").IsRequired();
+        rubric.Property(item => item.Name).HasColumnName("ten_tieu_chi").HasMaxLength(255).IsRequired();
+        rubric.Property(item => item.Weight).HasColumnName("ty_trong").IsRequired();
+        rubric.Property(item => item.Order).HasColumnName("thu_tu").IsRequired();
 
         var teacherProfile = modelBuilder.Entity<TeacherProfile>();
         teacherProfile.ToTable("ho_so_giao_vien");
