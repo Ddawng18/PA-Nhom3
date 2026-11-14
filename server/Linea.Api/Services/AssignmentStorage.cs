@@ -44,7 +44,7 @@ public sealed class AssignmentStorage
                 if (!System.Text.RegularExpressions.Regex.IsMatch(path, @"\A[0-9a-f]{32}\.(jpg|png|webp)\z")) return;
                 using var client = clients.CreateClient("supabase-storage");
                 using var request = new HttpRequestMessage(HttpMethod.Delete,
-                    $"{config["SUPABASE_URL"]!.TrimEnd('/')}/storage/v1/object/assignment-submissions");
+                    $"{config["SUPABASE_URL"]!.TrimEnd('/')}/storage/v1/object/{Uri.EscapeDataString(config["SUPABASE_STORAGE_BUCKET"]!) }");
                 request.Content = System.Net.Http.Json.JsonContent.Create(new { prefixes = new[] { path } });
                 request.Headers.TryAddWithoutValidation("apikey", config["SUPABASE_SERVICE_ROLE_KEY"]);
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", config["SUPABASE_SERVICE_ROLE_KEY"]);

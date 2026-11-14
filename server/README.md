@@ -63,6 +63,8 @@ của nhóm — không qua Git/chat/issue.
 | `SUPABASE_SERVICE_ROLE_KEY` | Không | Khóa server-side để dùng Supabase Storage. Không đưa vào biến `VITE_` hoặc frontend. Có khóa này cùng `SUPABASE_URL` thì backend dùng Supabase Storage thay vì đĩa local. |
 | `SUPABASE_STORAGE_BUCKET` | Không | Bucket ảnh riêng tư, mặc định `teacher-docs`. |
 | `ASSIGNMENT_STORAGE_BUCKET` | Không | Bucket riêng tư cho ảnh bài nộp, mặc định `assignment-submissions`; không dùng chung với hồ sơ giáo viên. |
+| `SUPABASE_MEDIA_BUCKET` | Không | Bucket media khóa học; bắt buộc khi giáo viên tải ảnh bìa hoặc ảnh bài học qua API. |
+| `SUPABASE_ATTACHMENTS_BUCKET` | Không | Bucket private tệp đính kèm khóa học; bắt buộc khi giáo viên tải tài liệu qua API. |
 | `EMAIL_OUTBOX_PATH` | Không | Ghi email ra file trong thư mục này (dev/test) thay vì gửi SMTP. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_ENABLE_SSL` | Không | Cấu hình gửi email thật sau khi commit. Thiếu cấu hình thì bỏ qua và ghi log. |
 | `CLIENT_ORIGIN` | Không | Origin được CORS, mặc định `http://localhost:5173`. |
