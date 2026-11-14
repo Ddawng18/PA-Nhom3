@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Data/Sql/learner-assignments.sql" />
+    <EmbeddedResource Include="Data/Sql/admin-management.sql" />
+    <EmbeddedResource Include="Data/Sql/progress-completion-d05.sql" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.22" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.22" />

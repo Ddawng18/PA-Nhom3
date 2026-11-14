@@ -9,9 +9,25 @@ services:
     dockerContext: .
     healthCheckPath: /api/health
     envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
       - key: SUPABASE_URL
         value: https://pscjbvjcprvzfkawflql.supabase.co
       - key: SUPABASE_PUBLISHABLE_KEY
         sync: false
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ASSIGNMENT_STORAGE_BUCKET
+        value: assignment-submissions
+      - key: SUPABASE_MEDIA_BUCKET
+        value: course-media
+      - key: SUPABASE_ATTACHMENTS_BUCKET
+        value: course-attachments
+      - key: PAYMENT_MODE
+        value: DEMO
+      - key: RUN_MIGRATIONS
+        value: "false"
       - key: CLIENT_ORIGIN
         value: https://linea-nhom3.vercel.app
