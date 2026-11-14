@@ -88,6 +88,7 @@ public sealed class ProfileController(AppDbContext db) : ControllerBase
     {
         var parameter = command.CreateParameter();
         parameter.ParameterName = name;
+        parameter.DbType = name == "id" ? DbType.Guid : DbType.String;
         parameter.Value = value ?? DBNull.Value;
         command.Parameters.Add(parameter);
     }

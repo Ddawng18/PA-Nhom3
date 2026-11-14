@@ -12,7 +12,7 @@ import {
 import { Link, NavLink } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 import { useUserRole } from "../hooks/useUserRole";
-import { loadUserProfile } from "../lib/userProfile";
+import { loadUserProfile, subscribeUserProfile } from "../lib/userProfile";
 import { useEffect, useState } from "react";
 
 type SidebarProps = {
@@ -38,12 +38,18 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
   const [profile, setProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
   useEffect(() => {
     let active = true;
-    void loadUserProfile(user.id).then((value) => {
-      if (active) setProfile(value);
-    }).catch(() => {
-      if (active) setProfile(null);
+    let changed = false;
+    setProfile(null);
+    const unsubscribe = subscribeUserProfile(user.id, (value) => {
+      changed = true;
+      setProfile(value);
     });
-    return () => { active = false; };
+    void loadUserProfile(user.id).then((value) => {
+      if (active && !changed) setProfile(value);
+    }).catch(() => {
+      if (active && !changed) setProfile(null);
+    });
+    return () => { active = false; unsubscribe(); };
   }, [user.id]);
   const sidebarName = profile?.display_name?.trim() || displayName;
   const sidebarInitials = sidebarName.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase();

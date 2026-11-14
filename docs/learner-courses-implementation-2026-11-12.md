@@ -52,8 +52,12 @@ Backend cần `SUPABASE_DB_URL` (kết nối server có quyền đọc/ghi các 
 
 Course editor hiện lưu toàn bộ nội dung qua `PUT /api/courses/{id}/editor`.
 Endpoint chỉ cho giáo viên sở hữu khóa học nháp thao tác, chạy trong transaction
-và yêu cầu `expectedVersion` lấy từ `GET /api/courses/{id}/editor/version`;
+và yêu cầu `expectedVersion` lấy cùng snapshot từ `GET /api/courses/{id}/editor`;
 version conflict trả về `409` để tránh ghi đè thay đổi của người khác.
+
+Cập nhật sửa review 14/11: đọc [bàn giao sửa PR](sprint6-7/REVIEW_FIXES_2026-11-14.md)
+và [Definition of Done](sprint6-7/DEFINITION_OF_DONE.md). Các ghi chú build và giới hạn
+ngày 12/11 bên dưới là lịch sử, không xác nhận trạng thái triển khai hiện tại.
 
 Nên triển khai backend/frontend cùng phiên bản, sau khi chuẩn bị SQL. Bản frontend cũ ghi thẳng Supabase sẽ bị từ chối ghi sau thay đổi quyền. Nếu deploy thủ công với SQL, giữ cấu hình chạy migration tự động theo quy trình đang dùng; không bật `RUN_MIGRATIONS=true` chỉ để thử khi chưa đối chiếu toàn bộ lịch sử EF cũ.
 

@@ -27,6 +27,34 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
     public sealed record AttachmentRequest(long? Id, long? LessonId, string Name, string Path, string Type, long Size);
     public sealed record RubricRequest(long? Id, long? AssignmentId, string Name, int Weight, int Order);
 
+    [HttpGet]
+    [Authorize(Policy = AuthPolicies.TeacherAccess)]
+    public async Task<IActionResult> Read(long courseId, CancellationToken ct)
+    {
+        if (!User.TryGetUserId(out var userId)) return Unauthorized();
+        await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+        if (!await db.LearningCourses.AnyAsync(x => x.Id == courseId && x.TeacherId == userId, ct)) return NotFound();
+        var chapters = await db.CourseChapters.AsNoTracking().Where(x => x.CourseId == courseId).OrderBy(x => x.Order).ToListAsync(ct);
+        var chapterIds = chapters.Select(x => x.Id).ToList();
+        var lessons = await db.CourseLessons.AsNoTracking().Where(x => chapterIds.Contains(x.ChapterId)).OrderBy(x => x.Order).ToListAsync(ct);
+        var lessonIds = lessons.Select(x => x.Id).ToList();
+        var assignments = await db.Assignments.AsNoTracking().Where(x => lessonIds.Contains(x.LessonId)).ToListAsync(ct);
+        var assignmentIds = assignments.Select(x => x.Id).ToList();
+        var attachments = await db.CourseAttachments.AsNoTracking().Where(x => lessonIds.Contains(x.LessonId)).ToListAsync(ct);
+        var rubrics = await db.CourseRubrics.AsNoTracking().Where(x => assignmentIds.Contains(x.AssignmentId)).OrderBy(x => x.Order).ToListAsync(ct);
+        var version = await ComputeVersion(courseId, ct);
+        await tx.CommitAsync(ct);
+        return Ok(new {
+            version,
+            chapters = chapters.Select(x => new { ma_chuong = x.Id, ma_khoa_hoc = x.CourseId, tieu_de = x.Title, thu_tu = x.Order }),
+            lessons = lessons.Select(x => new { ma_bai_hoc = x.Id, ma_chuong = x.ChapterId, tieu_de = x.Title, thu_tu = x.Order,
+                noi_dung_van_ban = x.TextContent, duong_dan_anh = x.ImagePath, lien_ket_video = x.VideoUrl, bat_buoc = x.Required }),
+            assignments = assignments.Select(x => new { ma_bai_tap = x.Id, ma_bai_hoc = x.LessonId, de_bai = x.Prompt, han_nop = x.Deadline, bat_buoc = x.Required }),
+            attachments = attachments.Select(x => new { ma_tep = x.Id, ma_bai_hoc = x.LessonId, ten_tep = x.Name, duong_dan = x.Path, loai_tep = x.Type, dung_luong = x.Size }),
+            rubrics = rubrics.Select(x => new { ma_tieu_chi = x.Id, ma_bai_tap = x.AssignmentId, ten_tieu_chi = x.Name, ty_trong = x.Weight, thu_tu = x.Order })
+        });
+    }
+
     [HttpGet("version")]
     [Authorize(Policy = AuthPolicies.TeacherAccess)]
     public async Task<IActionResult> Version(long courseId, CancellationToken ct)
@@ -43,95 +71,135 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> Replace(long courseId, EditorRequest request, CancellationToken ct)
     {
         if (!User.TryGetUserId(out var userId)) return Unauthorized();
-        var course = await db.LearningCourses.SingleOrDefaultAsync(
-            item => item.Id == courseId && item.TeacherId == userId, ct);
-        if (course is null) return NotFound();
-        if (course.Status != "NHAP") return Conflict(new { detail = "Chỉ có thể sửa nội dung khóa học nháp." });
+        if (request.Chapters is null || request.Lessons is null || request.Assignments is null ||
+            request.Attachments is null || request.Rubrics is null || string.IsNullOrWhiteSpace(request.ExpectedVersion))
+            return BadRequest(new { detail = "Thiếu nội dung hoặc phiên bản editor." });
         if (request.Chapters.Count > 200 || request.Lessons.Count > 1000 ||
             request.Assignments.Count > 1000 || request.Attachments.Count > 2000 || request.Rubrics.Count > 5000)
             return BadRequest(new { detail = "Nội dung khóa học vượt quá giới hạn." });
-
-        var chapterIds = request.Chapters.Select(item => item.Id).Where(item => item.HasValue).Select(item => item!.Value).ToHashSet();
-        var lessonIds = request.Lessons.Select(item => item.Id).Where(item => item.HasValue).Select(item => item!.Value).ToHashSet();
-        var assignmentIds = request.Assignments.Select(item => item.Id).Where(item => item.HasValue).Select(item => item!.Value).ToHashSet();
-        if (request.Lessons.Any(item => item.ChapterId is not null && !chapterIds.Contains(item.ChapterId.Value)) ||
-            request.Assignments.Any(item => item.LessonId is not null && !lessonIds.Contains(item.LessonId.Value)) ||
-            request.Attachments.Any(item => item.LessonId is not null && !lessonIds.Contains(item.LessonId.Value)) ||
-            request.Rubrics.Any(item => item.AssignmentId is not null && !assignmentIds.Contains(item.AssignmentId.Value)))
-            return BadRequest(new { detail = "Quan hệ nội dung không hợp lệ." });
-
-        await using var transaction = await db.Database.BeginTransactionAsync(
-            System.Data.IsolationLevel.Serializable, ct);
+        static bool ValidIds(IEnumerable<long?> ids) {
+            var values = ids.ToList();
+            return values.All(id => id.HasValue && id != 0) && values.Distinct().Count() == values.Count;
+        }
+        if (!ValidIds(request.Chapters.Select(x => x.Id)) || !ValidIds(request.Lessons.Select(x => x.Id)) ||
+            !ValidIds(request.Assignments.Select(x => x.Id)) ||
+            request.Attachments.Where(x => x.Id > 0).GroupBy(x => x.Id).Any(g => g.Count() > 1) ||
+            request.Rubrics.Where(x => x.Id > 0).GroupBy(x => x.Id).Any(g => g.Count() > 1) ||
+            request.Chapters.Any(x => string.IsNullOrWhiteSpace(x.Title) || x.Title.Trim().Length > 200 || x.Order < 1) ||
+            request.Lessons.Any(x => string.IsNullOrWhiteSpace(x.Title) || x.Title.Trim().Length > 200 || x.Order < 1) ||
+            request.Assignments.Any(x => string.IsNullOrWhiteSpace(x.Prompt) || x.Prompt.Trim().Length > 10000) ||
+            request.Attachments.Any(x => string.IsNullOrWhiteSpace(x.Name) || x.Name.Length > 255 ||
+                string.IsNullOrWhiteSpace(x.Path) || x.Path.Length > 500 || x.Size <= 0 ||
+                x.Type is not ("IMAGE" or "DOCUMENT" or "REFERENCE")) ||
+            request.Rubrics.Any(x => string.IsNullOrWhiteSpace(x.Name) || x.Name.Length > 255 || x.Weight is < 1 or > 100 || x.Order < 1))
+            return BadRequest(new { detail = "Nội dung editor không hợp lệ." });
+        var chapterIds = request.Chapters.Select(x => x.Id!.Value).ToHashSet();
+        var lessonIds = request.Lessons.Select(x => x.Id!.Value).ToHashSet();
+        var assignmentIds = request.Assignments.Select(x => x.Id!.Value).ToHashSet();
+        if (request.Lessons.Any(x => x.ChapterId is null || !chapterIds.Contains(x.ChapterId.Value)) ||
+            request.Assignments.Any(x => x.LessonId is null || !lessonIds.Contains(x.LessonId.Value)) ||
+            request.Attachments.Any(x => x.LessonId is null || !lessonIds.Contains(x.LessonId.Value)) ||
+            request.Rubrics.Any(x => x.AssignmentId is null || !assignmentIds.Contains(x.AssignmentId.Value)) ||
+            request.Chapters.GroupBy(x => x.Order).Any(g => g.Count() > 1) ||
+            request.Lessons.GroupBy(x => (x.ChapterId, x.Order)).Any(g => g.Count() > 1) ||
+            request.Assignments.GroupBy(x => x.LessonId).Any(g => g.Count() > 1))
+            return BadRequest(new { detail = "Quan hệ hoặc thứ tự nội dung không hợp lệ." });
+        await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+        // Lock the parent row so publication cannot race with an editor write.
+        var course = db.Database.IsNpgsql()
+            ? await db.LearningCourses.FromSqlInterpolated($"SELECT * FROM public.khoa_hoc WHERE ma_khoa_hoc = {courseId} FOR UPDATE").SingleOrDefaultAsync(ct)
+            : await db.LearningCourses.SingleOrDefaultAsync(x => x.Id == courseId, ct);
+        if (course is null || course.TeacherId != userId) return NotFound();
+        if (course.Status != "NHAP") return Conflict(new { detail = "Chỉ có thể sửa nội dung khóa học nháp." });
         var currentVersion = await ComputeVersion(courseId, ct);
         if (!string.Equals(request.ExpectedVersion, currentVersion, StringComparison.Ordinal))
             return Conflict(new { detail = "Nội dung đã thay đổi. Tải lại trước khi lưu.", code = "EDITOR_VERSION_CONFLICT" });
-        db.CourseAttachments.RemoveRange(await db.CourseAttachments.Where(item =>
-            db.CourseLessons.Any(lesson => lesson.Id == item.LessonId && db.CourseChapters.Any(chapter => chapter.Id == lesson.ChapterId && chapter.CourseId == courseId))).ToListAsync(ct));
-        db.CourseRubrics.RemoveRange(await db.CourseRubrics.Where(item =>
-            db.Assignments.Any(assignment => assignment.Id == item.AssignmentId && db.CourseLessons.Any(lesson => lesson.Id == assignment.LessonId && db.CourseChapters.Any(chapter => chapter.Id == lesson.ChapterId && chapter.CourseId == courseId)))).ToListAsync(ct));
-        db.Assignments.RemoveRange(await db.Assignments.Where(item =>
-            db.CourseLessons.Any(lesson => lesson.Id == item.LessonId && db.CourseChapters.Any(chapter => chapter.Id == lesson.ChapterId && chapter.CourseId == courseId))).ToListAsync(ct));
-        db.CourseLessons.RemoveRange(await db.CourseLessons.Where(item =>
-            db.CourseChapters.Any(chapter => chapter.Id == item.ChapterId && chapter.CourseId == courseId)).ToListAsync(ct));
-        db.CourseChapters.RemoveRange(await db.CourseChapters.Where(item => item.CourseId == courseId).ToListAsync(ct));
+        var oldChapters = await db.CourseChapters.Where(x => x.CourseId == courseId).ToListAsync(ct);
+        var oldChapterIds = oldChapters.Select(x => x.Id).ToList();
+        var oldLessons = await db.CourseLessons.Where(x => oldChapterIds.Contains(x.ChapterId)).ToListAsync(ct);
+        var oldLessonIds = oldLessons.Select(x => x.Id).ToList();
+        var oldAssignments = await db.Assignments.Where(x => oldLessonIds.Contains(x.LessonId)).ToListAsync(ct);
+        var oldAssignmentIds = oldAssignments.Select(x => x.Id).ToList();
+        var oldAttachments = await db.CourseAttachments.Where(x => oldLessonIds.Contains(x.LessonId)).ToListAsync(ct);
+        var oldRubrics = await db.CourseRubrics.Where(x => oldAssignmentIds.Contains(x.AssignmentId)).ToListAsync(ct);
+        // Reparenting is not supported by the editor; reject it before deleting any parent.
+        if (request.Lessons.Any(x => oldLessons.Any(y => y.Id == x.Id && y.ChapterId != x.ChapterId)) ||
+            request.Assignments.Any(x => oldAssignments.Any(y => y.Id == x.Id && y.LessonId != x.LessonId)))
+            return BadRequest(new { detail = "Không thể chuyển nội dung hiện có sang chương hoặc bài học khác." });
+        if (chapterIds.Any(id => id > 0 && !oldChapterIds.Contains(id)) ||
+            lessonIds.Any(id => id > 0 && !oldLessonIds.Contains(id)) ||
+            assignmentIds.Any(id => id > 0 && !oldAssignmentIds.Contains(id)) ||
+            request.Attachments.Any(x => x.Id > 0 && !oldAttachments.Any(y => y.Id == x.Id)) ||
+            request.Rubrics.Any(x => x.Id > 0 && !oldRubrics.Any(y => y.Id == x.Id)))
+            return BadRequest(new { detail = "ID nội dung không thuộc khóa học." });
+        if (request.Attachments.Any(x => !oldAttachments.Any(y => y.Id == x.Id && y.Path == x.Path) &&
+            !CourseMediaController.IsOwnedPath(courseId, x.Path)))
+            return BadRequest(new { detail = "Tệp không thuộc khóa học." });
+        var removedLessons = oldLessons.Where(x => !lessonIds.Contains(x.Id)).Select(x => x.Id).ToList();
+        var removedAssignments = oldAssignments.Where(x => !assignmentIds.Contains(x.Id)).Select(x => x.Id).ToList();
+        if (await db.LessonProgress.AnyAsync(x => removedLessons.Contains(x.LessonId), ct) ||
+            await db.Submissions.AnyAsync(x => removedAssignments.Contains(x.AssignmentId), ct))
+            return Conflict(new { code = "EDITOR_CONTENT_IN_USE", detail = "Không thể xóa nội dung đã có tiến độ hoặc bài nộp." });
+        db.CourseRubrics.RemoveRange(oldRubrics.Where(x => !request.Rubrics.Any(y => y.Id == x.Id)));
+        db.CourseAttachments.RemoveRange(oldAttachments.Where(x => !request.Attachments.Any(y => y.Id == x.Id)));
+        db.Assignments.RemoveRange(oldAssignments.Where(x => removedAssignments.Contains(x.Id)));
         await db.SaveChangesAsync(ct);
-
-        var chapters = request.Chapters.Select(item => new CourseChapter {
-            CourseId = courseId, Title = item.Title.Trim(), Order = item.Order
-        }).ToList();
-        if (chapters.Any(item => item.Title.Length is < 1 or > 200 || item.Order < 1))
-            return BadRequest(new { detail = "Tên hoặc thứ tự chương không hợp lệ." });
-        db.CourseChapters.AddRange(chapters);
+        db.CourseLessons.RemoveRange(oldLessons.Where(x => removedLessons.Contains(x.Id)));
         await db.SaveChangesAsync(ct);
-
-        var chapterMap = request.Chapters.Zip(chapters)
-            .Where(pair => pair.First.Id.HasValue)
-            .ToDictionary(pair => pair.First.Id!.Value, pair => pair.Second.Id);
-        var lessons = request.Lessons.Select(item => new CourseLesson {
-            ChapterId = item.ChapterId is { } chapterId && chapterMap.TryGetValue(chapterId, out var mapped) ? mapped : 0,
-            Title = item.Title.Trim(), Order = item.Order, TextContent = item.TextContent,
-            ImagePath = item.ImagePath, VideoUrl = item.VideoUrl, Required = item.Required
-        }).ToList();
-        if (lessons.Any(item => item.ChapterId == 0 || item.Title.Length is < 1 or > 200 || item.Order < 1))
-            return BadRequest(new { detail = "Nội dung bài học không hợp lệ." });
-        db.CourseLessons.AddRange(lessons);
+        db.CourseChapters.RemoveRange(oldChapters.Where(x => !chapterIds.Contains(x.Id)));
         await db.SaveChangesAsync(ct);
-
-        var lessonMap = request.Lessons.Zip(lessons)
-            .Where(pair => pair.First.Id.HasValue)
-            .ToDictionary(pair => pair.First.Id!.Value, pair => pair.Second.Id);
-        var assignments = request.Assignments.Select(item => new Assignment {
-            LessonId = item.LessonId is { } lessonId && lessonMap.TryGetValue(lessonId, out var mapped) ? mapped : 0,
-            Prompt = item.Prompt.Trim(), Deadline = item.Deadline, Required = item.Required
-        }).ToList();
-        if (assignments.Any(item => item.LessonId == 0 || item.Prompt.Length is < 1 or > 10000))
-            return BadRequest(new { detail = "Bài tập không hợp lệ." });
-        if (request.Attachments.Any(item => item.LessonId is null || item.Name.Trim().Length is < 1 or > 255 ||
-            item.Path.Trim().Length is < 1 or > 500 || item.Size <= 0 ||
-            item.Type is not ("IMAGE" or "DOCUMENT" or "REFERENCE")))
-            return BadRequest(new { detail = "Tệp đính kèm không hợp lệ." });
-        db.Assignments.AddRange(assignments);
-        db.CourseAttachments.AddRange(request.Attachments.Select(item => new CourseAttachmentContent {
-            LessonId = item.LessonId is { } lessonId && lessonMap.TryGetValue(lessonId, out var mapped) ? mapped : 0,
-            Name = item.Name.Trim(), Path = item.Path.Trim(), Type = item.Type, Size = item.Size
-        }));
+        // Move existing orders above both old/new ranges before swaps (positive UNIQUE order constraints).
+        var chapterOffset = Math.Max(oldChapters.Select(x => x.Order).DefaultIfEmpty().Max(), request.Chapters.Select(x => x.Order).DefaultIfEmpty().Max());
+        var lessonOffset = Math.Max(oldLessons.Select(x => x.Order).DefaultIfEmpty().Max(), request.Lessons.Select(x => x.Order).DefaultIfEmpty().Max());
+        if (chapterOffset > int.MaxValue - 1200 || lessonOffset > int.MaxValue - 1200)
+            return BadRequest(new { detail = "Thứ tự nội dung vượt giới hạn." });
+        var index = 0;
+        foreach (var row in oldChapters.Where(x => chapterIds.Contains(x.Id))) row.Order = chapterOffset + ++index;
+        index = 0;
+        foreach (var row in oldLessons.Where(x => lessonIds.Contains(x.Id))) row.Order = lessonOffset + ++index;
         await db.SaveChangesAsync(ct);
-        var assignmentMap = request.Assignments.Zip(assignments)
-            .Where(pair => pair.First.Id.HasValue)
-            .ToDictionary(pair => pair.First.Id!.Value, pair => pair.Second.Id);
-        db.CourseRubrics.AddRange(request.Rubrics.Select(item => new CourseRubricContent {
-            AssignmentId = item.AssignmentId is { } assignmentId && assignmentMap.TryGetValue(assignmentId, out var mapped) ? mapped : 0,
-            Name = item.Name.Trim(), Weight = item.Weight, Order = item.Order
-        }));
-        if (request.Rubrics.Any(item => item.AssignmentId is null || item.Name.Trim().Length is < 1 or > 255 || item.Weight is < 1 or > 100 || item.Order < 1))
-            return BadRequest(new { detail = "Tiêu chí chấm điểm không hợp lệ." });
+        var chapters = new Dictionary<long, CourseChapter>();
+        foreach (var item in request.Chapters) {
+            var row = oldChapters.SingleOrDefault(x => x.Id == item.Id) ?? new CourseChapter { CourseId = courseId };
+            if (row.Id == 0) db.CourseChapters.Add(row);
+            row.Title = item.Title.Trim(); row.Order = item.Order; chapters.Add(item.Id!.Value, row);
+        }
         await db.SaveChangesAsync(ct);
+        var lessons = new Dictionary<long, CourseLesson>();
+        foreach (var item in request.Lessons) {
+            var row = oldLessons.SingleOrDefault(x => x.Id == item.Id) ?? new CourseLesson();
+            if (row.Id == 0) db.CourseLessons.Add(row);
+            row.ChapterId = chapters[item.ChapterId!.Value].Id; row.Title = item.Title.Trim(); row.Order = item.Order;
+            row.TextContent = item.TextContent; row.ImagePath = item.ImagePath; row.VideoUrl = item.VideoUrl; row.Required = item.Required;
+            lessons.Add(item.Id!.Value, row);
+        }
+        await db.SaveChangesAsync(ct);
+        var assignments = new Dictionary<long, Assignment>();
+        foreach (var item in request.Assignments) {
+            var row = oldAssignments.SingleOrDefault(x => x.Id == item.Id) ?? new Assignment();
+            if (row.Id == 0) db.Assignments.Add(row);
+            row.LessonId = lessons[item.LessonId!.Value].Id; row.Prompt = item.Prompt.Trim(); row.Deadline = item.Deadline; row.Required = item.Required;
+            assignments.Add(item.Id!.Value, row);
+        }
+        await db.SaveChangesAsync(ct);
+        foreach (var item in request.Attachments) {
+            var row = oldAttachments.SingleOrDefault(x => x.Id == item.Id) ?? new CourseAttachmentContent();
+            if (row.Id == 0) db.CourseAttachments.Add(row);
+            row.LessonId = lessons[item.LessonId!.Value].Id; row.Name = item.Name.Trim(); row.Path = item.Path;
+            row.Type = item.Type; row.Size = item.Size;
+        }
+        foreach (var item in request.Rubrics) {
+            var row = oldRubrics.SingleOrDefault(x => x.Id == item.Id) ?? new CourseRubricContent();
+            if (row.Id == 0) db.CourseRubrics.Add(row);
+            row.AssignmentId = assignments[item.AssignmentId!.Value].Id; row.Name = item.Name.Trim(); row.Weight = item.Weight; row.Order = item.Order;
+        }
+        await db.SaveChangesAsync(ct);
+        var version = await ComputeVersion(courseId, ct);
         await transaction.CommitAsync(ct);
         return Ok(new { courseId, chapters = chapters.Count, lessons = lessons.Count,
-            chapterIds = chapters.Select(item => item.Id).ToArray(),
-            lessonIds = lessons.Select(item => item.Id).ToArray(),
-            assignmentIds = assignments.Select(item => item.Id).ToArray(),
-            version = await ComputeVersion(courseId, ct) });
+            chapterIds = request.Chapters.Select(x => chapters[x.Id!.Value].Id).ToArray(),
+            lessonIds = request.Lessons.Select(x => lessons[x.Id!.Value].Id).ToArray(),
+            assignmentIds = request.Assignments.Select(x => assignments[x.Id!.Value].Id).ToArray(), version });
     }
 
     private async Task<string> ComputeVersion(long courseId, CancellationToken ct)

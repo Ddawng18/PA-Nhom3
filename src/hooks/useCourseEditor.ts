@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import { getCourse, saveCourseInfo, submitCourse } from "../lib/courseApi";
-import { AdminApiError } from "../lib/adminApi";
+import { requestAdminApi, AdminApiError } from "../lib/adminApi";
 import { supabase } from "../lib/supabase";
-import { loadCourseEditorVersion, saveCourseEditor } from "../lib/courseEditorApi";
+import { saveCourseEditor } from "../lib/courseEditorApi";
 import { type CourseInfo } from "../logic/courseEditor";
 
 const rowIdSchema = z.union([z.string(), z.number().int()]);
@@ -108,9 +108,6 @@ type EditorState = {
 
 const genericLoadError = "Không thể tải khóa học. Vui lòng kiểm tra kết nối và thử lại.";
 const saveErrorMessage = "Chưa thể lưu thay đổi. Vui lòng kiểm tra kết nối và thử lại.";
-const isMissingRubricTable = (message: string) => message.includes("tieu_chi_cham_diem")
-  && (message.includes("does not exist") || message.includes("Could not find the table") || message.includes("schema cache"));
-
 export function useCourseEditor(courseId: string | undefined, userId: string) {
   const { session } = useAuth();
   const token = session?.access_token;
@@ -152,61 +149,18 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
           return;
         }
         const course = parsedCourse.data;
-        const { data: chapterRows, error: chapterError } = await supabase
-          .from("chuong")
-          .select("ma_chuong, ma_khoa_hoc, tieu_de, thu_tu")
-          .eq("ma_khoa_hoc", course.ma_khoa_hoc)
-          .order("thu_tu");
-        if (chapterError) throw chapterError;
-        const parsedChapters = z.array(chapterSchema).safeParse(chapterRows);
-        if (!parsedChapters.success) throw new Error(genericLoadError);
-        const chapterIds = parsedChapters.data.map((chapter) => chapter.ma_chuong);
-        let parsedLessons: z.infer<typeof lessonSchema>[] = [];
-        if (chapterIds.length) {
-          const { data: lessonRows, error: lessonError } = await supabase
-            .from("bai_hoc")
-            .select("ma_bai_hoc, ma_chuong, tieu_de, thu_tu, noi_dung_van_ban, duong_dan_anh, lien_ket_video, bat_buoc")
-            .in("ma_chuong", chapterIds)
-            .order("thu_tu");
-          if (lessonError) throw lessonError;
-          const parsed = z.array(lessonSchema).safeParse(lessonRows);
-          if (!parsed.success) throw new Error(genericLoadError);
-          parsedLessons = parsed.data;
-        }
-        const lessonIds = parsedLessons.map((lesson) => lesson.ma_bai_hoc);
-        let parsedAssignments: z.infer<typeof assignmentSchema>[] = [];
-        let parsedAttachments: CourseEditorAttachment[] = [];
-        if (lessonIds.length) {
-          const [assignmentResult, attachmentResult] = await Promise.all([
-            supabase.from("bai_tap").select("ma_bai_tap, ma_bai_hoc, de_bai, han_nop, bat_buoc").in("ma_bai_hoc", lessonIds),
-            supabase.from("tep_dinh_kem_bai_hoc").select("ma_tep, ma_bai_hoc, ten_tep, duong_dan, loai_tep, dung_luong").in("ma_bai_hoc", lessonIds),
-          ]);
-          if (assignmentResult.error) throw assignmentResult.error;
-          if (attachmentResult.error) throw attachmentResult.error;
-          const parsedAssignmentsResult = z.array(assignmentSchema).safeParse(assignmentResult.data);
-          const parsedAttachmentsResult = z.array(attachmentSchema).safeParse(attachmentResult.data);
-          if (!parsedAssignmentsResult.success || !parsedAttachmentsResult.success) throw new Error(genericLoadError);
-          parsedAssignments = parsedAssignmentsResult.data;
-          parsedAttachments = parsedAttachmentsResult.data;
-        }
-        const assignmentIds = parsedAssignments.map((assignment) => assignment.ma_bai_tap);
-        let parsedRubrics: CourseEditorRubric[] = [];
-        let rubricUnavailable = false;
-        if (assignmentIds.length) {
-          const { data: rubricRows, error: rubricError } = await supabase
-            .from("tieu_chi_cham_diem")
-            .select("ma_tieu_chi, ma_bai_tap, ten_tieu_chi, ty_trong, thu_tu")
-            .in("ma_bai_tap", assignmentIds)
-            .order("thu_tu");
-          if (rubricError) {
-            if (isMissingRubricTable(rubricError.message)) rubricUnavailable = true;
-            else throw rubricError;
-          } else {
-            const parsed = z.array(rubricSchema).safeParse(rubricRows);
-            if (!parsed.success) throw new Error(genericLoadError);
-            parsedRubrics = parsed.data;
-          }
-        }
+        const snapshot = z.object({
+          version: z.string(),
+          chapters: z.array(chapterSchema), lessons: z.array(lessonSchema),
+          assignments: z.array(assignmentSchema), attachments: z.array(attachmentSchema),
+          rubrics: z.array(rubricSchema),
+        }).parse(await requestAdminApi(`/api/courses/${course.ma_khoa_hoc}/editor`, { token }));
+        const parsedChapters = { data: snapshot.chapters };
+        const parsedLessons = snapshot.lessons;
+        const parsedAssignments = snapshot.assignments;
+        const parsedAttachments = snapshot.attachments;
+        const parsedRubrics = snapshot.rubrics;
+        const rubricUnavailable = false;
         const chapters: CourseEditorChapter[] = parsedChapters.data.map((chapter) => ({
           ...chapter,
           bai_hoc: parsedLessons.filter((lesson) => lesson.ma_chuong === chapter.ma_chuong).map((lesson) => {
@@ -228,7 +182,7 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
           }),
         }));
         if (active) {
-          const version = await loadCourseEditorVersion(token, course.ma_khoa_hoc);
+          const version = snapshot.version;
           setState({
             course: {
               ...course,
@@ -277,7 +231,8 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
     };
     const saved = await saveCourseEditor(token, nextCourse, state.version ?? "");
     reload();
-    const index = nextCourse.chuong.findIndex((item) => item === chapter || item.ma_chuong === chapter.ma_chuong);
+    const index = chapter.ma_chuong === null ? nextCourse.chuong.length - 1
+      : nextCourse.chuong.findIndex((item) => item.ma_chuong === chapter.ma_chuong);
     return saved.chapterIds[index] ?? chapter.ma_chuong;
   }, [assertEditable, reload, state.version, token]);
 

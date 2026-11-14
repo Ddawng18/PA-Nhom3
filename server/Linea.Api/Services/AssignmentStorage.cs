@@ -25,8 +25,7 @@ public sealed class AssignmentStorage
                 return ActivatorUtilities.CreateInstance<SupabasePortfolioStorage>(services, config);
             if (environment.IsDevelopment() && configuration["AUTH_MODE"] == "legacy")
                 return ActivatorUtilities.CreateInstance<LocalPortfolioStorage>(services, config);
-            throw new InvalidOperationException(
-                "Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for assignment storage.");
+            throw new Linea.Api.Security.StorageConfigurationException();
         });
     }
 
