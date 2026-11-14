@@ -1,4 +1,4 @@
-import { listCourses } from "../lib/courseApi";
+import { courseRowSchema, listCourses } from "../lib/courseApi";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Bell, BookOpen, Check, ChevronRight, LockKeyhole, PlayCircle, Plus } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
@@ -634,6 +634,7 @@ function TeacherCourses({ user, displayName }: { user: User; displayName: string
                       </div>
                       <span className={`teacher-course-status status-${course.trang_thai || "unknown"}`}>{course.trang_thai ? getCourseStatusLabel(course.trang_thai) : "Chưa có trạng thái"}</span>
                     </div>
+                    {isOwnedCourse && <Link className="button button-outline" to={`/teacher/courses/${course.ma_khoa_hoc}/submissions`}>Bài tập và chấm bài</Link>}
                     {isOwnedCourse && (
                       <Link
                         className="teacher-course-edit"

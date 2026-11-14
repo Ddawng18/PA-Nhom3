@@ -39,7 +39,7 @@ function App() {
           />
           <Route
             path="/"
-            element={<Navigate to="/dashboard" replace />}
+            element={<HomeRoute />}
           />
           <Route
             path="/dashboard"
@@ -74,6 +74,15 @@ function App() {
                 <MyCoursesPage />
               </ProtectedRoute>
             }
+          />
+          <Route path="/courses" element={<CoursesPage />} />
+          <Route
+            path="/courses/:courseId"
+            element={<ProtectedRoute><CourseLearningPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/courses/:courseId/learn/:lessonId"
+            element={<ProtectedRoute><CourseLearningPage /></ProtectedRoute>}
           />
           <Route
             path="/courses/:courseId"
@@ -112,6 +121,9 @@ function App() {
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/progress" element={<ProtectedRoute><StudentLearningOverviewPage mode="progress" /></ProtectedRoute>} />
+          <Route path="/assignments" element={<ProtectedRoute><StudentLearningOverviewPage mode="assignments" /></ProtectedRoute>} />
+          <Route path="/teacher/courses/:courseId/submissions" element={<ProtectedRoute><TeacherRoleGuard><TeacherSubmissionsPage /></TeacherRoleGuard></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
