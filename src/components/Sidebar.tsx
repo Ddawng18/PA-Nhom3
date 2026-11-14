@@ -12,6 +12,8 @@ import {
 import { Link, NavLink } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 import { useUserRole } from "../hooks/useUserRole";
+import { loadUserProfile } from "../lib/userProfile";
+import { useEffect, useState } from "react";
 
 type SidebarProps = {
   user: User;
@@ -33,6 +35,18 @@ const navigationItems = [
 
 export default function Sidebar({ user, displayName, initials }: SidebarProps) {
   const { role } = useUserRole();
+  const [profile, setProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
+  useEffect(() => {
+    let active = true;
+    void loadUserProfile(user.id).then((value) => {
+      if (active) setProfile(value);
+    }).catch(() => {
+      if (active) setProfile(null);
+    });
+    return () => { active = false; };
+  }, [user.id]);
+  const sidebarName = profile?.display_name?.trim() || displayName;
+  const sidebarInitials = sidebarName.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase();
   const adminNavigationItem = role === "admin"
     ? { label: "Quản trị viên", icon: Users, to: "/admin/teachers" }
     : null;
@@ -77,9 +91,13 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
       </section>
 
       <div className="sidebar-user">
-        <span className="avatar avatar-sidebar" aria-hidden="true">{initials}</span>
+        {profile?.avatar_url ? (
+          <img className="avatar avatar-sidebar" src={profile.avatar_url} alt="" />
+        ) : (
+          <span className="avatar avatar-sidebar" aria-hidden="true">{sidebarInitials || initials}</span>
+        )}
         <span className="sidebar-user-details">
-          <span className="sidebar-user-name">{displayName}</span>
+          <span className="sidebar-user-name">{sidebarName}</span>
           <span className="sidebar-user-email">{user.email}</span>
         </span>
       </div>
