@@ -1,15 +1,9 @@
 import { useEffect, useState } from "react";
 import { Heart, Search } from "lucide-react";
 import { Link } from "react-router-dom";
-import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import { getUserChip, type UserChip, type UserDisplayProfile } from "../lib/userDisplay";
-import { supabase } from "../lib/supabase";
-
-const userProfileSchema = z.object({
-  display_name: z.string().nullable(),
-  avatar_url: z.string().nullable(),
-});
+import { loadUserProfile } from "../lib/userProfile";
 
 const navigationItems = [
   { label: "Khám phá", href: null },
@@ -33,41 +27,18 @@ export default function SiteHeader() {
       isCurrent = false;
     };
 
-    const client = supabase;
-    if (!client) {
-      setProfileError("Không thể tải thông tin hồ sơ.");
-      return () => {
-        isCurrent = false;
-      };
-    }
-
-    async function loadProfile(activeClient: NonNullable<typeof supabase>, activeUserId: string) {
+    async function loadProfile(activeUserId: string) {
       try {
-        const { data, error } = await activeClient
-          .from("nguoi_dung")
-          .select("display_name, avatar_url")
-          .eq("id", activeUserId)
-          .maybeSingle();
-
+        const data = await loadUserProfile(activeUserId);
         if (!isCurrent) return;
-        if (error) {
-          setProfileError("Không thể tải thông tin hồ sơ.");
-          return;
-        }
         if (data === null) return;
-
-        const parsedProfile = userProfileSchema.safeParse(data);
-        if (!parsedProfile.success) {
-          setProfileError("Thông tin hồ sơ không hợp lệ.");
-          return;
-        }
-        setProfile(parsedProfile.data);
+        setProfile(data);
       } catch {
         if (isCurrent) setProfileError("Không thể tải thông tin hồ sơ.");
       }
     }
 
-    void loadProfile(client, userId);
+    void loadProfile(userId);
     return () => {
       isCurrent = false;
     };
