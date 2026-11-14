@@ -1,3 +1,5 @@
+import { assertApiUrlAllowed } from "./apiUrlPolicy";
+
 export const settingsTabIds = ["ho-so", "ua-thich", "bao-mat", "lich-su-mua-hang", "phe-duyet"] as const;
 export type SettingsTab = typeof settingsTabIds[number];
 export type ApprovalSection = "khoa-hoc" | "giao-vien";
@@ -69,12 +71,7 @@ export function buildApiUrl(
   params?: Record<string, string | number | undefined>
 ): string {
   const baseUrl = new URL(base);
-  if (
-    baseUrl.protocol !== "https:"
-    && !(baseUrl.protocol === "http:" && ["localhost", "127.0.0.1"].includes(baseUrl.hostname))
-  ) {
-    throw new Error("API URL must use HTTPS");
-  }
+  assertApiUrlAllowed(baseUrl);
   const url = new URL(path.startsWith("/") ? path : `/${path}`, baseUrl);
   for (const [key, value] of Object.entries(params ?? {})) {
     if (value === undefined || String(value).trim() === "") continue;

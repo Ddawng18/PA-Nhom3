@@ -1,4 +1,4 @@
-// Local browser integration: real API + temporary SQLite; only Supabase identity reads are mocked.
+// Local browser integration: real API + dedicated PostgreSQL test database; only Supabase identity reads are mocked.
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { mkdtemp, rm, mkdir, writeFile } from "node:fs/promises";
@@ -7,6 +7,9 @@ import { join, resolve, sep } from "node:path";
 import { createServer } from "node:net";
 import assert from "node:assert/strict";
 
+if (!process.env.TEST_DATABASE_URL?.trim()) {
+  throw new Error("TEST_DATABASE_URL must point to a dedicated PostgreSQL test database. Tests write data.");
+}
 const root = resolve(import.meta.dirname, "..");
 const temp = await mkdtemp(join(tmpdir(), "linea-sprint5-"));
 const artifacts = join(root, "test-results", "sprint5");
@@ -59,8 +62,8 @@ async function contextFor(login, role) {
 try {
   const apiLog = start("dotnet", ["run", "--no-build", "--project", "server/Linea.Api", "--no-launch-profile"], {
     DOTNET_ROLL_FORWARD: "Major", ASPNETCORE_ENVIRONMENT: "Development", ASPNETCORE_URLS: api,
-    AUTH_MODE: "legacy", JWT_KEY: "browser-test-only-signing-key-at-least-32-bytes", DB_CONNECTION: `Data Source=${join(temp, "browser.db")}`,
-    SUPABASE_DB_URL: "", SUPABASE_URL: "", SUPABASE_SERVICE_ROLE_KEY: "", CLIENT_ORIGIN: app,
+    AUTH_MODE: "legacy", JWT_KEY: "browser-test-only-signing-key-at-least-32-bytes",
+    SUPABASE_DB_URL: process.env.TEST_DATABASE_URL, RUN_MIGRATIONS: "true", SUPABASE_URL: "", SUPABASE_SERVICE_ROLE_KEY: "", CLIENT_ORIGIN: app,
     SEED_ADMIN_EMAIL: "browser-admin@linea.local", SEED_ADMIN_PASSWORD: password,
     TEACHER_DOCS_PATH: join(temp, "portfolio"), EMAIL_OUTBOX_PATH: join(temp, "email"),
     SIGNED_URL_KEY: "browser-test-only-signed-url-key-at-least-32-bytes",

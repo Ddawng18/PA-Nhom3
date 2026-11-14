@@ -5,7 +5,6 @@ using Linea.Api.Security;
 using Linea.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -521,7 +520,6 @@ public sealed class TeacherProfileController(
     private static bool IsUniqueViolation(DbUpdateException exception) =>
         exception.InnerException switch
         {
-            SqliteException { SqliteErrorCode: 19 } => true,
             PostgresException { SqlState: "23505" } => true,
             _ => false
         };

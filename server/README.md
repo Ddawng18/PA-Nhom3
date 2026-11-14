@@ -1,3 +1,8 @@
+> Database configuration: PostgreSQL only. Set SUPABASE_DB_URL in .env or the environment.
+> SQLite fallback and DB_CONNECTION have been removed. Missing URL stops startup.
+> Migrations run only with RUN_MIGRATIONS=true. Tests require a dedicated PostgreSQL
+> database via TEST_DATABASE_URL and write data. Older SQLite instructions below are historical.
+
 # LINEA Backend API (ASP.NET Core)
 
 > Sprint 5: `/api/courses` hiện dùng bảng `khoa_hoc`, ID số và payload tiếng Việt,

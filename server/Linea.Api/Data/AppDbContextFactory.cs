@@ -7,8 +7,12 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
 {
     public AppDbContext CreateDbContext(string[] args)
     {
+        DatabaseConfiguration.LoadDotEnvFile();
+        var configuration = new ConfigurationBuilder()
+            .AddEnvironmentVariables()
+            .Build();
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite("Data Source=linea-design.db")
+            .UseNpgsql(DatabaseConfiguration.GetConnectionString(configuration))
             .Options;
 
         return new AppDbContext(options);

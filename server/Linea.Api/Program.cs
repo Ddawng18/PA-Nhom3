@@ -7,12 +7,10 @@ using Linea.Api.Security;
 using Linea.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Npgsql;
 
-LoadDotEnvFile();
+DatabaseConfiguration.LoadDotEnvFile();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,25 +19,10 @@ builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpClient();
 
-var supabaseDbUrl = builder.Configuration["SUPABASE_DB_URL"];
-if (!string.IsNullOrWhiteSpace(supabaseDbUrl))
-{
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(BuildPostgresConnectionString(supabaseDbUrl)));
-}
-else
-{
-    var rawConnectionString = builder.Configuration["DB_CONNECTION"] ?? "Data Source=linea-dev.db";
-    var sqliteBuilder = new SqliteConnectionStringBuilder(rawConnectionString);
-    if (!string.IsNullOrWhiteSpace(sqliteBuilder.DataSource) &&
-        sqliteBuilder.DataSource != ":memory:" &&
-        !Path.IsPathRooted(sqliteBuilder.DataSource))
-    {
-        sqliteBuilder.DataSource = Path.Combine(builder.Environment.ContentRootPath, sqliteBuilder.DataSource);
-    }
-
-    builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(sqliteBuilder.ToString()));
-}
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(DatabaseConfiguration.GetConnectionString(builder.Configuration)));
+// Validate database configuration before starting the HTTP server.
+_ = DatabaseConfiguration.GetConnectionString(builder.Configuration);
 
 var useLegacyAuth = builder.Environment.IsDevelopment() && builder.Configuration["AUTH_MODE"] == "legacy";
 var jwtKey = builder.Configuration["JWT_KEY"];
@@ -273,8 +256,7 @@ app.MapGet("/api/health", async (AppDbContext db, IConfiguration configuration, 
         : Results.Problem("Không thể kết nối cơ sở dữ liệu.", statusCode: StatusCodes.Status503ServiceUnavailable);
 });
 
-var runMigrations = app.Environment.IsDevelopment() ||
-    string.Equals(
+var runMigrations = string.Equals(
         builder.Configuration["RUN_MIGRATIONS"],
         "true",
         StringComparison.OrdinalIgnoreCase);
@@ -307,84 +289,6 @@ static string ReadEmbeddedSql(string name)
         ?? throw new InvalidOperationException($"Missing embedded SQL resource {name}.");
     using var reader = new StreamReader(stream);
     return reader.ReadToEnd();
-}
-
-static string BuildPostgresConnectionString(string url)
-{
-    if (!url.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
-        !url.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
-    {
-        throw new InvalidOperationException(
-            "SUPABASE_DB_URL must start with postgres:// or postgresql://.");
-    }
-
-    if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-    {
-        throw new InvalidOperationException("SUPABASE_DB_URL is not a valid PostgreSQL URL.");
-    }
-
-    var userInfo = uri.UserInfo.Split(':', 2);
-    if (userInfo.Length < 2 || string.IsNullOrWhiteSpace(uri.Host))
-    {
-        throw new InvalidOperationException(
-            "SUPABASE_DB_URL must include the user, password and host.");
-    }
-
-    var database = uri.AbsolutePath.Trim('/');
-    var builder = new NpgsqlConnectionStringBuilder
-    {
-        Host = uri.Host,
-        Port = uri.Port > 0 ? uri.Port : 5432,
-        Database = string.IsNullOrWhiteSpace(database) ? "postgres" : database,
-        Username = Uri.UnescapeDataString(userInfo[0]),
-        Password = Uri.UnescapeDataString(userInfo[1]),
-        SslMode = SslMode.Require,
-        Timeout = 15
-    };
-
-    return builder.ConnectionString;
-}
-
-static void LoadDotEnvFile()
-{
-    var directory = new DirectoryInfo(AppContext.BaseDirectory);
-    while (directory is not null)
-    {
-        var path = Path.Combine(directory.FullName, ".env");
-        if (File.Exists(path))
-        {
-            foreach (var rawLine in File.ReadLines(path))
-            {
-                var line = rawLine.Trim();
-                if (line.Length == 0 || line.StartsWith('#'))
-                {
-                    continue;
-                }
-
-                if (line.StartsWith("export ", StringComparison.Ordinal))
-                {
-                    line = line["export ".Length..].Trim();
-                }
-
-                var separator = line.IndexOf('=');
-                if (separator <= 0)
-                {
-                    continue;
-                }
-
-                var key = line[..separator].Trim();
-                var value = line[(separator + 1)..].Trim().Trim('"', '\'');
-                if (Environment.GetEnvironmentVariable(key) is null)
-                {
-                    Environment.SetEnvironmentVariable(key, value);
-                }
-            }
-
-            return;
-        }
-
-        directory = directory.Parent;
-    }
 }
 
 public partial class Program;
