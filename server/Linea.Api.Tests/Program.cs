@@ -16,7 +16,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 using Microsoft.EntityFrameworkCore;
 
 namespace Linea.Api.Tests;
@@ -31,7 +31,9 @@ internal static class Program
     private static async Task<int> Main()
     {
         var apiProject = FindApiProject();
-        var dbPath = Path.Combine(Path.GetTempPath(), $"linea-smoke-{Guid.NewGuid():N}.db");
+        var dbPath = Environment.GetEnvironmentVariable("TEST_DATABASE_URL");
+        if (string.IsNullOrWhiteSpace(dbPath))
+            throw new InvalidOperationException("TEST_DATABASE_URL must point to a dedicated PostgreSQL test database. Tests write data.");
         var docsPath = Path.Combine(Path.GetTempPath(), $"linea-teacher-docs-{Guid.NewGuid():N}");
         var emailPath = Path.Combine(Path.GetTempPath(), $"linea-email-{Guid.NewGuid():N}");
         var port = GetFreePort();
@@ -89,18 +91,7 @@ internal static class Program
                 // Best-effort cleanup.
             }
 
-            SqliteConnection.ClearAllPools();
-            foreach (var path in new[] { dbPath, $"{dbPath}-shm", $"{dbPath}-wal" })
-            {
-                try
-                {
-                    if (File.Exists(path)) File.Delete(path);
-                }
-                catch
-                {
-                    // Best-effort cleanup.
-                }
-            }
+            NpgsqlConnection.ClearAllPools();
 
             try
             {
@@ -169,10 +160,10 @@ internal static class Program
         startInfo.Environment["AUTH_MODE"] = "legacy";
         startInfo.Environment["JWT_ISSUER"] = "linea-api-tests";
         startInfo.Environment["JWT_AUDIENCE"] = "linea-client-tests";
-        startInfo.Environment["DB_CONNECTION"] = $"Data Source={dbPath}";
         startInfo.Environment["TEACHER_DOCS_PATH"] = docsPath;
         startInfo.Environment["EMAIL_OUTBOX_PATH"] = emailPath;
-        startInfo.Environment["SUPABASE_DB_URL"] = string.Empty;
+        startInfo.Environment["SUPABASE_DB_URL"] = dbPath;
+        startInfo.Environment["RUN_MIGRATIONS"] = "true";
         startInfo.Environment["SUPABASE_SERVICE_ROLE_KEY"] = string.Empty;
         startInfo.Environment["CLIENT_ORIGIN"] = "http://localhost:5173";
         startInfo.Environment["SEED_ADMIN_EMAIL"] = AdminEmail;
@@ -1500,7 +1491,7 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
         var (mineStatus, _) = await SendAsync(HttpMethod.Get, "/api/courses?mine=true");
         Expect(mineStatus == HttpStatusCode.Unauthorized, "anonymous used mine filter");
         var (listStatus, listBody) = await SendAsync(HttpMethod.Get, "/api/courses?search=FOUNDATION&pageSize=1", token: _firstTeacherToken);
-        Expect(listStatus == HttpStatusCode.OK, $"SQLite search failed: {listBody}");
+        Expect(listStatus == HttpStatusCode.OK, $"PostgreSQL search failed: {listBody}");
         using (var list = JsonDocument.Parse(listBody)) Expect(list.RootElement.GetProperty("totalCount").GetInt32() == 1, "search/pagination lost canonical course");
         var (otherOwner, _) = await SendAsync(HttpMethod.Put, $"/api/courses/{_courseId}", CoursePayload(), _adminToken);
         Expect(otherOwner == HttpStatusCode.NotFound, "non-owner edited teacher draft");
@@ -1708,7 +1699,7 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
     private AppDbContext CreateDb()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite($"Data Source={dbPath}")
+            .UseNpgsql(DatabaseConfiguration.BuildPostgresConnectionString(dbPath))
             .Options;
         return new AppDbContext(options);
     }
