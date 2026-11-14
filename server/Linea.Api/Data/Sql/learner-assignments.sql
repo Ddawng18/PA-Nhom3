@@ -67,8 +67,9 @@ begin
 end;
 $$;
 
--- Reconcile legacy completion flags using the same rule as the backend:
--- all required lessons completed AND all required assignments graded.
+-- Reconcile legacy completion flags using the same D05 rule as the backend:
+-- all required lessons completed AND all required assignments submitted.
+-- Grading is deliberately NOT a completion gate.
 with completion as (
   select e.ma_nguoi_dung, e.ma_khoa_hoc,
     exists (select 1 from public.bai_hoc l join public.chuong c using (ma_chuong)
@@ -82,8 +83,8 @@ with completion as (
       select 1 from public.bai_tap a join public.bai_hoc l using (ma_bai_hoc)
       join public.chuong c using (ma_chuong)
       where c.ma_khoa_hoc = e.ma_khoa_hoc and a.bat_buoc and not exists (
-        select 1 from public.bai_nop s join public.ket_qua_cham g using (ma_bai_nop)
-        where s.ma_bai_tap = a.ma_bai_tap and s.ma_nguoi_dung = e.ma_nguoi_dung and s.trang_thai = 'DA_CHAM')) as complete
+        select 1 from public.bai_nop s
+        where s.ma_bai_tap = a.ma_bai_tap and s.ma_nguoi_dung = e.ma_nguoi_dung)) as complete
   from public.ghi_danh e where e.trang_thai <> 'DA_HUY'
 )
 update public.ghi_danh e set trang_thai = case when c.complete then 'HOAN_THANH' else 'DANG_HOC' end,
