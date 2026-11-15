@@ -12,7 +12,8 @@ Hoàn thiện các hạng mục có thể triển khai trực tiếp trong repos
 - Dùng Canvas và Pointer Events để vẽ bằng chuột hoặc cảm ứng; tọa độ được quy đổi theo kích thước hiển thị của canvas.
 - Bổ sung bút, tẩy, chọn màu, điều chỉnh cỡ nét, hoàn tác/làm lại với lịch sử giới hạn 30 trạng thái.
 - Thêm xóa tranh có xác nhận và tải tác phẩm thành PNG.
-- Cảnh báo trước khi rời trang nếu có nét vẽ chưa xuất; thao tác xóa trắng và xuất PNG sẽ bỏ trạng thái cảnh báo.
+- Cảnh báo/chặn điều hướng nội bộ và Back/Forward bằng React Router khi tranh chưa xuất; giữ `beforeunload` cho tải lại/đóng tab/rời website.
+- Theo dõi snapshot hiện tại so với snapshot đã xuất để undo/redo, xóa và vẽ mới cập nhật đúng cảnh báo; quay lại đúng snapshot đã xuất sẽ không cảnh báo thừa.
 - Nối nút Studio trên dashboard tới trang mới.
 
 ### S6-14 — Trang Khách
@@ -32,6 +33,7 @@ Hoàn thiện các hạng mục có thể triển khai trực tiếp trong repos
 ### Điều hướng và tài liệu
 
 - Cập nhật điều hướng công khai để mở Studio và Cộng đồng.
+- Ẩn liên kết đăng nhập trong header khi phiên còn đang được xác định; khi đã đăng nhập, header tiếp tục dẫn tới tài khoản.
 - Cập nhật bài test điều hướng theo các route mới.
 - Cập nhật [checklist tiến độ](CHECKLIST_TIENDO_2026-11-15.md) để mô tả phần mã đã có và các kiểm tra còn thiếu. Tiêu chí cần nghiệm thu thực tế vẫn để `[ ]`.
 
@@ -41,12 +43,13 @@ Hoàn thiện các hạng mục có thể triển khai trực tiếp trong repos
 - `npm run build` — đạt.
 - `npm run lint` — đạt.
 - `git diff --check` — đạt.
+- Playwright với Google Chrome cục bộ — thử vẽ bằng chuột, điều hướng nội bộ và Back khi tranh chưa xuất, xuất rồi undo và điều hướng lại; hộp thoại xuất hiện và hủy điều hướng giữ người dùng ở Studio.
 
 Build có cảnh báo bundle JavaScript vượt 500 kB và cảnh báo chú thích pure trong dependency Zod; build vẫn hoàn thành.
 
 ## Chưa thực hiện / chưa có bằng chứng
 
-- Chưa kiểm tra thao tác Studio trên trình duyệt/thiết bị thật, gồm cảm ứng, resize, đổi hướng, bàn phím và tải PNG sau khi vẽ.
+- Chưa kiểm tra Studio trên thiết bị thật, gồm cảm ứng, resize, đổi hướng, bàn phím và hộp thoại trước khi tải lại/đóng tab. Thao tác chuột, xuất PNG, undo sau xuất và điều hướng nội bộ/Back đã được thử tự động trên Google Chrome desktop.
 - Chưa xác minh tương tác cộng đồng không tạo request ghi bằng Network inspector.
 - Chưa nghiệm thu responsive 360px, luồng đăng nhập/đăng xuất, dữ liệu catalog công khai hoặc tình huống API lỗi.
 - Chưa kiểm tra SHA đang deploy, Supabase/Storage, SQL/migration hoặc dữ liệu production.
