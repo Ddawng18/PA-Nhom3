@@ -1,5 +1,7 @@
 # Definition of Done — Sprint 6
 
+Tiến độ đối chiếu mã ngày 15/11: [Checklist tiến độ Sprint 6](CHECKLIST_TIENDO_2026-11-15.md). Các ô trong tài liệu này là tiêu chí nghiệm thu; tiến độ và bằng chứng cụ thể được ghi tại checklist.
+
 Ngày lập: 14/11/2026 (UTC+7). Nguồn: kế hoạch `D:\Sprint6.docx`, 15 task S6-01–S6-15; phạm vi 97 giờ công. Chưa thấy DoD chi tiết tương đương trong nhánh PR nên bổ sung tài liệu này. Owner và phụ thuộc giữ theo kế hoạch; owner/reviewer phải xác nhận nhận việc.
 
 Các ô dưới đây là **tiêu chí cần đáp ứng**, không phải kết quả kiểm chứng. Chưa chạy test, migration, restore hoặc deploy trong tác vụ sửa PR. Không đánh dấu đạt dựa vào tài liệu này.
