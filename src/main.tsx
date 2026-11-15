@@ -22,6 +22,8 @@ import TeacherSubmissionsPage from "./pages/TeacherSubmissionsPage";
 import StudentLearningOverviewPage from "./pages/StudentLearningOverviewPage";
 import HomeRoute from "./components/HomeRoute";
 import CoursesPage from "./pages/CoursesPage";
+import StudioPage from "./pages/StudioPage";
+import CommunityPage from "./pages/CommunityPage";
 
 function App() {
   return (
@@ -80,6 +82,9 @@ function App() {
             }
           />
           <Route path="/courses" element={<CoursesPage />} />
+          <Route path="/studio" element={<StudioPage />} />
+          <Route path="/community" element={<CommunityPage />} />
+          <Route path="/community/:postId" element={<CommunityPage />} />
           <Route
             path="/courses/:courseId"
             element={<ProtectedRoute><CourseLearningPage /></ProtectedRoute>}

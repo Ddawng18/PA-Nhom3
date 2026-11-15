@@ -1,7 +1,8 @@
 export const publicNavItems = [
   { label: "Tổng quan", to: "/" },
   { label: "Khóa học", to: "/courses" },
-  { label: "Hỏi đáp" },
+  { label: "Studio", to: "/studio" },
+  { label: "Cộng đồng", to: "/community" },
 ] as const;
 
 export type PublicNavItem = (typeof publicNavItems)[number];

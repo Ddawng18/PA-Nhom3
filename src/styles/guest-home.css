@@ -70,6 +70,30 @@
   outline-offset: 3px;
 }
 
+.guest-actions, .guest-explore {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.guest-secondary-cta {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 28px;
+  padding: 0 26px;
+  border: 1px solid #aab5a7;
+  border-radius: 24px;
+  color: #26332b;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.guest-explore { margin-top: 24px; }
+.guest-explore a { color: #355c3a; text-decoration: underline; text-underline-offset: 3px; }
+
 @media (max-width: 900px) {
   .guest-main {
     padding-right: 24px;
@@ -89,4 +113,6 @@
   .guest-cta {
     max-width: 100%;
   }
+  .guest-actions { align-items: stretch; flex-direction: column; }
+  .guest-cta, .guest-secondary-cta { width: 100%; margin-top: 20px; }
 }
