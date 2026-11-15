@@ -1,0 +1,52 @@
+PASS ST-01: Mouse tools: pen, color, size and eraser
+FAIL ST-03: page.goto: net::ERR_ABORTED at http://127.0.0.1:4176/studio
+Call log:
+[2m  - navigating to "http://127.0.0.1:4176/studio", waiting until "load"[22m
+
+FAIL ST-04: page.goto: net::ERR_ABORTED at http://127.0.0.1:4176/studio
+Call log:
+[2m  - navigating to "http://127.0.0.1:4176/studio", waiting until "load"[22m
+
+FAIL ST-05: page.goto: net::ERR_ABORTED at http://127.0.0.1:4176/studio
+Call log:
+[2m  - navigating to "http://127.0.0.1:4176/studio", waiting until "load"[22m
+
+FAIL ST-06: page.goto: net::ERR_ABORTED at http://127.0.0.1:4176/studio
+Call log:
+[2m  - navigating to "http://127.0.0.1:4176/studio", waiting until "load"[22m
+
+FAIL ST-07: page.goto: net::ERR_ABORTED at http://127.0.0.1:4176/community
+Call log:
+[2m  - navigating to "http://127.0.0.1:4176/community", waiting until "load"[22m
+
+FAIL ST-08: page.goto: net::ERR_ABORTED at http://127.0.0.1:4176/studio
+Call log:
+[2m  - navigating to "http://127.0.0.1:4176/studio", waiting until "load"[22m
+
+FAIL ST-09-reload: page.goto: net::ERR_ABORTED at http://127.0.0.1:4176/studio
+Call log:
+[2m  - navigating to "http://127.0.0.1:4176/studio", waiting until "load"[22m
+
+FAIL ST-09-close: page.goto: net::ERR_ABORTED at http://127.0.0.1:4176/studio
+Call log:
+[2m  - navigating to "http://127.0.0.1:4176/studio", waiting until "load"[22m
+
+PASS ST-10: Resize preserves raster; 360px and keyboard toolbar
+FAIL ST-02-scale: {"wantedX":130.4,"wantedY":70,"actualX":130,"actualY":90.5,"count":2,"width":326,"height":280}
+PASS ST-02-touch-emulation: Emulated touch draws and does not scroll canvas
+PASS ST-11: Studio interactions do not send write requests
+PASS GH-01: Anonymous direct URL, reload and guest CTAs
+PASS GH-03-fixture: Frontend filters draft/hidden courses from fixture response
+PASS GH-04-fixture: Catalog loading, empty, error, retry with intercepted local responses
+PASS GH-05-local: Anonymous guest DOM and network have no private account data
+PASS GH-06: Guest and catalog layout at 360px
+PASS GH-07: Guest links open Studio and Community
+PASS CM-01: Feed/detail direct route and demo label
+PASS CM-02: Like/unlike and reload reset
+PASS CM-03: Blank comment refused; valid comment resets on reload
+PASS CM-04: Unknown post shows fallback and return link
+PASS CM-05-success: Clipboard API copies exact post link
+PASS CM-05-rejected: Clipboard rejection gives feedback (simulated denial)
+PASS CM-06: Community interactions send no write requests
+PASS CM-07: Community 360px layout and sensitive information warning
+{"PASS":18,"FAIL":9,"BLOCKED":5}

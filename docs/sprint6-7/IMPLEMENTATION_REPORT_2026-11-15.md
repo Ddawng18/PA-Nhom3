@@ -1,5 +1,20 @@
 # Báo cáo triển khai Studio, trang Khách và Community demo
 
+## Kết quả nghiệm thu mới — 15/11/2026
+
+Mục này cập nhật các ghi chú NOT_RUN/lệnh không chạy ở bản bàn giao trước. Người dùng đã yêu cầu nghiệm thu và các kiểm tra local đã được thực hiện trên ef18bd4 (mã chức năng b8933d1).
+
+- [x] Vitest 80/80, build và lint đạt; có log lưu kèm.
+- [x] Đã chạy và lưu ảnh/trace/JSON các ca trình duyệt: tổng hợp 26 PASS local, 1 FAIL, 5 BLOCKED (gồm nhánh con; không phải 26 task đã Done).
+- [x] Studio desktop: công cụ, lịch sử, PNG, guard link/Back/Forward/reload/đóng tab đã có bằng chứng.
+- [x] Community: tương tác/reset/nhãn demo/360px và không request ghi đạt trong môi trường local; clipboard lỗi được giả lập rõ.
+- [ ] Sửa S6-13-B01: tọa độ nét lệch ≈20.5px trên màn 360px; kiểm tra lại sau sửa.
+- [ ] Nghiệm thu thiết bị cảm ứng thật; auth/catalog và dữ liệu riêng trên API thật; Đăng xác nhận duyệt nội dung.
+- [ ] Reviewer xác nhận toàn DoD, tích hợp PR và xác nhận deploy; S6-13–15 vẫn REVIEW.
+
+Xem [kết quả nghiệm thu và bằng chứng](KET_QUA_NGHIEM_THU_PR15_2026-11-15.md). Các mục NOT_RUN/REPORTED_UNVERIFIED cũ bên dưới là lịch sử nếu đã được kết quả mới thay thế; chỉ chuyển phần đã có minh chứng trong đúng phạm vi local.
+
+
 Ngày lập/cập nhật: 15/11/2026 (UTC+7). Phạm vi báo cáo: PR [#15](https://github.com/Ddawng18/PA-Nhom3/pull/15), SHA mã chức năng `b8933d1f841a25be77e12d91930a5e6f8d45a304`, base `develop` tại `dffe155c4f2065ddfa2d7239111f1dce872b1f7e`. Trạng thái PR được kiểm tra lúc 12:31 UTC+7: **OPEN, chưa merge**. Trạng thái deploy không được kiểm tra.
 
 PR #14 cùng head đã đóng nhưng chưa merge; PR #15 là PR đang mở được dùng để truy vết công việc này. Báo cáo này không xác nhận nghiệm thu Sprint 6.

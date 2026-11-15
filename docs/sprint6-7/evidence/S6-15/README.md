@@ -1,5 +1,12 @@
 # Hồ sơ nghiệm thu S6-15 — Community demo
 
+## Cập nhật nghiệm thu có bằng chứng
+
+CM-01–07 đạt các nhánh local đã chạy; clipboard lỗi mô phỏng Promise từ chối, Network không request ghi trong context kiểm tra. CM-08 còn BLOCKED vì chưa có PO duyệt. Chưa đạt toàn task.
+
+Phiên bản ef18bd4, ngày 15/11/2026, Codex thực thi tự động; reviewer con người chưa xác nhận. [Báo cáo kết quả](../../KET_QUA_NGHIEM_THU_PR15_2026-11-15.md), [JSON tổng hợp](../acceptance-2026-11-15/consolidated-results.json). Không chạy trên production. Ma trận NOT_RUN bên dưới giữ làm baseline lịch sử, được kết quả mới thay thế theo từng nhánh.
+
+
 **Trạng thái task:** REVIEW / chưa DONE. PR [#15](https://github.com/Ddawng18/PA-Nhom3/pull/15), SHA mã chức năng `b8933d1f841a25be77e12d91930a5e6f8d45a304`; chưa xác nhận tích hợp hoặc deploy.
 
 ## Thông tin môi trường
@@ -20,7 +27,7 @@
 
 Đây là kết quả đọc mã, không phải bằng chứng Network rằng trình duyệt không tạo request ghi.
 
-## Ma trận ca
+## Ma trận ca gốc trước nghiệm thu (lịch sử)
 
 | Mã | Tiêu chí / bước chính | Kết quả mong đợi | Trạng thái |
 |---|---|---|---|

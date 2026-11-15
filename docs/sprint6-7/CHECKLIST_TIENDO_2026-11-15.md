@@ -1,5 +1,20 @@
 # Checklist tiến độ Sprint 6 — 15/11/2026
 
+## Kết quả nghiệm thu mới — 15/11/2026
+
+Mục này cập nhật các ghi chú NOT_RUN/lệnh không chạy ở bản bàn giao trước. Người dùng đã yêu cầu nghiệm thu và các kiểm tra local đã được thực hiện trên ef18bd4 (mã chức năng b8933d1).
+
+- [x] Vitest 80/80, build và lint đạt; có log lưu kèm.
+- [x] Đã chạy và lưu ảnh/trace/JSON các ca trình duyệt: tổng hợp 26 PASS local, 1 FAIL, 5 BLOCKED (gồm nhánh con; không phải 26 task đã Done).
+- [x] Studio desktop: công cụ, lịch sử, PNG, guard link/Back/Forward/reload/đóng tab đã có bằng chứng.
+- [x] Community: tương tác/reset/nhãn demo/360px và không request ghi đạt trong môi trường local; clipboard lỗi được giả lập rõ.
+- [ ] Sửa S6-13-B01: tọa độ nét lệch ≈20.5px trên màn 360px; kiểm tra lại sau sửa.
+- [ ] Nghiệm thu thiết bị cảm ứng thật; auth/catalog và dữ liệu riêng trên API thật; Đăng xác nhận duyệt nội dung.
+- [ ] Reviewer xác nhận toàn DoD, tích hợp PR và xác nhận deploy; S6-13–15 vẫn REVIEW.
+
+Xem [kết quả nghiệm thu và bằng chứng](KET_QUA_NGHIEM_THU_PR15_2026-11-15.md). Các mục NOT_RUN/REPORTED_UNVERIFIED cũ bên dưới là lịch sử nếu đã được kết quả mới thay thế; chỉ chuyển phần đã có minh chứng trong đúng phạm vi local.
+
+
 Baseline rà mã S6-01–12: `develop` commit `db0d61d`; nhánh tích hợp được kiểm tra lại ở `dffe155`. Phần S6-13–15 đối chiếu mã `b8933d1` trên PR #15 và bộ tài liệu bàn giao `fa2a9de`, cùng kế hoạch Sprint6.docx và [Definition of Done](DEFINITION_OF_DONE.md). Dấu `[x]` chỉ xác nhận **bằng chứng được nêu**, không tự xác nhận nghiệm thu cả task. Không chạy lại test hoặc kiểm tra deploy trong lượt cập nhật checklist này.
 
 ## Cập nhật sau bàn giao tài liệu

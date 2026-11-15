@@ -1,5 +1,12 @@
 # Hồ sơ nghiệm thu S6-13 — Studio
 
+## Cập nhật nghiệm thu có bằng chứng
+
+ST-01, ST-03–09 đạt các nhánh local có bằng chứng; ST-10 đạt phần resize/viewport/Enter đã chạy, chưa xác nhận toàn bộ tổ hợp toolbar/thiết bị. ST-02-scale FAIL S6-13-B01: lệch nét khoảng 20.5px tại 360px; touch giả lập có vẽ/không cuộn nhưng thiết bị thật BLOCKED. ST-11 không request ghi trong context kiểm tra. Chưa đạt toàn task.
+
+Phiên bản ef18bd4, ngày 15/11/2026, Codex thực thi tự động; reviewer con người chưa xác nhận. [Báo cáo kết quả](../../KET_QUA_NGHIEM_THU_PR15_2026-11-15.md), [JSON tổng hợp](../acceptance-2026-11-15/consolidated-results.json). Không chạy trên production. Ma trận NOT_RUN bên dưới giữ làm baseline lịch sử, được kết quả mới thay thế theo từng nhánh.
+
+
 **Trạng thái task:** REVIEW / chưa DONE. PR [#15](https://github.com/Ddawng18/PA-Nhom3/pull/15), SHA mã chức năng `b8933d1f841a25be77e12d91930a5e6f8d45a304`; mã này chưa được xác nhận đã tích hợp hoặc deploy.
 
 ## Thông tin môi trường
@@ -11,7 +18,7 @@
 - Người thực hiện/reviewer nghiệm thu: chưa có danh tính được xác nhận độc lập.
 - Ảnh/log lưu kèm: chưa có. Kết quả console từng xuất hiện trong phiên làm việc nhưng raw log không được lưu thành artifact; không dùng làm PASS có thể truy vết.
 
-## Ma trận ca
+## Ma trận ca gốc trước nghiệm thu (lịch sử)
 
 | Mã | Tiêu chí / bước chính | Kết quả mong đợi | Trạng thái hiện tại |
 |---|---|---|---|

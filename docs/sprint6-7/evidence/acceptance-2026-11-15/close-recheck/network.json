@@ -1,0 +1,11 @@
+{
+  "scope": "Local browser contexts; all external requests blocked; no credentials",
+  "writes": [],
+  "external": [
+    {
+      "method": "GET",
+      "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    }
+  ],
+  "pageErrors": []
+}

@@ -1,0 +1,2 @@
+PASS ST-09-close: Real beforeunload dialog on tab close, cancel and accept
+{"PASS":1,"BLOCKED":5}
