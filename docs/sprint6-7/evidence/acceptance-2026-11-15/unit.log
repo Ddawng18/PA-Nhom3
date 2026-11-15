@@ -1,0 +1,13 @@
+
+> linea-digital-art-training-platform@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 D:/QLDA/PA-Nhom3-handover-1115
+
+
+ Test Files  15 passed (15)
+      Tests  80 passed (80)
+   Start at  13:11:12
+   Duration  1.77s (transform 2.90s, setup 0ms, import 5.52s, tests 279ms, environment 3ms)
+
