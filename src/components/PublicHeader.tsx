@@ -23,30 +23,15 @@ export default function PublicHeader({ authLink }: PublicHeaderProps) {
         </Link>
         <nav className="header-nav" aria-label="Điều hướng chính">
           {publicNavItems.map((item) => {
-            if ("to" in item) {
-              const isActive = isNavItemActive(pathname, item);
-              return (
-                <Link
-                  key={item.label}
-                  className="header-nav-link"
-                  to={item.to}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  {item.label}
-                </Link>
-              );
-            }
-
             return (
-              <button
+              <Link
                 key={item.label}
-                className="header-nav-button"
-                type="button"
-                aria-disabled="true"
-                title="Tính năng đang phát triển"
+                className="header-nav-link"
+                to={item.to}
+                aria-current={isNavItemActive(pathname, item) ? "page" : undefined}
               >
                 {item.label}
-              </button>
+              </Link>
             );
           })}
         </nav>

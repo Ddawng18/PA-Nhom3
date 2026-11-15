@@ -76,19 +76,19 @@
 
 ### S6-13 — Studio
 
-- [ ] Chưa thấy trang Studio thực trong các route đã rà; nút Studio ở dashboard đang disabled. Cần triển khai và nghiệm thu vẽ, tẩy, undo/redo, PNG và cảm ứng.
+- [ ] Đã bổ sung route `/studio`, canvas vẽ bằng Pointer Events, bút/tẩy/màu/cỡ nét, undo/redo giới hạn, xóa có xác nhận và tải PNG; dashboard đã nối CTA. Chưa kiểm tra bằng thao tác chuột/cảm ứng, resize thực tế, bàn phím và trạng thái rời trang có tranh chưa xuất.
 
 ### S6-14 — Dashboard Khách
 
 - [x] Có trang chủ Khách và catalog công khai.
-- [ ] Đối chiếu đủ phạm vi dashboard Khách, CTA và liên kết Studio/xã hội demo, kiểm tra dữ liệu công khai và responsive.
+- [ ] Đã bổ sung CTA catalog/đăng ký và liên kết Studio/cộng đồng demo trên trang Khách; chưa nghiệm thu API lỗi, dữ liệu công khai, đăng nhập/đăng xuất và responsive 360px.
 
 ### S6-15 — Xã hội demo
 
-- [ ] Chưa thấy trang community trong các route đã rà; cần giao diện demo, nhãn dữ liệu mẫu, tương tác không lưu và bằng chứng không có request ghi.
+- [ ] Đã bổ sung `/community` và `/community/:postId`, bài mẫu/nhãn demo, thích/bình luận trong bộ nhớ và xử lý bài không tồn tại; chưa xác minh Network không có request ghi, duyệt nội dung/nguồn ảnh, hoặc nghiệm thu responsive.
 
 ## Kết quả kiểm tra ghi nhận trước đó
 
 Tài liệu [REVIEW_FIXES_2026-11-14.md](REVIEW_FIXES_2026-11-14.md) báo build FE/BE, lint, frontend test 78/78 và backend 37/37, cùng một số smoke test dữ liệu thật. Đó là kết quả do nhóm ghi ngày 14/11; không khẳng định đã chạy lại trên commit `db0d61d` ngày 15/11. Tài liệu cũng ghi upload/Storage, E2E có đăng nhập, một số API quản trị và restore là NOT_RUN.
 
-**Lượt rà soát này:** chỉ đọc mã, lịch sử Git và tài liệu; test, SQL, deployment và dữ liệu production không được thực thi/kiểm tra lại. Các ô chưa đủ bằng chứng tiếp tục để trống.
+**Lượt rà soát này:** đã bổ sung route/CTA và code Studio, dashboard Khách, cộng đồng demo; chạy `npm test` (80/80), `npm run build`, `npm run lint` và `git diff --check` đều đạt. Chưa chạy SQL/migration, deployment, kiểm tra dữ liệu production hoặc nghiệm thu tương tác trên trình duyệt/thiết bị thật; các ô cần những bằng chứng đó tiếp tục để trống.

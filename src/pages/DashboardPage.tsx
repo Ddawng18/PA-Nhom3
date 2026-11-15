@@ -223,7 +223,7 @@ export default function DashboardPage() {
           </section>
 
           <div className="dash-action-row">
-            <DisabledFeatureButton className="dash-primary-button dash-studio-button">Vào Studio</DisabledFeatureButton>
+            <Link className="dash-primary-button dash-studio-button" to="/studio">Vào Studio</Link>
             <DisabledFeatureButton className="dash-secondary-button">Xem tiến độ</DisabledFeatureButton>
           </div>
 
