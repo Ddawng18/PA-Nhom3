@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider } from "react-router-dom";
 import AuthProvider from "./auth/AuthProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoleGuard from "./components/AdminRoleGuard";
@@ -25,11 +25,8 @@ import CoursesPage from "./pages/CoursesPage";
 import StudioPage from "./pages/StudioPage";
 import CommunityPage from "./pages/CommunityPage";
 
-function App() {
-  return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
+const router = createBrowserRouter(createRoutesFromElements(
+  <>
           <Route path="/teacher/onboarding" element={<ProtectedRoute><TeacherOnboardingPage /></ProtectedRoute>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -125,10 +122,11 @@ function App() {
           <Route path="/progress" element={<ProtectedRoute><StudentLearningOverviewPage mode="progress" /></ProtectedRoute>} />
           <Route path="/assignments" element={<ProtectedRoute><StudentLearningOverviewPage mode="assignments" /></ProtectedRoute>} />
           <Route path="/teacher/courses/:courseId/submissions" element={<ProtectedRoute><TeacherRoleGuard><TeacherSubmissionsPage /></TeacherRoleGuard></ProtectedRoute>} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
-  );
+  </>
+));
+
+function App() {
+  return <AuthProvider><RouterProvider router={router} /></AuthProvider>;
 }
 
 const root = document.getElementById("root");

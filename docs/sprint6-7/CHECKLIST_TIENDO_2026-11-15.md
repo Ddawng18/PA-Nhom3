@@ -76,7 +76,7 @@
 
 ### S6-13 — Studio
 
-- [ ] Đã bổ sung route `/studio`, canvas vẽ bằng Pointer Events, bút/tẩy/màu/cỡ nét, undo/redo giới hạn, xóa có xác nhận và tải PNG; dashboard đã nối CTA. Chưa kiểm tra bằng thao tác chuột/cảm ứng, resize thực tế, bàn phím và trạng thái rời trang có tranh chưa xuất.
+- [ ] Đã bổ sung route `/studio`, canvas vẽ bằng Pointer Events, bút/tẩy/màu/cỡ nét, undo/redo giới hạn, xóa có xác nhận và tải PNG; dashboard đã nối CTA. Có chặn điều hướng nội bộ/Back-Forward và cảnh báo unload khi tranh khác snapshot đã xuất. Đã thử chuột, xuất/undo và điều hướng nội bộ/Back bằng Playwright trên Chrome desktop; chưa kiểm tra cảm ứng, resize, bàn phím hoặc hộp thoại unload trên thiết bị thật.
 
 ### S6-14 — Dashboard Khách
 

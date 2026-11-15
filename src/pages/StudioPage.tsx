@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useBlocker } from "react-router-dom";
 import PublicHeader from "../components/PublicHeader";
 import "../styles/studio.css";
 
 const WIDTH = 1200;
 const HEIGHT = 720;
 const HISTORY_LIMIT = 30;
+type Snapshot = { image: ImageData; id: number };
 
 export default function StudioPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const history = useRef<ImageData[]>([]);
+  const history = useRef<Snapshot[]>([]);
   const index = useRef(-1);
+  const snapshotId = useRef(0);
+  const exportedSnapshotId = useRef<number | null>(null);
   const drawing = useRef(false);
   const [tool, setTool] = useState<"pen" | "eraser">("pen");
   const [color, setColor] = useState("#26332b");
@@ -18,15 +21,19 @@ export default function StudioPage() {
   const [revision, setRevision] = useState(0);
   const [notice, setNotice] = useState("");
   const [unexported, setUnexported] = useState(false);
+  const blocker = useBlocker(unexported);
+  const { state: blockerState, proceed, reset } = blocker;
+  const handledBlocker = useRef(false);
 
   const save = () => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
     history.current = history.current.slice(0, index.current + 1);
-    history.current.push(context.getImageData(0, 0, WIDTH, HEIGHT));
+    history.current.push({ image: context.getImageData(0, 0, WIDTH, HEIGHT), id: ++snapshotId.current });
     if (history.current.length > HISTORY_LIMIT) history.current.shift();
     index.current = history.current.length - 1;
+    setUnexported(history.current[index.current].id !== exportedSnapshotId.current);
     setRevision((value) => value + 1);
   };
 
@@ -37,6 +44,8 @@ export default function StudioPage() {
     context.fillStyle = "#fffdf7";
     context.fillRect(0, 0, WIDTH, HEIGHT);
     save();
+    exportedSnapshotId.current = history.current[index.current]?.id ?? null;
+    setUnexported(false);
   }, []);
 
   useEffect(() => {
@@ -48,6 +57,14 @@ export default function StudioPage() {
     window.addEventListener("beforeunload", warnBeforeLeaving);
     return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
   }, [unexported]);
+
+  useEffect(() => {
+    if (blockerState !== "blocked") { handledBlocker.current = false; return; }
+    if (handledBlocker.current) return;
+    handledBlocker.current = true;
+    if (window.confirm("Bản vẽ chưa được xuất. Rời trang và mất bản vẽ hiện tại?")) proceed();
+    else reset();
+  }, [blockerState, proceed, reset]);
 
   const point = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -76,17 +93,20 @@ export default function StudioPage() {
     const context = canvasRef.current?.getContext("2d");
     const snapshot = history.current[next];
     if (!context || !snapshot) return;
-    context.putImageData(snapshot, 0, 0); index.current = next; setRevision((value) => value + 1);
+    context.putImageData(snapshot.image, 0, 0); index.current = next;
+    setUnexported(snapshot.id !== exportedSnapshotId.current); setRevision((value) => value + 1);
   };
   const clear = () => {
     if (!window.confirm("Xóa toàn bộ tranh hiện tại?")) return;
     const context = canvasRef.current?.getContext("2d");
     if (!context) return;
-    context.fillStyle = "#fffdf7"; context.fillRect(0, 0, WIDTH, HEIGHT); save(); setUnexported(false); setNotice("Đã xóa tranh.");
+    context.fillStyle = "#fffdf7"; context.fillRect(0, 0, WIDTH, HEIGHT); save(); setNotice("Đã xóa tranh.");
   };
   const exportPng = () => {
     const link = document.createElement("a"); link.download = "linea-studio.png";
-    link.href = canvasRef.current?.toDataURL("image/png") ?? ""; link.click(); setUnexported(false); setNotice("Đã tải PNG về thiết bị.");
+    link.href = canvasRef.current?.toDataURL("image/png") ?? ""; link.click();
+    exportedSnapshotId.current = history.current[index.current]?.id ?? null;
+    setUnexported(false); setNotice("Đã tải PNG về thiết bị.");
   };
 
   return <div className="studio-page"><PublicHeader authLink={{ to: "/login", label: "Đăng nhập" }} />

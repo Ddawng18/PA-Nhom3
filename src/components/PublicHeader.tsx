@@ -12,7 +12,7 @@ type PublicHeaderProps = {
 
 export default function PublicHeader({ authLink }: PublicHeaderProps) {
   const { pathname } = useLocation();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const accountChip = user ? getUserChip(user) : null;
 
   return (
@@ -65,11 +65,11 @@ export default function PublicHeader({ authLink }: PublicHeaderProps) {
               <span className="header-user-email">{accountChip.email}</span>
             </span>
           </Link>
-        ) : (
+        ) : !loading ? (
           <Link className="login-link" to={authLink.to}>
             {authLink.label}
           </Link>
-        )}
+        ) : null}
       </div>
     </header>
   );
