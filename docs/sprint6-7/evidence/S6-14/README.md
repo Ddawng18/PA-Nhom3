@@ -1,6 +1,6 @@
 # Hồ sơ nghiệm thu S6-14 — Trang Khách
 
-**Trạng thái task:** REVIEW / chưa DONE. PR [#15](https://github.com/Ddawng18/PA-Nhom3/pull/15), head `b8933d1f841a25be77e12d91930a5e6f8d45a304`; chưa xác nhận tích hợp hoặc deploy.
+**Trạng thái task:** REVIEW / chưa DONE. PR [#15](https://github.com/Ddawng18/PA-Nhom3/pull/15), SHA mã chức năng `b8933d1f841a25be77e12d91930a5e6f8d45a304`; chưa xác nhận tích hợp hoặc deploy.
 
 ## Thông tin môi trường
 
@@ -41,7 +41,68 @@ Ngày giờ UTC+7 / môi trường / người thực hiện / reviewer:
 Trình duyệt / thiết bị / viewport / vai trò:
 Tiền điều kiện / dữ liệu:
 Bước thực hiện / kết quả mong đợi / kết quả thực tế:
-Trạng thái: NOT_RUN | PASS | FAIL | BLOCKED
+Trạng thái: NOT_RUN | REPORTED_UNVERIFIED | PASS | FAIL | BLOCKED
 Link ảnh / log:
 Lỗi tồn / owner / hạn đã xác nhận:
 ```
+
+## Quy ước phiên bản và kết quả bổ sung khi bàn giao
+
+SHA mã chức năng được đối chiếu: `b8933d1`. Commit tài liệu trước lần hoàn thiện này: `18a44a5`. SHA của lần bàn giao tiếp theo lấy từ lịch sử Git; không gọi SHA mã chức năng là head hiện tại. Trạng thái PR ghi kèm thời điểm là thông tin lịch sử, cần đọc lại GitHub trước khi tích hợp.
+
+`NOT_RUN`: chưa thực hiện. `REPORTED_UNVERIFIED`: tác giả báo cáo đã thực hiện nhưng thiếu minh chứng truy vết hoặc chưa được xác minh độc lập; không tính PASS. `PASS`/`FAIL`: có kết quả thực tế và bằng chứng gắn SHA/môi trường. `BLOCKED`: có trở ngại cụ thể. Ca có nhiều nhánh phải ghi riêng trạng thái từng nhánh; không dùng kết quả một nhánh cho cả ca.
+
+Thông số máy, giờ và kết quả chạy cũ là thông tin do tác giả ghi trong báo cáo, chưa được reviewer xác minh độc lập. Lượt hoàn thiện tài liệu này không chạy test, trình duyệt, SQL hoặc deploy. Xem [bảng bàn giao và người phụ trách](../../BAN_GIAO_PR15_2026-11-15.md).
+
+## Hướng dẫn tái hiện từng ca (chưa thực thi trong lượt bàn giao)
+
+Mỗi nhánh cần kết quả riêng. Nếu chưa có môi trường/dữ liệu thì ghi BLOCKED với lý do khi nhận chạy; không tự tạo kết quả.
+
+### GH-01
+
+- Tiền điều kiện: Phiên mới không đăng nhập; ghi URL và SHA FE.
+- Bước: Mở trực tiếp trang Khách, reload; mở từng CTA/link.
+- Mong đợi: Trang và đích đúng, không yêu cầu role học viên cho trang công khai.
+- Thực tế/minh chứng/người chạy: chưa bổ sung ở lượt bàn giao này; trạng thái theo ma trận trên.
+
+### GH-02
+
+- Tiền điều kiện: Có tài khoản kiểm tra; ghi khóa đích nếu CTA xuất phát từ khóa.
+- Bước: Đi theo CTA đăng ký/đăng nhập; thử hủy; đăng nhập rồi đăng xuất.
+- Mong đợi: Header/phiên đúng; giữ ngữ cảnh khi có; hủy không tạo ghi danh.
+- Thực tế/minh chứng/người chạy: chưa bổ sung ở lượt bàn giao này; trạng thái theo ma trận trên.
+
+### GH-03
+
+- Tiền điều kiện: Môi trường riêng có khóa công khai, nháp, ẩn được chuẩn bị hợp lệ.
+- Bước: Mở catalog anonymous; đối chiếu API và UI với trạng thái các khóa.
+- Mong đợi: Chỉ khóa được phép công khai xuất hiện; ghi SHA BE/schema.
+- Thực tế/minh chứng/người chạy: chưa bổ sung ở lượt bàn giao này; trạng thái theo ma trận trên.
+
+### GH-04
+
+- Tiền điều kiện: Có cách kiểm soát mạng/response trên môi trường kiểm tra, không thay production.
+- Bước: Lần lượt tạo chậm mạng, dữ liệu rỗng hợp lệ, lỗi API; phục hồi và Retry.
+- Mong đợi: Loading/empty/error phân biệt; retry hồi phục; không dùng response lỗi làm empty.
+- Thực tế/minh chứng/người chạy: chưa bổ sung ở lượt bàn giao này; trạng thái theo ma trận trên.
+
+### GH-05
+
+- Tiền điều kiện: Phiên anonymous sạch; Network/DOM inspector mở.
+- Bước: Đọc response API dùng trên trang và DOM sau tải; đối chiếu nhóm trường riêng.
+- Mong đợi: Không có dữ liệu cá nhân/điểm/tiến độ; artifact được che dữ liệu nhạy cảm.
+- Thực tế/minh chứng/người chạy: chưa bổ sung ở lượt bàn giao này; trạng thái theo ma trận trên.
+
+### GH-06
+
+- Tiền điều kiện: Viewport 360px.
+- Bước: Cuộn hết trang, thao tác menu/CTA/link và kiểm tra chiều rộng.
+- Mong đợi: Không tràn ngang; văn bản/CTA dùng được.
+- Thực tế/minh chứng/người chạy: chưa bổ sung ở lượt bàn giao này; trạng thái theo ma trận trên.
+
+### GH-07
+
+- Tiền điều kiện: Trang Khách đang mở.
+- Bước: Chọn Studio rồi quay lại; chọn Community và mở bài chi tiết.
+- Mong đợi: Route đúng; giới hạn Studio và nhãn demo rõ.
+- Thực tế/minh chứng/người chạy: chưa bổ sung ở lượt bàn giao này; trạng thái theo ma trận trên.
