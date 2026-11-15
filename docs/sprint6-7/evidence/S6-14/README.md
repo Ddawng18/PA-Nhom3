@@ -1,5 +1,12 @@
 # Hồ sơ nghiệm thu S6-14 — Trang Khách
 
+## Cập nhật nghiệm thu có bằng chứng
+
+GH-01/06/07 đạt local. GH-03/04 chỉ đạt UI với fixture; GH-05 chỉ kiểm tra DOM anonymous local. GH-02 và API/dữ liệu riêng thực tế BLOCKED do chưa có môi trường/identity tích hợp. Chưa đạt toàn task.
+
+Phiên bản ef18bd4, ngày 15/11/2026, Codex thực thi tự động; reviewer con người chưa xác nhận. [Báo cáo kết quả](../../KET_QUA_NGHIEM_THU_PR15_2026-11-15.md), [JSON tổng hợp](../acceptance-2026-11-15/consolidated-results.json). Không chạy trên production. Ma trận NOT_RUN bên dưới giữ làm baseline lịch sử, được kết quả mới thay thế theo từng nhánh.
+
+
 **Trạng thái task:** REVIEW / chưa DONE. PR [#15](https://github.com/Ddawng18/PA-Nhom3/pull/15), SHA mã chức năng `b8933d1f841a25be77e12d91930a5e6f8d45a304`; chưa xác nhận tích hợp hoặc deploy.
 
 ## Thông tin môi trường
@@ -18,7 +25,7 @@
 
 Đây là ghi nhận về mã, không xác nhận trải nghiệm trên môi trường tích hợp.
 
-## Ma trận ca
+## Ma trận ca gốc trước nghiệm thu (lịch sử)
 
 | Mã | Tiêu chí / bước chính | Kết quả mong đợi | Trạng thái |
 |---|---|---|---|

@@ -1,0 +1,12 @@
+{
+  "date": "2026-11-15",
+  "timezone": "Asia/Bangkok",
+  "source": "VITE_API_URL in original repository .env; value omitted",
+  "method": "GET",
+  "path": "/api/courses?page=1&pageSize=12",
+  "authentication": "none",
+  "result": "connection failed",
+  "errorType": "WebException",
+  "httpStatus": null,
+  "scope": "Connectivity probe only; does not establish backend business behavior, schema or deployed SHA"
+}
