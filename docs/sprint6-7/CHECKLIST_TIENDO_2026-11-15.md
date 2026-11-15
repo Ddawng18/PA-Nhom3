@@ -7,6 +7,8 @@
 - [x] PR #9 và PR #10 đã merge vào `develop`; PR #10 sửa router và khôi phục trang học dùng API thật (`8a54418`).
 - [x] PR #12 bổ sung service/API tiến độ, quản trị, SQL và preflight (`b25d90a`, nội dung `8d0332e`).
 - [x] DoD chi tiết S6-01–S6-15 đã có trong repository.
+- [x] PR #15 chứa S6-13–S6-15 trên head `b8933d1f841a25be77e12d91930a5e6f8d45a304`, base `develop` (`dffe155c4f2065ddfa2d7239111f1dce872b1f7e`); GitHub xác nhận OPEN/ chưa merge lúc 12:31 UTC+7 ngày 15/11. Trạng thái cần kiểm tra lại trước bàn giao.
+- [x] PR #14 cùng head đã đóng nhưng chưa merge; PR #15 là yêu cầu review đang mở. Không ghi nhận PR merge vào `develop`.
 - [ ] Xác nhận SHA FE/BE đang chạy trên Vercel/Render trùng bản dự kiến; chưa kiểm tra deploy hiện tại.
 - [ ] Review/kiểm chứng đầy đủ các tiêu chí DoD và lưu minh chứng tương ứng; không đánh Done cả task chỉ dựa vào PR đã merge.
 
@@ -76,19 +78,25 @@
 
 ### S6-13 — Studio
 
-- [ ] Đã bổ sung route `/studio`, canvas vẽ bằng Pointer Events, bút/tẩy/màu/cỡ nét, undo/redo giới hạn, xóa có xác nhận và tải PNG; dashboard đã nối CTA. Có chặn điều hướng nội bộ/Back-Forward và cảnh báo unload khi tranh khác snapshot đã xuất. Đã thử chuột, xuất/undo và điều hướng nội bộ/Back bằng Playwright trên Chrome desktop; chưa kiểm tra cảm ứng, resize, bàn phím hoặc hộp thoại unload trên thiết bị thật.
+- [x] Đọc mã PR #15 xác nhận route `/studio`, canvas Pointer Events, bút/tẩy/màu/cỡ nét, undo/redo giới hạn, xóa có xác nhận, PNG, snapshot đã xuất và guard nội bộ/Back-Forward/unload. Đây là xác nhận hiện diện mã, không phải nghiệm thu toàn DoD.
+- [ ] Có kết quả thao tác chuột/export/undo/điều hướng trong phiên Chrome desktop nhưng chưa có raw log/ảnh đính kèm; không chuyển ca sang PASS. Cảm ứng, resize, bàn phím, reload/đóng tab là `NOT_RUN`.
+- [ ] Evidence theo từng ca và giới hạn: [evidence S6-13](evidence/S6-13/README.md). Task ở REVIEW, chưa DONE.
 
 ### S6-14 — Dashboard Khách
 
 - [x] Có trang chủ Khách và catalog công khai.
-- [ ] Đã bổ sung CTA catalog/đăng ký và liên kết Studio/cộng đồng demo trên trang Khách; chưa nghiệm thu API lỗi, dữ liệu công khai, đăng nhập/đăng xuất và responsive 360px.
+- [x] Đọc mã PR #15 xác nhận CTA đăng ký/catalog cùng liên kết Studio và Community demo trên trang Khách.
+- [ ] API public, anonymous/auth, dữ liệu riêng trong response/DOM, 360px, loading/empty/error/retry chưa có evidence nghiệm thu; xem [evidence S6-14](evidence/S6-14/README.md). Task ở REVIEW, chưa DONE.
 
 ### S6-15 — Xã hội demo
 
-- [ ] Đã bổ sung `/community` và `/community/:postId`, bài mẫu/nhãn demo, thích/bình luận trong bộ nhớ và xử lý bài không tồn tại; chưa xác minh Network không có request ghi, duyệt nội dung/nguồn ảnh, hoặc nghiệm thu responsive.
+- [x] Đọc mã PR #15 xác nhận `/community`, `/community/:postId`, nội dung mẫu, nhãn demo, tương tác trong state trang, bài không tồn tại và ảnh minh họa CSS.
+- [ ] Network, tải lại reset, responsive, nội dung được duyệt và kiểm tra bài viết/tương tác trên thiết bị chưa có evidence nghiệm thu; xem [evidence S6-15](evidence/S6-15/README.md). Task ở REVIEW, chưa DONE.
 
 ## Kết quả kiểm tra ghi nhận trước đó
 
 Tài liệu [REVIEW_FIXES_2026-11-14.md](REVIEW_FIXES_2026-11-14.md) báo build FE/BE, lint, frontend test 78/78 và backend 37/37, cùng một số smoke test dữ liệu thật. Đó là kết quả do nhóm ghi ngày 14/11; không khẳng định đã chạy lại trên commit `db0d61d` ngày 15/11. Tài liệu cũng ghi upload/Storage, E2E có đăng nhập, một số API quản trị và restore là NOT_RUN.
 
-**Lượt rà soát này:** đã bổ sung route/CTA và code Studio, dashboard Khách, cộng đồng demo; chạy `npm test` (80/80), `npm run build`, `npm run lint` và `git diff --check` đều đạt. Chưa chạy SQL/migration, deployment, kiểm tra dữ liệu production hoặc nghiệm thu tương tác trên trình duyệt/thiết bị thật; các ô cần những bằng chứng đó tiếp tục để trống.
+**Cập nhật tài liệu theo PR #15:** bằng chứng triển khai, trạng thái PR và kết quả các lệnh đã chạy được ghi tại [báo cáo triển khai](IMPLEMENTATION_REPORT_2026-11-15.md). Các ca chưa có log/ảnh truy vết được giữ `NOT_RUN`; không suy ra nghiệm thu từ việc có mã hoặc build pass. Tài liệu này không xác nhận deploy, SQL/migration, dữ liệu production hay hoàn tất S6-13–15.
+
+Hướng dẫn thao tác: [Studio và Community demo](HUONG_DAN_STUDIO_COMMUNITY.md). Hồ sơ ca: [S6-13](evidence/S6-13/README.md), [S6-14](evidence/S6-14/README.md), [S6-15](evidence/S6-15/README.md). Chỉ chuyển task khỏi REVIEW sau khi PR được tích hợp, các tiêu chí bắt buộc có evidence, và reviewer xác nhận.
