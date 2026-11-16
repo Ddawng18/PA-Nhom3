@@ -71,19 +71,44 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
       </nav>
       {loading ? <p role="status">Đang tải khóa học...</p> : error ? <section className="settings-card"><p role="alert">{error}</p><button className="button button-outline" onClick={() => setAttempt(v => v + 1)}>Thử lại</button></section> : discover ? <>
         <label>Tìm khóa học<input className="settings-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tên hoặc chủ đề" /></label>
-        <section className="my-courses-list" aria-label="Khóa học đã xuất bản">
-          {found.length === 0 && <p>Chưa có khóa học phù hợp.</p>}
-          {found.map(c => <article className="settings-card" key={c.ma_khoa_hoc}><h2>{c.tieu_de}</h2><p>{getCourseLevelLabel(c.cap_do)} · {c.chu_de}</p><p>{c.mo_ta}</p>
-            <Link className="button button-primary" to={`/courses/${c.ma_khoa_hoc}`}>{courses.some(m => m.id === c.ma_khoa_hoc) ? "Vào khóa học" : "Xem và ghi danh"}</Link></article>)}
-        </section>
+        {found.length === 0 ? <section className="settings-card"><p>Chưa có khóa học phù hợp.</p></section> : <section className="my-courses-list" aria-label="Khóa học đã xuất bản">
+          {found.map(c => {
+            const level = getCourseLevelLabel(c.cap_do);
+            const meta = [level, c.chu_de.trim()].filter(Boolean).join(" · ");
+            return <article className="my-course-card" key={c.ma_khoa_hoc}>
+              <div className="my-course-card-heading"><h2 className="my-course-card-title">{c.tieu_de}</h2></div>
+              {meta && <p className="my-course-level">{meta}</p>}
+              {c.mo_ta.trim() && <p className="my-course-description">{c.mo_ta}</p>}
+              <div className="my-course-footer">
+                <Link className="button button-primary" to={`/courses/${c.ma_khoa_hoc}`}>{courses.some(m => m.id === c.ma_khoa_hoc) ? "Vào khóa học" : "Xem và ghi danh"}</Link>
+              </div>
+            </article>;
+          })}
+        </section>}
       </> : <>
         <nav className="settings-tabs" aria-label="Lọc tiến độ">{([['all', 'Tất cả'], ['in-progress', 'Đang học'], ['completed', 'Hoàn thành']] as const).map(([id, label]) => <button type="button" key={id} className={`settings-tab${activeTab === id ? " active" : ""}`} onClick={() => setActiveTab(id)}>{label} ({courses.filter(c => id === "all" || (id === "completed" ? c.status === "HOAN_THANH" : c.status !== "HOAN_THANH")).length})</button>)}</nav>
         {visible.length === 0 && <section className="settings-card"><p>Chưa có khóa học trong mục này.</p><button className="button button-primary" onClick={() => setDiscover(true)}>Khám phá khóa học</button></section>}
-        <section className="my-courses-list" aria-label="Khóa học đã ghi danh">{visible.map(c => <article className="settings-card" key={c.id}>
-          <h2>{c.title}</h2><p>{getCourseLevelLabel(c.level)} · {c.status === "HOAN_THANH" ? "Đã hoàn thành" : "Đang học"}</p>
-          <label>Tiến độ bài học: {c.percent}% <progress value={c.percent} max={100} /></label>
-          <div>{c.available ? <Link className="button button-primary" to={`/courses/${c.id}`}>Xem tiến độ / tiếp tục học</Link> : <p>Khóa học đang tạm ẩn. Liên hệ giáo viên để được hỗ trợ.</p>}</div>
-        </article>)}</section>
+        <section className="my-courses-list" aria-label="Khóa học đã ghi danh">{visible.map(c => {
+          const level = getCourseLevelLabel(c.level);
+          return <article className="my-course-card" key={c.id}>
+            <div className="my-course-card-heading">
+              <h2 className="my-course-card-title">{c.title}</h2>
+              {c.status && <span className="course-status-chip my-course-status">{c.status === "HOAN_THANH" ? "Hoàn thành" : "Đang học"}</span>}
+            </div>
+            {level && <p className="my-course-level">{level}</p>}
+            {typeof c.percent === "number" && <>
+              <p className="my-course-progress-label">Tiến độ khóa học · {c.percent}%</p>
+              <div className="course-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.percent} aria-label="Tiến độ khóa học">
+                <span style={{ width: `${Math.min(100, Math.max(0, c.percent))}%` }} />
+              </div>
+            </>}
+            <div className="my-course-footer">
+              {c.available
+                ? <Link className="button button-primary" to={`/courses/${c.id}/learn`}>Xem tiến độ / tiếp tục học</Link>
+                : <p className="my-course-unavailable">Khóa học đang tạm ẩn. Liên hệ giáo viên để được hỗ trợ.</p>}
+            </div>
+          </article>;
+        })}</section>
       </>}
     </div></main>
   </div>;

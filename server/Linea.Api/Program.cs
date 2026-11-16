@@ -65,6 +65,7 @@ builder.Services.AddScoped<ActiveAccountHandler>();
 builder.Services.AddScoped<LearningProgressService>();
 builder.Services.AddScoped<AdminManagementService>();
 builder.Services.AddScoped<AdminOrderService>();
+builder.Services.AddScoped<CourseCatalogService>();
 builder.Services.AddSingleton<AssignmentStorage>();
 
 builder.Services
