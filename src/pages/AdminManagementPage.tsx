@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
 import { requestAdminApi } from "../lib/adminApi";
+import ApprovalsPanel from "../components/ApprovalsPanel";
+import AdminCourseDetails from "../components/AdminCourseDetails";
+import { useApprovals } from "../hooks/useApprovals";
+import { getCourseStatusLabel } from "../logic/courseEditor";
 import "../styles/course-detail.css";
 import "../styles/admin-management.css";
 
@@ -14,9 +18,11 @@ type UserRow = z.infer<typeof userSchema>;
 type CourseRow = z.infer<typeof courseSchema>;
 
 export default function AdminManagementPage() {
+  const navigate = useNavigate();
   const { session } = useAuth();
   const token = session?.access_token;
-  const [tab, setTab] = useState<"users" | "courses">("users");
+  const [tab, setTab] = useState<"users" | "courses" | "review">("users");
+  const approvals = useApprovals(tab === "review", true, token);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
@@ -28,10 +34,12 @@ export default function AdminManagementPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [refresh, setRefresh] = useState(0);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [detail, setDetail] = useState<{ name: string; status: string; history: Array<{ status: string; reason: string | null; occurredAt: string }> } | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setError(""); setDetail(null);
+    if (tab === "review") { setLoading(false); return () => controller.abort(); }
     if (token) void requestAdminApi(`/api/admin/${tab}`, { token, signal: controller.signal }, { page: pageNumber, pageSize: 20, search: query || undefined })
       .then((data) => {
         if (controller.signal.aborted) return;
@@ -44,6 +52,7 @@ export default function AdminManagementPage() {
 
   async function showDetail(id: string | number) {
     if (!token) return;
+    if (tab === "courses") { setSelectedCourseId(Number(id)); return; }
     setError(""); setBusy(true);
     try {
       const value = z.object({ displayName: z.string().nullable().optional(), email: z.string().optional(), title: z.string().optional(), role: z.string().optional(), status: z.string().optional(), isLocked: z.boolean().optional(), history: z.array(z.object({ status: z.string(), reason: z.string().nullable(), occurredAt: z.string() })) }).parse(await requestAdminApi(`/api/admin/${tab}/${id}`, { token }));
@@ -74,14 +83,15 @@ export default function AdminManagementPage() {
 
   return <div className="register-page cd-page"><PublicHeader authLink={{ to: "/dashboard", label: "Tổng quan" }} />
     <main className="cd-main admin-manage"><header className="admin-manage-header"><p className="admin-manage-eyebrow">KHÔNG GIAN QUẢN TRỊ</p><h1>Quản lý hệ thống</h1><p>Theo dõi tài khoản và quản lý trạng thái khóa học.</p></header>
-      <nav aria-label="Quản trị" className="admin-manage-tabs"><button type="button" aria-pressed={tab === "users"} onClick={() => { setTab("users"); setPageNumber(1); }}>Người dùng</button><button type="button" aria-pressed={tab === "courses"} onClick={() => { setTab("courses"); setPageNumber(1); }}>Khóa học</button><Link to="/admin/teachers">Duyệt giáo viên</Link></nav>
-      <section className="admin-manage-panel"><div className="admin-manage-panel-head"><div><h2>{tab === "users" ? "Danh sách người dùng" : "Danh sách khóa học"}</h2><p>{loading ? "Đang tải dữ liệu" : `${total} kết quả`}</p></div>
-      <form className="admin-manage-search" onSubmit={(e) => { e.preventDefault(); setPageNumber(1); setQuery(search.trim()); }}><label className="sr-only" htmlFor="admin-search">Tìm kiếm</label><input id="admin-search" placeholder="Tìm theo tên hoặc email" value={search} onChange={(e) => setSearch(e.target.value)} /><button type="submit">Tìm kiếm</button></form></div>
+      <nav aria-label="Quản trị" className="admin-manage-tabs"><button type="button" aria-pressed={tab === "users"} onClick={() => { setTab("users"); setPageNumber(1); }}>Người dùng</button><button type="button" aria-pressed={tab === "courses"} onClick={() => { setTab("courses"); setPageNumber(1); }}>Khóa học</button><button type="button" aria-pressed={tab === "review"} onClick={() => { setTab("review"); setNotice(""); }}>Duyệt khóa học</button><Link to="/admin/teachers">Duyệt giáo viên</Link></nav>
+      {tab === "review" ? <ApprovalsPanel section="khoa-hoc" setSection={(section) => { if (section === "giao-vien") navigate("/admin/teachers"); }} data={approvals} /> : <section className="admin-manage-panel"><div className="admin-manage-panel-head"><div><h2>{tab === "users" ? "Danh sách người dùng" : "Danh sách khóa học"}</h2><p>{loading ? "Đang tải dữ liệu" : `${total} kết quả`}</p></div>
+      <form className="admin-manage-search" onSubmit={(e) => { e.preventDefault(); setPageNumber(1); setQuery(search.trim()); }}><label className="sr-only" htmlFor="admin-search">Tìm kiếm</label><input id="admin-search" placeholder={tab === "users" ? "Tìm theo tên hoặc email" : "Tìm theo tên khóa học"} value={search} onChange={(e) => setSearch(e.target.value)} /><button type="submit">Tìm kiếm</button></form></div>
       {notice && <p className="admin-manage-notice" role="status">{notice}</p>}
       {error && <p className="admin-manage-error" role="alert">{error} <button type="button" onClick={() => setRefresh((n) => n + 1)}>Tải lại</button></p>}
       {loading ? <p className="admin-manage-empty" role="status">Đang tải...</p> : <>
-        {total === 0 ? <p className="admin-manage-empty">Không có kết quả phù hợp.</p> : <ul className="admin-manage-list">{tab === "users" ? users.map((item) => <li key={item.id}><div className="admin-manage-item"><button className="admin-manage-name" type="button" disabled={busy} onClick={() => void showDetail(item.id)}>{item.displayName || item.email}</button><span className="admin-manage-meta">{item.email} · {item.role}</span></div><span className={`admin-manage-badge${item.isLocked ? " is-muted" : ""}`}>{item.isLocked ? "Đã khóa" : "Hoạt động"}</span><button className="admin-manage-action" type="button" disabled={busy} onClick={() => void change(item)}>{item.isLocked ? "Mở khóa" : "Khóa"}</button></li>) : courses.map((item) => <li key={item.id}><div className="admin-manage-item"><button className="admin-manage-name" type="button" disabled={busy} onClick={() => void showDetail(item.id)}>{item.title}</button><span className="admin-manage-meta">Mã khóa học: {item.id}</span></div><span className="admin-manage-badge is-muted">{item.status}</span><button className="admin-manage-action" type="button" disabled={busy || !["DA_DANG", "AN"].includes(item.status)} onClick={() => void change(item)}>{item.hidden ? "Hiện" : "Ẩn"}</button></li>)}</ul>}
-        <div className="admin-manage-pagination"><button type="button" disabled={pageNumber <= 1} onClick={() => setPageNumber((n) => n - 1)}>Trước</button><span>Trang {pageNumber}</span><button type="button" disabled={pageNumber * 20 >= total} onClick={() => setPageNumber((n) => n + 1)}>Sau</button></div></>}</section>
-      {detail && <section className="admin-manage-detail"><h2>{detail.name}</h2><p>{detail.status}</p><h3>Lịch sử</h3>{detail.history.length ? <ul>{detail.history.map((entry, index) => <li key={`${entry.occurredAt}-${index}`}>{new Date(entry.occurredAt).toLocaleString("vi-VN")} · {entry.status} {entry.reason && `· ${entry.reason}`}</li>)}</ul> : <p>Chưa có lịch sử.</p>}</section>}
+        {total === 0 ? <p className="admin-manage-empty">Không có kết quả phù hợp.</p> : <ul className="admin-manage-list">{tab === "users" ? users.map((item) => <li key={item.id}><div className="admin-manage-item"><button className="admin-manage-name" type="button" disabled={busy} onClick={() => void showDetail(item.id)}>{item.displayName || item.email}</button><span className="admin-manage-meta">{item.email} · {item.role}</span></div><span className={`admin-manage-badge${item.isLocked ? " is-muted" : ""}`}>{item.isLocked ? "Đã khóa" : "Hoạt động"}</span><button className="admin-manage-action" type="button" disabled={busy} onClick={() => void change(item)}>{item.isLocked ? "Mở khóa" : "Khóa"}</button></li>) : courses.map((item) => <li key={item.id}><div className="admin-manage-item"><button className="admin-manage-name" type="button" disabled={busy} onClick={() => void showDetail(item.id)}>{item.title}</button><span className="admin-manage-meta">Mã khóa học: {item.id}</span></div><span className="admin-manage-badge is-muted">{getCourseStatusLabel(item.status)}</span>{item.status === "CHO_DUYET" && <button className="admin-manage-action" type="button" onClick={() => { setTab("review"); setNotice(""); }}>Xét duyệt</button>}<button className="admin-manage-action" type="button" disabled={busy || !["DA_DANG", "AN"].includes(item.status)} onClick={() => void change(item)}>{item.hidden ? "Hiện" : "Ẩn"}</button></li>)}</ul>}
+        <div className="admin-manage-pagination"><button type="button" disabled={pageNumber <= 1} onClick={() => setPageNumber((n) => n - 1)}>Trước</button><span>Trang {pageNumber}</span><button type="button" disabled={pageNumber * 20 >= total} onClick={() => setPageNumber((n) => n + 1)}>Sau</button></div></>}</section>}
+      {tab !== "review" && detail && <section className="admin-manage-detail"><h2>{detail.name}</h2><p>{detail.status}</p><h3>Lịch sử</h3>{detail.history.length ? <ul>{detail.history.map((entry, index) => <li key={`${entry.occurredAt}-${index}`}>{new Date(entry.occurredAt).toLocaleString("vi-VN")} · {entry.status} {entry.reason && `· ${entry.reason}`}</li>)}</ul> : <p>Chưa có lịch sử.</p>}</section>}
+      {selectedCourseId !== null && <AdminCourseDetails courseId={selectedCourseId} onClose={() => setSelectedCourseId(null)} />}
     </main></div>;
 }

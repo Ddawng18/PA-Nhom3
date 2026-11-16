@@ -883,3 +883,18 @@
     grid-template-columns: minmax(0, 1fr) 70px 32px;
   }
 }
+
+.teacher-review-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 18px 20px;
+  border: 1px solid #b7d6b5;
+  border-radius: 16px;
+  background: #edf6e9;
+  color: #2f5734;
+}
+.teacher-review-success > svg { flex-shrink: 0; }
+.teacher-review-success p { margin: 6px 0 10px; }
+.teacher-review-success a { color: inherit; font-weight: 600; }

@@ -1,7 +1,8 @@
 # Triển khai miễn phí
 
-**Trạng thái hiện tại:** dự án chưa được triển khai, nên chưa có URL thử. Kế hoạch
-dưới đây dùng các gói miễn phí và có thể thực hiện lại khi cần.
+Đây là hướng dẫn cấu hình triển khai; không dùng tài liệu này để kết luận
+phiên bản hiện đang chạy. Khi kiểm tra bản deploy, đối chiếu commit và URL API.
+Chạy local theo [development-setup](development-setup.md).
 
 ## Kiến trúc
 
@@ -19,6 +20,7 @@ Không dùng SQLite trên hosting vì filesystem thường tạm thời.
 1. Import repository vào Vercel, chọn framework **Vite**.
 2. Build command: `npm run build`; Output directory: `dist`.
 3. Thêm Environment Variables:
+   - `VITE_API_URL` (URL HTTPS backend đang chạy, không dùng localhost)
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY` (khóa public, lấy từ Supabase → Settings → API Keys)
 
