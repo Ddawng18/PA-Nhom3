@@ -520,7 +520,7 @@ function CourseRow({
     <article className="appr-course-row">
       {showDetails && <AdminCourseDetails courseId={course.ma_khoa_hoc} onClose={() => setShowDetails(false)} />}
       {course.anh_dai_dien
-        ? <img className="appr-course-cover" src={course.anh_dai_dien} alt="" />
+        ? <img className="appr-course-cover" src={course.anh_dai_dien} alt={`Ảnh bìa ${course.tieu_de}`} loading="lazy" decoding="async" />
         : <span className="appr-course-cover appr-course-cover-empty" aria-hidden="true" />}
       <div className="appr-course-main">
         <div className="appr-course-copy">

@@ -52,7 +52,8 @@ public sealed record AdminCourseItem(
     int StudentCount,
     int ChapterCount,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt,
+    string? CoverImage);
 
 public sealed record AdminCoursePage(
     IReadOnlyList<AdminCourseItem> Items,

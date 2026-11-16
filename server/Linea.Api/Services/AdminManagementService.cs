@@ -344,7 +344,8 @@ public sealed class AdminManagementService(AppDbContext db, ILogger<AdminManagem
                          where g.ma_khoa_hoc = k.ma_khoa_hoc and g.trang_thai <> 'DA_HUY')::int,
                        (select count(*) from public.chuong c where c.ma_khoa_hoc = k.ma_khoa_hoc)::int,
                        k.ngay_tao,
-                       nullif(to_jsonb(k) ->> 'ngay_cap_nhat', '')::timestamptz
+                       nullif(to_jsonb(k) ->> 'ngay_cap_nhat', '')::timestamptz,
+                       k.anh_dai_dien
                 from public.khoa_hoc k
                 left join public.nguoi_dung n on n.id = k.ma_giao_vien
                 left join auth.users u on u.id = k.ma_giao_vien
@@ -379,7 +380,8 @@ public sealed class AdminManagementService(AppDbContext db, ILogger<AdminManagem
                     reader.GetInt32(11),
                     reader.GetInt32(12),
                     PostgresAdminHelpers.ReadTimestamp(reader, 13) ?? DateTimeOffset.UtcNow,
-                    PostgresAdminHelpers.ReadTimestamp(reader, 14)));
+                    PostgresAdminHelpers.ReadTimestamp(reader, 14),
+                    reader.IsDBNull(15) ? null : reader.GetString(15)));
             }
 
             return new AdminCoursePage(items, page, pageSize, (int)total);
