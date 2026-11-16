@@ -359,13 +359,18 @@
 }
 
 .settings-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 34px;
   padding: 0 14px;
   border: 0;
   border-radius: 9px;
   background: transparent;
   color: #7b857c;
+  font-family: inherit;
   font-size: 10px;
+  line-height: 1.4;
   white-space: nowrap;
   cursor: pointer;
 }
