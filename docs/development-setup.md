@@ -61,6 +61,16 @@ instance; Vite có thể chuyển sang cổng khác.
 Sau khi thay `.env`, khởi động lại frontend/backend tương ứng. Xem status và
 response của request lỗi trước khi kết luận là lỗi quyền hoặc database.
 
+## Cộng đồng
+
+Người đã đăng nhập có thể đăng bài kèm một ảnh JPG/PNG/WEBP tối đa 5 MB và
+bình luận tối đa 2.000 ký tự. Ảnh có xem trước, có thể gỡ trước khi đăng; nếu
+gửi lỗi thì nội dung và ảnh được giữ lại. Khách được xem bài và bình luận.
+Ảnh nằm trong bucket public `community-images`; upload đi qua backend và cần
+`SUPABASE_SERVICE_ROLE_KEY`. Bình luận được đọc/ghi qua API; không cấp quyền
+truy cập bảng trực tiếp cho trình duyệt. Migration `community_images_comments`
+thêm cột ảnh, bảng bình luận và bucket. Chạy kiểm tra UI bằng `npm run test:community`.
+
 ## Tạo khóa học
 
 Form yêu cầu role `teacher` và hồ sơ `DA_DUYET`. Điền thông tin cơ bản,
