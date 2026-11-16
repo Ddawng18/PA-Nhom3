@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
@@ -8,6 +8,7 @@ import ApprovalsPanel from "../components/ApprovalsPanel";
 import AdminCourseDetails from "../components/AdminCourseDetails";
 import { useApprovals } from "../hooks/useApprovals";
 import { getCourseStatusLabel } from "../logic/courseEditor";
+import type { ApprovalSection } from "../logic/approvals";
 import "../styles/course-detail.css";
 import "../styles/admin-management.css";
 
@@ -18,10 +19,18 @@ type UserRow = z.infer<typeof userSchema>;
 type CourseRow = z.infer<typeof courseSchema>;
 
 export default function AdminManagementPage() {
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { session } = useAuth();
   const token = session?.access_token;
-  const [tab, setTab] = useState<"users" | "courses" | "review">("users");
+  const requestedTab = searchParams.get("tab");
+  const tab = requestedTab === "courses" || requestedTab === "review" ? requestedTab : "users";
+  const section: ApprovalSection = searchParams.get("muc") === "giao-vien" ? "giao-vien" : "khoa-hoc";
+  function setTab(nextTab: "users" | "courses" | "review", nextSection: ApprovalSection = "khoa-hoc") {
+    setSearchParams(nextTab === "review" ? { tab: nextTab, muc: nextSection } : { tab: nextTab });
+    setPageNumber(1);
+    setNotice("");
+    setSelectedCourseId(null);
+  }
   const approvals = useApprovals(tab === "review", true, token);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -82,9 +91,14 @@ export default function AdminManagementPage() {
   }
 
   return <div className="register-page cd-page"><PublicHeader authLink={{ to: "/dashboard", label: "Tổng quan" }} />
-    <main className="cd-main admin-manage"><header className="admin-manage-header"><p className="admin-manage-eyebrow">KHÔNG GIAN QUẢN TRỊ</p><h1>Quản lý hệ thống</h1><p>Theo dõi tài khoản và quản lý trạng thái khóa học.</p></header>
-      <nav aria-label="Quản trị" className="admin-manage-tabs"><button type="button" aria-pressed={tab === "users"} onClick={() => { setTab("users"); setPageNumber(1); }}>Người dùng</button><button type="button" aria-pressed={tab === "courses"} onClick={() => { setTab("courses"); setPageNumber(1); }}>Khóa học</button><button type="button" aria-pressed={tab === "review"} onClick={() => { setTab("review"); setNotice(""); }}>Duyệt khóa học</button><Link to="/admin/teachers">Duyệt giáo viên</Link></nav>
-      {tab === "review" ? <ApprovalsPanel section="khoa-hoc" setSection={(section) => { if (section === "giao-vien") navigate("/admin/teachers"); }} data={approvals} /> : <section className="admin-manage-panel"><div className="admin-manage-panel-head"><div><h2>{tab === "users" ? "Danh sách người dùng" : "Danh sách khóa học"}</h2><p>{loading ? "Đang tải dữ liệu" : `${total} kết quả`}</p></div>
+    <main className="cd-main admin-manage"><header className="admin-manage-header"><p className="admin-manage-eyebrow">KHÔNG GIAN QUẢN TRỊ</p><h1>Quản lý hệ thống</h1><p>Quản lý tài khoản, khóa học và xét duyệt hồ sơ giáo viên.</p></header>
+      <nav aria-label="Quản trị" className="admin-manage-tabs">
+        <button type="button" aria-pressed={tab === "users"} onClick={() => setTab("users")}>Người dùng</button>
+        <button type="button" aria-pressed={tab === "courses"} onClick={() => setTab("courses")}>Khóa học</button>
+        <button type="button" aria-pressed={tab === "review" && section === "khoa-hoc"} onClick={() => setTab("review")}>Duyệt khóa học</button>
+        <button type="button" aria-pressed={tab === "review" && section === "giao-vien"} onClick={() => setTab("review", "giao-vien")}>Duyệt giáo viên</button>
+      </nav>
+      {tab === "review" ? <ApprovalsPanel section={section} setSection={(nextSection) => setTab("review", nextSection)} data={approvals} /> : <section className="admin-manage-panel"><div className="admin-manage-panel-head"><div><h2>{tab === "users" ? "Danh sách người dùng" : "Danh sách khóa học"}</h2><p>{loading ? "Đang tải dữ liệu" : `${total} kết quả`}</p></div>
       <form className="admin-manage-search" onSubmit={(e) => { e.preventDefault(); setPageNumber(1); setQuery(search.trim()); }}><label className="sr-only" htmlFor="admin-search">Tìm kiếm</label><input id="admin-search" placeholder={tab === "users" ? "Tìm theo tên hoặc email" : "Tìm theo tên khóa học"} value={search} onChange={(e) => setSearch(e.target.value)} /><button type="submit">Tìm kiếm</button></form></div>
       {notice && <p className="admin-manage-notice" role="status">{notice}</p>}
       {error && <p className="admin-manage-error" role="alert">{error} <button type="button" onClick={() => setRefresh((n) => n + 1)}>Tải lại</button></p>}
