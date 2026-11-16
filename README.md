@@ -34,11 +34,15 @@ Mở **http://localhost:5173**. Backend: **http://localhost:4174**.
 ## Tạo khóa học
 
 Đăng nhập tài khoản `teacher` có hồ sơ `DA_DUYET` → Khóa học của tôi →
-Tạo khóa học. Điền tiêu đề ít nhất 5 ký tự, mô tả ít nhất 50 ký tự,
-cấp độ, chủ đề và chọn ảnh bìa, rồi bấm **Lưu nháp** để lưu cùng lúc.
-Sau đó thêm chương/bài học. Khi soạn bài học, chọn ảnh và tệp tham khảo trước,
-rồi bấm **Lưu bài học** để lưu cùng nội dung. **Gửi duyệt** yêu cầu đủ nội dung
-và ảnh bìa; khi thành công sẽ hiện thông báo khóa học đang chờ xét duyệt.
+Tạo khóa học. Điền tên ít nhất 5 ký tự, mô tả ít nhất 50 ký tự, cấp độ và chủ đề.
+Có thể chọn ảnh bìa, thêm nhiều chương và bài học, chọn ảnh/tài liệu trong cùng
+bản soạn rồi bấm **Lưu toàn bộ** một lần. Thêm, xóa và đổi thứ tự chỉ áp dụng
+khi lưu; file được giữ trong bản soạn nếu lưu lỗi để thử lại.
+
+Tên khóa học không được trùng trong cùng giáo viên; tên chương không trùng
+trong cùng khóa; tên bài học không trùng trong cùng chương. So sánh bỏ qua
+hoa/thường và khoảng trắng đầu/cuối; database cũng có ràng buộc tương ứng.
+Sau khi lưu, bấm **Gửi duyệt**; gửi thành công sẽ hiện thông báo chờ xét duyệt.
 
 ## Thư mục
 

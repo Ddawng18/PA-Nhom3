@@ -63,9 +63,17 @@ response của request lỗi trước khi kết luận là lỗi quyền hoặc 
 
 ## Tạo khóa học
 
-Form yêu cầu role `teacher` và hồ sơ `DA_DUYET`. Điền tên ít nhất 5 ký tự,
-mô tả ít nhất 50 ký tự, cấp độ, chủ đề và chọn ảnh bìa rồi lưu nháp.
-Khi thêm bài học, chọn ảnh và tệp tham khảo ngay trong lúc soạn; chúng chỉ tải
-lên khi lưu bài học. File đã chọn được giữ lại nếu lưu lỗi để có thể thử lại.
+Form yêu cầu role `teacher` và hồ sơ `DA_DUYET`. Điền thông tin cơ bản,
+chọn ảnh bìa rồi thêm chương và bài học ngay trong bản soạn. Mỗi chương mới có
+thể thêm nhiều bài học mà không cần lưu trước. Bấm **Lưu toàn bộ** để lưu thông
+tin khóa, cấu trúc, bài học và tệp đã chọn. Chương/bài học mới được gán ID riêng
+khi lưu; dữ liệu nội dung được cập nhật trong một giao dịch backend.
+
+Tên khóa không trùng trong cùng giáo viên; tên chương không trùng trong cùng
+khóa; tên bài học không trùng trong cùng chương. Quy tắc bỏ qua hoa/thường và
+khoảng trắng đầu/cuối. Database áp dụng migration
+`supabase/migrations/20261116151449_enforce_course_content_unique_titles.sql`.
+Không tự đổi tên hoặc xóa dữ liệu cũ nếu migration phát hiện tên trùng.
+
 Gửi xét duyệt thành công sẽ hiện thông báo chờ duyệt, kể cả sau khi tải lại trang.
 Không đổi role hoặc trạng thái hồ sơ để bỏ qua lỗi chưa xác định.
