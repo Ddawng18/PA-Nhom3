@@ -66,6 +66,11 @@ response của request lỗi trước khi kết luận là lỗi quyền hoặc 
 Người đã đăng nhập có thể đăng bài kèm một ảnh JPG/PNG/WEBP tối đa 5 MB và
 bình luận tối đa 2.000 ký tự. Ảnh có xem trước, có thể gỡ trước khi đăng; nếu
 gửi lỗi thì nội dung và ảnh được giữ lại. Khách được xem bài và bình luận.
+Chủ bài viết có thể sửa nội dung, thay/gỡ ảnh và xóa bài (kèm bình luận).
+Bình luận hỗ trợ chữ hoặc một ảnh; ảnh mới được nén trong trình duyệt, tối đa
+1.280 px cạnh dài và 512 KB. Backend giới hạn ảnh bình luận 1 MB, chỉ nhận
+JPG/PNG/WEBP đã kiểm tra định dạng. Thay/gỡ ảnh hoặc xóa bài sẽ dọn ảnh trong
+Storage; lỗi dọn ảnh được ghi log để xử lý lại.
 Ảnh nằm trong bucket public `community-images`; upload đi qua backend và cần
 `SUPABASE_SERVICE_ROLE_KEY`. Bình luận được đọc/ghi qua API; không cấp quyền
 truy cập bảng trực tiếp cho trình duyệt. Migration `community_images_comments`
