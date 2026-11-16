@@ -1,5 +1,7 @@
 # Checklist tiến độ Sprint 6 — 15/11/2026
 
+> Cập nhật 16/11: PR #15 và #16 đã merge vào `develop`; những ghi chú “PR #15 chưa merge” bên dưới là lịch sử. Tiến độ, các ca thực tế, việc bàn giao và các điểm chưa đạt được cập nhật tại [checklist và bàn giao mới](CHECKLIST_BAN_GIAO_2026-11-16.md). Các thay đổi mới trong PR chưa được coi là đã triển khai hoặc đã Done.
+
 ## Kết quả nghiệm thu mới — 15/11/2026
 
 **Cập nhật sửa lỗi Studio:** Đã bỏ `min-height` và `object-fit` trên canvas mobile để vùng hiển thị giữ tỷ lệ 5:3. Chạy lại ST-02-scale, ST-02-touch-emulation, ST-05 và ST-10 đều PASS trên Chromium local; lint và build đạt. Tại viewport 360px, y mong đợi 48,90px, thực tế 48,5px. Kết quả lưu tại [mobile-fix](evidence/acceptance-2026-11-15/mobile-fix/results.json); JSON ghi SHA cơ sở `6a76471` vì chạy trên working tree có thay đổi CSS chưa commit. Thiết bị cảm ứng thật và các điều kiện tích hợp khác vẫn chờ nghiệm thu.

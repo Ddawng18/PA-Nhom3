@@ -251,12 +251,12 @@ function CourseLearningView() {
                 </div>
               </>}
               {lessons.length > 0 && <>
-                <p className="lesson-player-progress-label">Khóa học · {completedLessons}/{lessons.length} bài · {course.phan_tram}%</p>
-                <div className="course-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={course.phan_tram} aria-label="Tiến độ khóa học">
+                <p className="lesson-player-progress-label">Bài học · {completedLessons}/{lessons.length} bài · {course.phan_tram}%</p>
+                <div className="course-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={course.phan_tram} aria-label="Tiến độ bài học">
                   <span style={{ width: `${Math.min(100, Math.max(0, course.phan_tram))}%` }} />
                 </div>
               </>}
-              <p className="lesson-player-note">{course.trang_thai_ghi_danh === "HOAN_THANH" ? "Bạn đã hoàn thành khóa học. Bạn có thể xem lại toàn bộ bài học." : "Hoàn thành các bài học bắt buộc và được chấm tất cả bài tập bắt buộc để hoàn thành khóa."}</p>
+              <p className="lesson-player-note">{course.trang_thai_ghi_danh === "HOAN_THANH" ? "Bạn đã hoàn thành khóa học. Bạn có thể xem lại toàn bộ bài học." : "Hoàn thành các bài học bắt buộc và nộp đủ bài tập bắt buộc để hoàn thành khóa."}</p>
               {enrolled && resume && <Link className="button button-primary lesson-complete-button" to={`/courses/${courseId}/learn/${resume.ma_bai_hoc}`}>{course.trang_thai_ghi_danh === "HOAN_THANH" ? "Xem lại bài học" : "Tiếp tục học"}</Link>}
               {course.trang_thai_ghi_danh === "HOAN_THANH" && <Link className="button button-primary lesson-complete-button" to={`/courses/${courseId}/complete`}>Hoàn thành khóa học</Link>}
             </> : <p className="lesson-player-muted">Chưa có bài học để hiển thị.</p>}

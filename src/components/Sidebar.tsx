@@ -1,7 +1,6 @@
 import {
   BookOpen,
   ChartNoAxesColumnIncreasing,
-  Flame,
   FolderHeart,
   LayoutDashboard,
   PenTool,
@@ -24,11 +23,12 @@ type SidebarProps = {
 const navigationItems = [
   { label: "Tổng quan", icon: LayoutDashboard, to: "/dashboard" },
   { label: "Khóa học", icon: BookOpen, to: "/my-courses" },
-  { label: "Studio", icon: PenTool, to: null },
+  { label: "Studio", icon: PenTool, to: "/studio" },
   { label: "Bài luyện tập", icon: Sparkles, to: "/assignments" },
   { label: "Tiến độ", icon: ChartNoAxesColumnIncreasing, to: "/progress" },
+  { label: "Đơn demo", icon: BookOpen, to: "/orders" },
   { label: "Tác phẩm", icon: FolderHeart, to: null },
-  { label: "Cộng đồng", icon: Users, to: null },
+  { label: "Cộng đồng", icon: Users, to: "/community" },
   { label: "Cài đặt", icon: Settings, to: "/settings" },
   { label: "Hồ sơ giáo viên", icon: PenTool, to: "/teacher/onboarding" },
 ];
@@ -54,7 +54,7 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
   const sidebarName = profile?.display_name?.trim() || displayName;
   const sidebarInitials = sidebarName.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase();
   const adminNavigationItem = role === "admin"
-    ? { label: "Quản trị viên", icon: Users, to: "/admin/teachers" }
+    ? { label: "Quản trị viên", icon: Users, to: "/admin/manage" }
     : null;
 
   return (
@@ -84,17 +84,6 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
           )
         ))}
       </nav>
-
-      <section className="streak-card" aria-label="Chuỗi học tập">
-        <div className="streak-heading">
-          <span className="streak-icon"><Flame aria-hidden="true" size={17} /></span>
-          <span>Chuỗi 7 ngày</span>
-        </div>
-        <p>Còn 3 ngày để nhận huy hiệu</p>
-        <div className="streak-progress" role="progressbar" aria-valuenow={70} aria-valuemin={0} aria-valuemax={100}>
-          <span />
-        </div>
-      </section>
 
       <div className="sidebar-user">
         {profile?.avatar_url ? (

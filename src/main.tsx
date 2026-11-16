@@ -26,6 +26,8 @@ import HomeRoute from "./components/HomeRoute";
 import CoursesPage from "./pages/CoursesPage";
 import StudioPage from "./pages/StudioPage";
 import CommunityPage from "./pages/CommunityPage";
+import DemoOrdersPage from "./pages/DemoOrdersPage";
+import AdminManagementPage from "./pages/AdminManagementPage";
 
 const router = createBrowserRouter(createRoutesFromElements(
   <>
@@ -81,6 +83,8 @@ const router = createBrowserRouter(createRoutesFromElements(
             }
           />
           <Route path="/courses" element={<CoursesPage />} />
+          <Route path="/orders" element={<ProtectedRoute><DemoOrdersPage /></ProtectedRoute>} />
+          <Route path="/admin/manage" element={<ProtectedRoute><AdminRoleGuard><AdminManagementPage /></AdminRoleGuard></ProtectedRoute>} />
           <Route path="/studio" element={<StudioPage />} />
           <Route path="/community" element={<CommunityPage />} />
           <Route path="/community/:postId" element={<CommunityPage />} />
