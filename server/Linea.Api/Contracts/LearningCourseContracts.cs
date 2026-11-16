@@ -16,6 +16,8 @@ public sealed class SaveLearningCourseRequest
     public string Topic { get; set; } = "";
     [JsonPropertyName("anh_dai_dien"), MaxLength(500)]
     public string? CoverImage { get; set; }
+    [JsonPropertyName("gia_vnd"), Range(0, 1000000000)]
+    public long? PriceVnd { get; set; }
 }
 
 public sealed record LearningCourseResponse(
@@ -26,10 +28,11 @@ public sealed record LearningCourseResponse(
     [property: JsonPropertyName("cap_do")] string Level,
     [property: JsonPropertyName("chu_de")] string Topic,
     [property: JsonPropertyName("anh_dai_dien")] string? CoverImage,
+    [property: JsonPropertyName("gia_vnd")] long PriceVnd,
     [property: JsonPropertyName("trang_thai")] string Status,
     [property: JsonPropertyName("ngay_tao")] DateTimeOffset CreatedAt)
 {
     public static LearningCourseResponse From(LearningCourse course) => new(
         course.Id, course.TeacherId, course.Title, course.Description, course.Level,
-        course.Topic, course.CoverImage, course.Status, course.CreatedAt);
+        course.Topic, course.CoverImage, course.PriceVnd, course.Status, course.CreatedAt);
 }

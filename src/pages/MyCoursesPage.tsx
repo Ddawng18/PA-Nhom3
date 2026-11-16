@@ -1,4 +1,4 @@
-import { courseRowSchema, listCourses } from "../lib/courseApi";
+import { listCourses } from "../lib/courseApi";
 import { useEffect, useState } from "react";
 import { Bell, Plus } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
@@ -42,10 +42,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
   const { session } = useAuth();
   const token = session?.access_token;
   const [courses, setCourses] = useState<MyCourse[]>([]);
-  const [catalog, setCatalog] = useState<z.infer<typeof courseRowSchema>[]>([]);
   const [activeTab, setActiveTab] = useState<CourseTab>("all");
-  const [discover, setDiscover] = useState(false);
-  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -53,41 +50,24 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
     if (!token) return;
     const controller = new AbortController();
     setLoading(true); setError("");
-    Promise.all([loadMyCourses(token, controller.signal), listCourses(token, controller.signal)])
-      .then(([mine, available]) => { if (!controller.signal.aborted) { setCourses(mine); setCatalog(available.filter(c => c.trang_thai === "DA_DANG")); } })
+    loadMyCourses(token, controller.signal)
+      .then((mine) => { if (!controller.signal.aborted) setCourses(mine); })
       .catch(e => { if (!controller.signal.aborted) setError(learningError(e)); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [token, attempt]);
   const visible = courses.filter(c => activeTab === "all" || (activeTab === "completed" ? c.status === "HOAN_THANH" : c.status !== "HOAN_THANH"));
-  const found = catalog.filter(c => `${c.tieu_de} ${c.chu_de}`.toLocaleLowerCase("vi").includes(search.toLocaleLowerCase("vi")));
   return <div className="settings-shell">
     <Sidebar user={user} displayName={displayName} initials={getInitials(displayName)} />
     <main className="settings-main"><div className="settings-content">
       <header className="settings-page-heading"><div><p className="settings-eyebrow">KHÔNG GIAN HỌC TẬP</p><h1>Khóa học của tôi</h1><p>Học bài, nộp tác phẩm và theo dõi nhận xét của giáo viên.</p></div></header>
       <nav className="settings-tabs" aria-label="Khu vực khóa học">
-        <button type="button" className={`settings-tab${!discover ? " active" : ""}`} onClick={() => setDiscover(false)}>Của tôi ({courses.length})</button>
-        <button type="button" className={`settings-tab${discover ? " active" : ""}`} onClick={() => setDiscover(true)}>Khám phá</button>
+        <button type="button" className="settings-tab active" aria-current="page">Của tôi ({courses.length})</button>
+        <Link className="settings-tab" to="/courses">Khám phá</Link>
       </nav>
-      {loading ? <p role="status">Đang tải khóa học...</p> : error ? <section className="settings-card"><p role="alert">{error}</p><button className="button button-outline" onClick={() => setAttempt(v => v + 1)}>Thử lại</button></section> : discover ? <>
-        <label>Tìm khóa học<input className="settings-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tên hoặc chủ đề" /></label>
-        {found.length === 0 ? <section className="settings-card"><p>Chưa có khóa học phù hợp.</p></section> : <section className="my-courses-list" aria-label="Khóa học đã xuất bản">
-          {found.map(c => {
-            const level = getCourseLevelLabel(c.cap_do);
-            const meta = [level, c.chu_de.trim()].filter(Boolean).join(" · ");
-            return <article className="my-course-card" key={c.ma_khoa_hoc}>
-              <div className="my-course-card-heading"><h2 className="my-course-card-title">{c.tieu_de}</h2></div>
-              {meta && <p className="my-course-level">{meta}</p>}
-              {c.mo_ta.trim() && <p className="my-course-description">{c.mo_ta}</p>}
-              <div className="my-course-footer">
-                <Link className="button button-primary" to={`/courses/${c.ma_khoa_hoc}`}>{courses.some(m => m.id === c.ma_khoa_hoc) ? "Vào khóa học" : "Xem và ghi danh"}</Link>
-              </div>
-            </article>;
-          })}
-        </section>}
-      </> : <>
+      {loading ? <p role="status">Đang tải khóa học...</p> : error ? <section className="settings-card"><p role="alert">{error}</p><button className="button button-outline" onClick={() => setAttempt(v => v + 1)}>Thử lại</button></section> : <>
         <nav className="settings-tabs" aria-label="Lọc tiến độ">{([['all', 'Tất cả'], ['in-progress', 'Đang học'], ['completed', 'Hoàn thành']] as const).map(([id, label]) => <button type="button" key={id} className={`settings-tab${activeTab === id ? " active" : ""}`} onClick={() => setActiveTab(id)}>{label} ({courses.filter(c => id === "all" || (id === "completed" ? c.status === "HOAN_THANH" : c.status !== "HOAN_THANH")).length})</button>)}</nav>
-        {visible.length === 0 && <section className="settings-card"><p>Chưa có khóa học trong mục này.</p><button className="button button-primary" onClick={() => setDiscover(true)}>Khám phá khóa học</button></section>}
+        {visible.length === 0 && <section className="settings-card"><p>Chưa có khóa học trong mục này.</p><Link className="button button-primary" to="/courses">Khám phá khóa học</Link></section>}
         <section className="my-courses-list" aria-label="Khóa học đã ghi danh">{visible.map(c => {
           const level = getCourseLevelLabel(c.level);
           return <article className="my-course-card" key={c.id}>
@@ -97,10 +77,11 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
             </div>
             {level && <p className="my-course-level">{level}</p>}
             {typeof c.percent === "number" && <>
-              <p className="my-course-progress-label">Tiến độ khóa học · {c.percent}%</p>
-              <div className="course-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.percent} aria-label="Tiến độ khóa học">
+              <p className="my-course-progress-label">Tiến độ bài học · {c.percent}%</p>
+              <div className="course-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.percent} aria-label="Tiến độ bài học">
                 <span style={{ width: `${Math.min(100, Math.max(0, c.percent))}%` }} />
               </div>
+              {c.requiredAssignments !== undefined && c.submittedAssignments !== undefined && c.requiredAssignments > 0 && <p className="my-course-progress-label">Bài tập bắt buộc đã nộp: {c.submittedAssignments}/{c.requiredAssignments}{c.submittedAssignments < c.requiredAssignments ? " · Nộp đủ bài để hoàn thành khóa" : ""}</p>}
             </>}
             <div className="my-course-footer">
               {c.available

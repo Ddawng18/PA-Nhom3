@@ -1,0 +1,245 @@
+{
+  "sha": "b8f160f56e217f27627578e9a423e46250a9019b",
+  "codeSha": "b8933d1",
+  "date": "2026-11-16T10:10:07.583Z",
+  "timezone": "Asia/Bangkok",
+  "platform": "win32",
+  "node": "v24.21.0",
+  "browser": "156.0.8078.4",
+  "viewport": "1280x900 and 360x800; touch emulated",
+  "mode": "Local Vite dev; catalog API fixtures; Auth not configured; not deployed E2E",
+  "results": [
+    {
+      "id": "ST-01",
+      "description": "Mouse tools: pen, color, size and eraser",
+      "status": "PASS",
+      "start": "2026-11-16T10:09:44.385Z",
+      "details": {
+        "red": [
+          255,
+          0,
+          0,
+          255
+        ],
+        "erased": [
+          255,
+          253,
+          247,
+          255
+        ]
+      },
+      "pageErrors": [],
+      "artifact": "ST-01.png"
+    },
+    {
+      "id": "ST-03",
+      "description": "History bound and discard redo after new stroke",
+      "status": "PASS",
+      "start": "2026-11-16T10:09:45.562Z",
+      "details": {
+        "undoCount": 29,
+        "historySnapshotLimit": 30
+      },
+      "pageErrors": [],
+      "artifact": "ST-03.png"
+    },
+    {
+      "id": "ST-04",
+      "description": "Clear cancel, accept, then resume drawing",
+      "status": "PASS",
+      "start": "2026-11-16T10:09:52.921Z",
+      "pageErrors": [],
+      "artifact": "ST-04.png"
+    },
+    {
+      "id": "ST-05",
+      "description": "Downloaded PNG bytes exactly match canvas",
+      "status": "PASS",
+      "start": "2026-11-16T10:09:54.336Z",
+      "details": {
+        "bytes": 20063,
+        "width": 1200,
+        "height": 720
+      },
+      "pageErrors": [],
+      "artifact": "ST-05.png"
+    },
+    {
+      "id": "ST-06",
+      "description": "Internal link cancel preserves image; accept navigates",
+      "status": "PASS",
+      "start": "2026-11-16T10:09:55.286Z",
+      "details": {
+        "cancelDialogs": [
+          {
+            "type": "confirm",
+            "message": "Bản vẽ chưa được xuất. Rời trang và mất bản vẽ hiện tại?"
+          }
+        ]
+      },
+      "pageErrors": [],
+      "artifact": "ST-06.png"
+    },
+    {
+      "id": "ST-07",
+      "description": "Back and Forward guard, cancel and accept",
+      "status": "PASS",
+      "start": "2026-11-16T10:09:56.584Z",
+      "pageErrors": [],
+      "artifact": "ST-07.png"
+    },
+    {
+      "id": "ST-08",
+      "description": "Exported snapshot stays clean; undo/redo, edit and clear update guard",
+      "status": "PASS",
+      "start": "2026-11-16T10:09:58.592Z",
+      "pageErrors": [],
+      "artifact": "ST-08.png"
+    },
+    {
+      "id": "ST-09-reload",
+      "description": "Real beforeunload dialog on reload, stay and leave",
+      "status": "PASS",
+      "start": "2026-11-16T10:10:01.956Z",
+      "pageErrors": [],
+      "artifact": "ST-09-reload.png"
+    },
+    {
+      "id": "ST-09-close",
+      "description": "Real beforeunload dialog on tab close, cancel and accept",
+      "status": "PASS",
+      "start": "2026-11-16T10:10:03.270Z",
+      "details": {
+        "dialogs": [
+          "beforeunload",
+          "beforeunload"
+        ]
+      },
+      "pageErrors": [],
+      "artifact": "results.json (dialog assertions); browser-trace.zip"
+    },
+    {
+      "id": "ST-10",
+      "description": "Resize preserves raster; 360px and keyboard toolbar",
+      "status": "PASS",
+      "start": "2026-11-16T10:10:04.465Z",
+      "artifact": "ST-10.png"
+    },
+    {
+      "id": "ST-02-scale",
+      "description": "Mobile rendered ink follows pointer coordinates",
+      "status": "PASS",
+      "start": "2026-11-16T10:10:05.125Z",
+      "details": {
+        "wantedX": 130.4,
+        "wantedY": 48.8984375,
+        "actualX": 130,
+        "actualY": 48.5,
+        "count": 2,
+        "width": 326,
+        "height": 196
+      },
+      "artifact": "ST-02-scale.png"
+    },
+    {
+      "id": "ST-02-touch-emulation",
+      "description": "Emulated touch draws and does not scroll canvas",
+      "status": "PASS",
+      "start": "2026-11-16T10:10:05.691Z",
+      "details": {
+        "device": "Chromium CDP touch emulation; not a physical device"
+      },
+      "artifact": "ST-02-touch-emulation.png"
+    },
+    {
+      "id": "ST-11",
+      "description": "Studio interactions do not send write requests",
+      "status": "PASS",
+      "start": "2026-11-16T10:10:06.306Z",
+      "details": {
+        "writes": [],
+        "external": [
+          {
+            "method": "GET",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          },
+          {
+            "method": "GET",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          },
+          {
+            "method": "GET",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          },
+          {
+            "method": "GET",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          },
+          {
+            "method": "GET",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          },
+          {
+            "method": "GET",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          },
+          {
+            "method": "GET",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          },
+          {
+            "method": "GET",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          },
+          {
+            "method": "GET",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          },
+          {
+            "method": "GET",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          },
+          {
+            "method": "GET",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          },
+          {
+            "method": "GET",
+            "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          }
+        ]
+      },
+      "artifact": "ST-11.png"
+    },
+    {
+      "id": "ST-02-physical",
+      "description": "Physical touch device and rotation",
+      "status": "BLOCKED",
+      "reason": "No physical device available; CDP emulation recorded separately."
+    },
+    {
+      "id": "GH-02",
+      "description": "Real login/logout and course context across auth",
+      "status": "BLOCKED",
+      "reason": "No designated test identity or integrated backend in this local acceptance; did not create accounts or alter shared data."
+    },
+    {
+      "id": "GH-03-real",
+      "description": "Real catalog API excludes draft/hidden",
+      "status": "BLOCKED",
+      "reason": "Only local fixture endpoints configured; no actual backend/schema/SHA verified."
+    },
+    {
+      "id": "GH-05-real",
+      "description": "Real API response/DOM privacy across authenticated roles",
+      "status": "BLOCKED",
+      "reason": "Requires designated integrated test environment and identities."
+    },
+    {
+      "id": "CM-08",
+      "description": "PO approval of sample content and asset provenance",
+      "status": "BLOCKED",
+      "reason": "Requires actual approval by Đăng; source inspection is not approval."
+    }
+  ]
+}

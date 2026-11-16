@@ -137,7 +137,7 @@ export class UnsupportedCourseApprovalError extends Error {
 }
 
 type ApiRequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   token?: string;
   body?: unknown;
   signal?: AbortSignal;

@@ -5,6 +5,7 @@ import type { CourseInfo } from "../logic/courseEditor";
 export const courseRowSchema = z.object({
   ma_khoa_hoc: z.number().int().safe(), ma_giao_vien: z.string(), tieu_de: z.string(),
   cap_do: z.string(), chu_de: z.string(), mo_ta: z.string(), anh_dai_dien: z.string().nullable(), trang_thai: z.string(), ngay_tao: z.string(),
+  gia_vnd: z.number().int().nonnegative().optional(),
 });
 const listSchema = z.object({ items: z.array(courseRowSchema), totalCount: z.number().int() });
 export async function getCourse(token: string, id: string, signal?: AbortSignal) {

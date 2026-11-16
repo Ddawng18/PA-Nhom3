@@ -158,6 +158,7 @@ builder.Services
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(AuthPolicies.StudentOnly, policy => policy.RequireRole("student"));
+    options.AddPolicy(AuthPolicies.LearnerAccess, policy => policy.RequireRole("student", "admin"));
     options.AddPolicy(AuthPolicies.TeacherAccess, policy => policy.RequireRole("teacher", "admin"));
     options.AddPolicy(AuthPolicies.AdminOnly, policy => policy.RequireRole("admin"));
 });
