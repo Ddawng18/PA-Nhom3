@@ -28,14 +28,25 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
         var lessonIds = lessons.Select(l => l.Id).ToList();
         var completed = await db.LessonProgress.AsNoTracking().Where(p => p.UserId == userId &&
             lessonIds.Contains(p.LessonId) && p.Status == "DA_HOAN_THANH").Select(p => p.LessonId).ToListAsync(ct);
+        var requiredAssignments = await (from a in db.Assignments.AsNoTracking()
+                                         join l in db.CourseLessons.AsNoTracking() on a.LessonId equals l.Id
+                                         join chapter in db.CourseChapters.AsNoTracking() on l.ChapterId equals chapter.Id
+                                         where ids.Contains(chapter.CourseId) && a.Required
+                                         select new { a.Id, chapter.CourseId }).ToListAsync(ct);
+        var assignmentIds = requiredAssignments.Select(a => a.Id).ToList();
+        var submitted = await db.Submissions.AsNoTracking()
+            .Where(s => s.UserId == userId && assignmentIds.Contains(s.AssignmentId))
+            .Select(s => s.AssignmentId).Distinct().ToListAsync(ct);
         return Ok(rows.Select(c => new { c.id, c.title, c.level, c.status, c.available, c.coverImage,
             totalLessons = lessons.Count(l => l.CourseId == c.id),
             completedLessons = lessons.Count(l => l.CourseId == c.id && completed.Contains(l.Id)),
+            requiredAssignments = requiredAssignments.Count(a => a.CourseId == c.id),
+            submittedAssignments = requiredAssignments.Count(a => a.CourseId == c.id && submitted.Contains(a.Id)),
             percent = lessons.Count(l => l.CourseId == c.id) is var count && count > 0
                 ? (int)Math.Round(100d * lessons.Count(l => l.CourseId == c.id && completed.Contains(l.Id)) / count) : 0 }));
     }
 
-    [HttpGet("enrolled"), Authorize(Policy = AuthPolicies.StudentOnly)]
+    [HttpGet("enrolled"), Authorize(Policy = AuthPolicies.LearnerAccess)]
     public async Task<IActionResult> Enrolled(CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var userId)) return Unauthorized();
@@ -111,14 +122,23 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
             course.CoverImage, course.TeacherId, enrollment is not null, percent, summaries, enrollment?.Status));
     }
 
-    [HttpPost("{id:long}/enroll"), Authorize(Policy = AuthPolicies.StudentOnly)]
+    [HttpPost("{id:long}/enroll"), Authorize(Policy = AuthPolicies.LearnerAccess)]
     public async Task<IActionResult> Enroll(long id, CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var userId)) return Unauthorized();
+        await using var tx = await progressService.BeginAsync(userId, id, cancellationToken);
+        if (db.Database.IsNpgsql())
+        {
+            // Serialize enrollment with changes to price and publication status.
+            await db.Database.SqlQuery<long>(
+                $"SELECT ma_khoa_hoc AS \"Value\" FROM public.khoa_hoc WHERE ma_khoa_hoc = {id} FOR UPDATE")
+                .ToListAsync(cancellationToken);
+        }
         var course = await db.LearningCourses.AsNoTracking()
             .SingleOrDefaultAsync(item => item.Id == id && item.Status == "DA_DANG", cancellationToken);
         if (course is null) return NotFound();
-        await using var tx = await progressService.BeginAsync(userId, id, cancellationToken);
+        if (course.PriceVnd > 0)
+            return Conflict(new { code = "PAYMENT_REQUIRED", message = "Khóa học có phí chưa hỗ trợ ghi danh trực tiếp." });
         var enrollment = await db.CourseEnrollments
             .SingleOrDefaultAsync(item => item.CourseId == id && item.UserId == userId, cancellationToken);
         if (enrollment is null)
@@ -161,7 +181,7 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
             itemProgress?.Status ?? "CHUA_HOC", itemProgress?.Status == "DA_HOAN_THANH" ? 100 : 0));
     }
 
-    [HttpPut("{courseId:long}/lessons/{lessonId:long}/progress"), Authorize(Policy = AuthPolicies.StudentOnly)]
+    [HttpPut("{courseId:long}/lessons/{lessonId:long}/progress"), Authorize(Policy = AuthPolicies.LearnerAccess)]
     public async Task<IActionResult> UpdateProgress(
         long courseId, long lessonId, UpdateLessonProgressRequest request, CancellationToken cancellationToken)
     {
@@ -225,6 +245,7 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Title, request.Title.Trim())
                 .SetProperty(item => item.Description, request.Description.Trim())
                 .SetProperty(item => item.Level, request.Level).SetProperty(item => item.Topic, request.Topic.Trim())
+                .SetProperty(item => item.PriceVnd, item => request.PriceVnd ?? item.PriceVnd)
                 .SetProperty(item => item.CoverImage, string.IsNullOrWhiteSpace(request.CoverImage) ? null : request.CoverImage), cancellationToken);
         if (changed == 0) return Conflict(new { detail = "Chỉ được sửa khóa học ở trạng thái nháp." });
         Apply(course, request); return Ok(LearningCourseResponse.From(course));
@@ -280,6 +301,7 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
     {
         course.Title = request.Title.Trim(); course.Description = request.Description.Trim();
         course.Level = request.Level; course.Topic = request.Topic.Trim();
+        course.PriceVnd = request.PriceVnd ?? course.PriceVnd;
         course.CoverImage = string.IsNullOrWhiteSpace(request.CoverImage) ? null : request.CoverImage;
     }
 }
