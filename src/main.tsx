@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider } from "react-router-dom";
 import AuthProvider from "./auth/AuthProvider";
+import UserRoleProvider from "./auth/UserRoleProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoleGuard from "./components/AdminRoleGuard";
 import TeacherRoleGuard from "./components/TeacherRoleGuard";
@@ -137,7 +138,7 @@ const router = createBrowserRouter(createRoutesFromElements(
 ));
 
 function App() {
-  return <AuthProvider><RouterProvider router={router} /></AuthProvider>;
+  return <AuthProvider><UserRoleProvider><RouterProvider router={router} /></UserRoleProvider></AuthProvider>;
 }
 
 const root = document.getElementById("root");

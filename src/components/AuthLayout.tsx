@@ -19,8 +19,7 @@ function Header({ authLink }: { authLink: AuthLayoutProps["authLink"] }) {
           LINEA
         </Link>
         <nav className="header-nav" aria-label="Điều hướng chính">
-          <a href="#">Khám phá</a>
-          <a href="#">Lộ trình</a>
+          <Link to="/courses">Khám phá</Link>
         </nav>
       </div>
 

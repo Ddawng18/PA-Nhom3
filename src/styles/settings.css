@@ -124,6 +124,14 @@
   background: #8eb776;
 }
 
+.sidebar-account { position: relative; margin-top: auto; }
+.sidebar-user-toggle { width: 100%; background: transparent; border: 0; text-align: left; font: inherit; cursor: pointer; }
+.sidebar-user-toggle:focus-visible { outline: 2px solid #355c3a; outline-offset: 3px; }
+.sidebar-account-menu { position: absolute; bottom: calc(100% + 8px); left: 0; right: 0; z-index: 30; padding: 6px; background: #fff; border: 1px solid #e4e9dd; border-radius: 12px; box-shadow: 0 8px 28px #26332b20; }
+.sidebar-account-menu a, .sidebar-account-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 11px 9px; border: 0; border-radius: 8px; background: transparent; color: #355c3a; text-align: left; font: inherit; font-size: 13px; text-decoration: none; cursor: pointer; }
+.sidebar-account-menu a:hover, .sidebar-account-menu button:hover { background: #eef4e8; }
+.sidebar-account-menu button:disabled { opacity: .6; cursor: wait; }
+.sidebar-account-menu p { margin: 6px; color: #a12626; font-size: 12px; }
 .sidebar-user {
   display: flex;
   min-width: 0;
@@ -1973,6 +1981,9 @@
   .sidebar-user {
     display: none;
   }
+
+  .sidebar-account .sidebar-user-toggle { display: flex; margin-top: 8px; padding-top: 10px; }
+  .sidebar-account-menu { bottom: auto; top: calc(100% + 6px); }
 
   .settings-main {
     min-height: 0;

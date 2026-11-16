@@ -7,12 +7,15 @@ import {
   Settings,
   Sparkles,
   Users,
+  LogOut,
+  ChevronUp,
 } from "lucide-react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 import { useUserRole } from "../hooks/useUserRole";
 import { loadUserProfile, subscribeUserProfile } from "../lib/userProfile";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "../auth/useAuth";
 
 type SidebarProps = {
   user: User;
@@ -35,6 +38,40 @@ const navigationItems = [
 
 export default function Sidebar({ user, displayName, initials }: SidebarProps) {
   const { role } = useUserRole();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
+  const account = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    function closeOutside(event: PointerEvent) {
+      if (event.target instanceof Node && !account.current?.contains(event.target)) setMenuOpen(false);
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        account.current?.querySelector("button")?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [menuOpen]);
+  async function logout() {
+    if (signingOut) return;
+    setSigningOut(true); setSignOutError("");
+    try {
+      const result = await signOut();
+      if (result.error) { setSignOutError(result.error); return; }
+      navigate("/login", { replace: true });
+    } catch { setSignOutError("Chưa thể đăng xuất. Vui lòng thử lại."); }
+    finally { setSigningOut(false); }
+  }
   const [profile, setProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
   useEffect(() => {
     let active = true;
@@ -85,7 +122,8 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="sidebar-user">
+      <div className="sidebar-account" ref={account}>
+      <button type="button" className="sidebar-user sidebar-user-toggle" aria-label="Mở menu tài khoản" aria-expanded={menuOpen} aria-controls="sidebar-account-menu" onClick={() => setMenuOpen(current => !current)}>
         {profile?.avatar_url ? (
           <img className="avatar avatar-sidebar" src={profile.avatar_url} alt="" />
         ) : (
@@ -95,6 +133,13 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
           <span className="sidebar-user-name">{sidebarName}</span>
           <span className="sidebar-user-email">{user.email}</span>
         </span>
+        <ChevronUp size={16} aria-hidden="true" />
+      </button>
+      {menuOpen && <div className="sidebar-account-menu" id="sidebar-account-menu">
+        <Link to="/settings" onClick={() => setMenuOpen(false)}><Settings size={16} aria-hidden="true" /> Hồ sơ &amp; Cài đặt</Link>
+        <button type="button" disabled={signingOut} onClick={() => void logout()}><LogOut size={16} aria-hidden="true" />{signingOut ? "Đang đăng xuất..." : "Đăng xuất"}</button>
+        {signOutError && <p role="alert">{signOutError}</p>}
+      </div>}
       </div>
     </aside>
   );
