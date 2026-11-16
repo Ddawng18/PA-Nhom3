@@ -75,5 +75,7 @@ khoảng trắng đầu/cuối. Database áp dụng migration
 `supabase/migrations/20261116151449_enforce_course_content_unique_titles.sql`.
 Không tự đổi tên hoặc xóa dữ liệu cũ nếu migration phát hiện tên trùng.
 
+Bấm Gửi duyệt sẽ kiểm tra và lưu toàn bộ bản soạn trước khi gửi, kể cả khóa học
+mới. Nếu lưu hoặc tải tệp lỗi, hệ thống giữ nội dung để thử lại và không gửi duyệt.
 Gửi xét duyệt thành công sẽ hiện thông báo chờ duyệt, kể cả sau khi tải lại trang.
 Không đổi role hoặc trạng thái hồ sơ để bỏ qua lỗi chưa xác định.

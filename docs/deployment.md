@@ -18,11 +18,18 @@ Không dùng SQLite trên hosting vì filesystem thường tạm thời.
 ## 1. Frontend trên Vercel
 
 1. Import repository vào Vercel, chọn framework **Vite**.
-2. Build command: `npm run build`; Output directory: `dist`.
+2. Build command: `npm run build:deploy`; Output directory: `dist`.
+   `vercel.json` đã đặt lệnh này. Build deploy sẽ dừng nếu `VITE_API_URL` thiếu,
+   dùng localhost, HTTP hoặc chứa đường dẫn `/api`.
 3. Thêm Environment Variables:
    - `VITE_API_URL` (URL HTTPS backend đang chạy, không dùng localhost)
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY` (khóa public, lấy từ Supabase → Settings → API Keys)
+
+   Ví dụ `VITE_API_URL=https://<backend>.onrender.com` (không thêm `/api`).
+   Đặt biến cho đúng môi trường Production/Preview rồi **Redeploy**; Vite nhúng
+   biến vào JavaScript khi build. `LOCAL_API_PROXY_TARGET` chỉ dùng cho local,
+   không có tác dụng trên Vercel.
 
    Không đặt `SUPABASE_DB_URL`, `JWT_KEY`, `SEED_ADMIN_PASSWORD` hoặc `service_role`
    trong Vercel.
@@ -37,7 +44,9 @@ Không dùng SQLite trên hosting vì filesystem thường tạm thời.
 
 ## 2. Backend trên Render
 
-1. Tạo **Web Service**, chọn repository.
+1. Tạo **Web Service** bằng Blueprint `render.yaml` ở gốc repository để dùng
+   Dockerfile, nhánh `develop` và cổng `8080` đã cấu hình. Điền các biến
+   `sync: false` trong dashboard. Nếu tạo thủ công, dùng các bước dưới đây.
 2. Root Directory: `server`; Runtime: .NET 9 (nếu chưa có, dùng Docker image
    `mcr.microsoft.com/dotnet/aspnet:9.0`).
 3. Build command:
@@ -54,6 +63,13 @@ Không dùng SQLite trên hosting vì filesystem thường tạm thời.
    - `JWT_KEY` (chuỗi ngẫu nhiên >= 32 byte, tạo bằng CSPRNG)
    - `SUPABASE_DB_URL` (connection string Postgres, lấy qua password manager)
    - `CLIENT_ORIGIN=https://<app>.vercel.app`
+   - Với bản hiện tại: `CLIENT_ORIGIN=https://pa-nhom3.vercel.app`
+   - `SUPABASE_SERVICE_ROLE_KEY` (secret, chỉ đặt trên Render; cần cho upload)
+   - `ASSIGNMENT_STORAGE_BUCKET=assignment-submissions`
+   - `SUPABASE_MEDIA_BUCKET=course-media`
+   - `SUPABASE_ATTACHMENTS_BUCKET=course-attachments`
+   - `SUPABASE_STORAGE_BUCKET=teacher-docs`
+   - `SIGNED_URL_KEY` (secret ổn định, ít nhất 32 byte)
    - `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` (chỉ lần đầu, sau đó xóa mật khẩu)
 
 6. Health check: `/api/health`.
@@ -98,5 +114,5 @@ test trên production lâu dài.
 - Nếu secret bị lộ: đổi DB password/JWT key/admin password, cập nhật dashboard và
   xóa khỏi lịch sử Git nếu đã push.
 - Ghi URL thử vào đây sau khi deploy (hiện chưa có):
-  - Frontend: _chưa triển khai_
-  - Backend: _chưa triển khai_
+  - Frontend: https://pa-nhom3.vercel.app
+  - Backend: https://linea-api-6pw5.onrender.com

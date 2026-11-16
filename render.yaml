@@ -4,11 +4,13 @@ services:
     runtime: docker
     plan: free
     region: singapore
-    branch: Thinh-dev
+    branch: develop
     dockerfilePath: ./server/Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
     envVars:
+      - key: PORT
+        value: "8080"
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: SUPABASE_URL
@@ -40,4 +42,4 @@ services:
       - key: RUN_MIGRATIONS
         value: "false"
       - key: CLIENT_ORIGIN
-        value: https://linea-nhom3.vercel.app
+        value: https://pa-nhom3.vercel.app

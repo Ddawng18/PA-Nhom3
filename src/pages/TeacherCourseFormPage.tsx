@@ -33,7 +33,7 @@ import {
 } from "../logic/courseEditor";
 import type { CourseEditorAttachment, CourseEditorRubric } from "../hooks/useCourseEditor";
 import { cleanCourseMediaName, createCourseMediaSignedUrl, isCourseAttachmentConfigured, isCourseMediaConfigured, removeCourseMedia, uploadCourseMedia } from "../lib/courseStorage";
-import { saveCourseInfo } from "../lib/courseApi";
+import { saveCourseInfo, submitCourse } from "../lib/courseApi";
 import { loadCourseEditorVersion, saveCourseEditor } from "../lib/courseEditorApi";
 import "../styles/teacher-course.css";
 
@@ -208,6 +208,7 @@ export default function TeacherCourseFormPage() {
 
   useEffect(() => {
     if (!editor.course) return;
+    draftVersion.current = editor.version;
     const incoming = asLocalCourse(editor.course);
     setCourse(incoming);
     setSelectedChapterId((current) => current && editor.course?.chuong.some((chapter) => String(chapter.ma_chuong) === current)
@@ -217,7 +218,7 @@ export default function TeacherCourseFormPage() {
       ? current
       : editor.course?.chuong[0]?.bai_hoc[0] ? String(editor.course.chuong[0].bai_hoc[0].ma_bai_hoc) : null);
     setHasUnsavedChanges(false);
-  }, [editor.course]);
+  }, [editor.course, editor.version]);
 
   useEffect(() => {
     let active = true;
@@ -292,7 +293,7 @@ export default function TeacherCourseFormPage() {
 
   if (!user) return null;
   const displayName = getDisplayName(user);
-  const editable = !readOnly && (!isEditing || course.trang_thai === "NHAP");
+  const editable = !readOnly && course.trang_thai === "NHAP";
 
   function setCourseField<K extends keyof LocalCourse>(field: K, value: LocalCourse[K]) {
     setCourse((current) => ({ ...current, [field]: value }));
@@ -308,6 +309,7 @@ export default function TeacherCourseFormPage() {
     }));
     setHasUnsavedChanges(true);
     setMessage(null);
+    setErrors(current => ({ ...current, [`chapter.${localId}`]: "" }));
   }
 
   function updateLesson(localId: string, updater: (lesson: LocalLesson) => LocalLesson) {
@@ -320,6 +322,7 @@ export default function TeacherCourseFormPage() {
     }));
     setHasUnsavedChanges(true);
     setMessage(null);
+    setErrors(current => ({ ...current, [`lesson.${localId}`]: "" }));
   }
 
   function fieldError(field: string) {
@@ -337,7 +340,7 @@ export default function TeacherCourseFormPage() {
     return next;
   }
 
-  async function saveCourse() {
+  async function saveCourse(forReview = false): Promise<string | undefined> {
     const validation = validateCourseInfo({ ...course, anh_dai_dien: coverFile ? "" : course.anh_dai_dien });
     if (!validation.success) {
       setErrors(collectIssues(validation)); setActiveTab("basic");
@@ -390,7 +393,7 @@ export default function TeacherCourseFormPage() {
         const saved = await saveCourseInfo(token, undefined, validation.data);
         id = String(saved.ma_khoa_hoc); draftId.current = id;
       }
-      const version = editor.version ?? draftVersion.current ?? await loadCourseEditorVersion(token, id);
+      const version = draftVersion.current ?? editor.version ?? await loadCourseEditorVersion(token, id);
       draftVersion.current = version;
       async function upload(file: File, kind: "cover" | "lessonImage" | "attachment") {
         const checked = await validateUpload(kind, file);
@@ -434,8 +437,11 @@ export default function TeacherCourseFormPage() {
           catch { setUploadMessage("Đã lưu nội dung nhưng chưa dọn được một số tệp cũ."); }
         }
       }
-      if (!courseId) navigate(`/teacher/courses/${encodeURIComponent(id)}/edit`, { replace: true });
-      else editor.reload();
+      if (!forReview) {
+        if (!courseId) navigate(`/teacher/courses/${encodeURIComponent(id)}/edit`, { replace: true });
+        else editor.reload();
+      }
+      return id;
     } catch (error) {
       if (id) for (const upload of uploads.filter(item => !item.committed)) {
         try { await removeCourseMedia(session?.access_token ?? "", id, upload.path, upload.bucket); }
@@ -528,7 +534,7 @@ export default function TeacherCourseFormPage() {
   }
 
   async function sendForReview() {
-    const validation = validateCourseInfo(course);
+    const validation = validateCourseInfo({ ...course, anh_dai_dien: coverFile ? "" : course.anh_dai_dien });
     if (!validation.success) {
       setErrors(collectIssues(validation));
       setMessage(`Chưa thể gửi duyệt: ${[...new Set(validation.error.issues.map((issue) => issue.message))].join(" ")}`);
@@ -546,22 +552,22 @@ export default function TeacherCourseFormPage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
-    if (hasUnsavedChanges) {
-      setMessage(activeTab === "content" && selectedLesson
-        ? "Bài học đang có thay đổi chưa lưu. Bấm Lưu toàn bộ, sau đó Gửi duyệt lại."
-        : "Khóa học đang có thay đổi chưa lưu. Bấm Lưu toàn bộ rồi Gửi duyệt lại.");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
+    // Submit the ID returned by the save, rather than waiting for the editor
+    // hook to reload or for navigation from /new to complete.
+    const id = await saveCourse(true);
+    if (!id) return;
     setSaving(true);
     setMessage("Đang gửi khóa học để xét duyệt...");
     try {
-      await editor.submitForReview();
+      if (!session?.access_token) throw new Error("Phiên đăng nhập đã hết hạn.");
+      await submitCourse(session.access_token, id);
       setCourse((current) => ({ ...current, trang_thai: "CHO_DUYET" }));
       setMessage("Khóa học đã được gửi duyệt.");
       setHasUnsavedChanges(false);
+      if (!courseId) navigate(`/teacher/courses/${encodeURIComponent(id)}/edit`, { replace: true });
+      else editor.reload();
     } catch (error) {
-      setMessage(error instanceof Error && error.message ? error.message : "Chưa thể gửi duyệt. Vui lòng kiểm tra phiên đăng nhập và thử lại.");
+      setMessage(`Đã lưu bản nháp nhưng chưa gửi duyệt. ${error instanceof Error && error.message ? error.message : "Vui lòng kiểm tra phiên đăng nhập và thử lại."}`);
     } finally { setSaving(false); }
   }
 
@@ -625,7 +631,7 @@ export default function TeacherCourseFormPage() {
               <button className="button button-outline" type="button" disabled={!editable || saving || uploading} onClick={() => void saveCourse()}>
                 {saving ? "Đang lưu..." : "Lưu toàn bộ"}
               </button>
-              <button className="button button-primary" type="button" disabled={!editable || saving || !isEditing} onClick={() => askConfirmation("Gửi duyệt khóa học", "Bạn có chắc muốn gửi khóa học này để xét duyệt?", () => void sendForReview())}>
+              <button className="button button-primary" type="button" disabled={!editable || saving || uploading} onClick={() => askConfirmation("Gửi duyệt khóa học", "Thông tin hiện tại sẽ được lưu trước khi gửi xét duyệt. Bạn có muốn tiếp tục?", () => void sendForReview())}>
                 Gửi duyệt
               </button>
             </div>
@@ -782,14 +788,14 @@ export default function TeacherCourseFormPage() {
                   </>
                 ) : selectedLesson && selectedChapter ? (
                   <>
+                    {fieldError(`lesson.${selectedLesson.localId}`)}
                     <div className="teacher-card-heading">
                       <h2>Chỉnh sửa bài học</h2>
                       <p>Chương {selectedChapter.thu_tu} · Bài {selectedLesson.thu_tu} · Đang sửa</p>
                     </div>
                     <label className="teacher-form-field" htmlFor="lesson-title">
                       <span>Tiêu đề bài học *</span>
-                      <span className="teacher-input-counter"><input id="lesson-title" value={selectedLesson.tieu_de} maxLength={200} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.tieu_de)} aria-describedby={errors.tieu_de ? "tieu_de-error" : undefined} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, tieu_de: event.target.value }))} /><span>{selectedLesson.tieu_de.length}/200</span></span>
-                      {fieldError("tieu_de")}
+                      <span className="teacher-input-counter"><input id="lesson-title" value={selectedLesson.tieu_de} maxLength={200} disabled={!editable || saving || uploading} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, tieu_de: event.target.value }))} /><span>{selectedLesson.tieu_de.length}/200</span></span>
                     </label>
                     <label className="teacher-form-field" htmlFor="lesson-text"><span>Nội dung văn bản</span><textarea id="lesson-text" rows={5} value={selectedLesson.noi_dung_van_ban} maxLength={5000} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.noi_dung_van_ban)} aria-describedby={errors.noi_dung_van_ban ? "noi_dung_van_ban-error" : undefined} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, noi_dung_van_ban: event.target.value }))} /><span className="teacher-character-count">{selectedLesson.noi_dung_van_ban.length}/5000</span>{fieldError("noi_dung_van_ban")}</label>
                     <div className="teacher-lesson-media">
