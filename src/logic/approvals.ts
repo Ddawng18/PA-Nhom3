@@ -1,6 +1,6 @@
 import { assertApiUrlAllowed } from "./apiUrlPolicy";
 
-export const settingsTabIds = ["ho-so", "ua-thich", "bao-mat", "lich-su-mua-hang", "phe-duyet"] as const;
+export const settingsTabIds = ["ho-so", "ua-thich", "bao-mat", "lich-su-mua-hang"] as const;
 export type SettingsTab = typeof settingsTabIds[number];
 export type ApprovalSection = "khoa-hoc" | "giao-vien";
 export type RejectionCode =
@@ -32,26 +32,19 @@ export const rejectionCodeLabels: Record<RejectionCode, string> = {
   OTHER: "Lý do khác",
 };
 
-export function getSettingsTabs(role: string | null | undefined): SettingsTab[] {
-  return role === "admin"
-    ? [...settingsTabIds]
-    : ["ho-so", "ua-thich", "bao-mat", "lich-su-mua-hang"];
+export function getSettingsTabs(): SettingsTab[] {
+  return [...settingsTabIds];
 }
 
 export function parseSettingsView(
-  search: string,
-  role: string | null | undefined
+  search: string
 ): { tab: SettingsTab; muc: ApprovalSection } {
   const params = new URLSearchParams(search);
   const requestedTab = params.get("tab");
-  const tab = requestedTab === "phe-duyet" && role === "admin"
-    ? "phe-duyet"
-    : requestedTab && getSettingsTabs(role).includes(requestedTab as SettingsTab)
+  const tab = requestedTab && getSettingsTabs().includes(requestedTab as SettingsTab)
       ? requestedTab as SettingsTab
       : "ho-so";
-  const requestedSection = params.get("muc");
-  const muc = tab === "phe-duyet" && requestedSection === "giao-vien" ? "giao-vien" : "khoa-hoc";
-  return { tab, muc };
+  return { tab, muc: "khoa-hoc" };
 }
 
 export function validateRejectReason(text: string): string | null {
