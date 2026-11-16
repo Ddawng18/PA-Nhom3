@@ -229,6 +229,9 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
     {
         if (!User.TryGetUserId(out var owner)) return Unauthorized();
         var error = Validate(request); if (error is not null) return error;
+        var normalizedTitle = request.Title.Trim().ToLowerInvariant();
+        if (await db.LearningCourses.AnyAsync(item => item.TeacherId == owner && item.Title.Trim().ToLower() == normalizedTitle, cancellationToken))
+            return Conflict(new { code = "DUPLICATE_COURSE_TITLE", detail = "Bạn đã có khóa học dùng tên này. Vui lòng chọn tên khác." });
         var course = new LearningCourse { TeacherId = owner };
         Apply(course, request); db.LearningCourses.Add(course);
         await db.SaveChangesAsync(cancellationToken);
@@ -241,6 +244,9 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
         var course = await db.LearningCourses.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (course is null || !Owns(course)) return NotFound();
         var error = Validate(request); if (error is not null) return error;
+        var normalizedTitle = request.Title.Trim().ToLowerInvariant();
+        if (await db.LearningCourses.AnyAsync(item => item.Id != id && item.TeacherId == course.TeacherId && item.Title.Trim().ToLower() == normalizedTitle, cancellationToken))
+            return Conflict(new { code = "DUPLICATE_COURSE_TITLE", detail = "Bạn đã có khóa học dùng tên này. Vui lòng chọn tên khác." });
         var changed = await db.LearningCourses.Where(item => item.Id == id && item.Status == "NHAP")
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Title, request.Title.Trim())
                 .SetProperty(item => item.Description, request.Description.Trim())

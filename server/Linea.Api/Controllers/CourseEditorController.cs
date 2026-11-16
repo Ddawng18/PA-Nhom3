@@ -1,5 +1,6 @@
 using Linea.Api.Data;
 using Linea.Api.Models;
+using Linea.Api.Contracts;
 using Linea.Api.Security;
 using System.Security.Cryptography;
 using System.Text;
@@ -18,7 +19,8 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
         List<AssignmentRequest> Assignments,
         List<AttachmentRequest> Attachments,
         List<RubricRequest> Rubrics,
-        string ExpectedVersion);
+        string ExpectedVersion,
+        SaveLearningCourseRequest? CourseInfo = null);
 
     public sealed record ChapterRequest(long? Id, string Title, int Order);
     public sealed record LessonRequest(long? Id, long? ChapterId, string Title, int Order, string? TextContent,
@@ -80,6 +82,12 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
         if (request.Chapters.Count > 200 || request.Lessons.Count > 1000 ||
             request.Assignments.Count > 1000 || request.Attachments.Count > 2000 || request.Rubrics.Count > 5000)
             return BadRequest(new { detail = "Nội dung khóa học vượt quá giới hạn." });
+        if (request.CourseInfo is { } info &&
+            (info.Title.Trim().Length is < 5 or > 200 || info.Description.Trim().Length is < 50 or > 5000 ||
+             info.Topic.Trim().Length is < 2 or > 100 || info.Level is not ("CO_BAN" or "TRUNG_CAP" or "NANG_CAO") ||
+             (!string.IsNullOrWhiteSpace(info.CoverImage) &&
+              (!Uri.TryCreate(info.CoverImage, UriKind.Absolute, out var coverUri) || coverUri.Scheme != "https"))))
+            return BadRequest(new { detail = "Thông tin khóa học chưa hợp lệ." });
         static bool ValidIds(IEnumerable<long?> ids) {
             var values = ids.ToList();
             return values.All(id => id.HasValue && id != 0) && values.Distinct().Count() == values.Count;
@@ -97,6 +105,10 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
             request.Rubrics.Any(x => string.IsNullOrWhiteSpace(x.Name) || x.Name.Length > 255 || x.Weight is < 1 or > 100 || x.Order < 1))
             return BadRequest(new { detail = "Nội dung editor không hợp lệ." });
         var chapterIds = request.Chapters.Select(x => x.Id!.Value).ToHashSet();
+        if (request.Chapters.GroupBy(x => x.Title.Trim(), StringComparer.OrdinalIgnoreCase).Any(group => group.Count() > 1))
+            return Conflict(new { code = "DUPLICATE_CHAPTER_TITLE", detail = "Tên chương bị trùng trong khóa học. Vui lòng chọn tên khác." });
+        if (request.Lessons.GroupBy(x => (x.ChapterId, Title: x.Title.Trim().ToUpperInvariant())).Any(group => group.Count() > 1))
+            return Conflict(new { code = "DUPLICATE_LESSON_TITLE", detail = "Tên bài học bị trùng trong chương. Vui lòng chọn tên khác." });
         var lessonIds = request.Lessons.Select(x => x.Id!.Value).ToHashSet();
         var assignmentIds = request.Assignments.Select(x => x.Id!.Value).ToHashSet();
         if (request.Lessons.Any(x => x.ChapterId is null || !chapterIds.Contains(x.ChapterId.Value)) ||
@@ -117,6 +129,16 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
         var currentVersion = await ComputeVersion(courseId, ct);
         if (!string.Equals(request.ExpectedVersion, currentVersion, StringComparison.Ordinal))
             return Conflict(new { detail = "Nội dung đã thay đổi. Tải lại trước khi lưu.", code = "EDITOR_VERSION_CONFLICT" });
+        if (request.CourseInfo is { } courseInfo)
+        {
+            var normalizedTitle = courseInfo.Title.Trim().ToLowerInvariant();
+            if (await db.LearningCourses.AnyAsync(item => item.Id != courseId && item.TeacherId == course.TeacherId && item.Title.Trim().ToLower() == normalizedTitle, ct))
+                return Conflict(new { code = "DUPLICATE_COURSE_TITLE", detail = "Bạn đã có khóa học dùng tên này. Vui lòng chọn tên khác." });
+            course.Title = courseInfo.Title.Trim(); course.Description = courseInfo.Description.Trim();
+            course.Level = courseInfo.Level; course.Topic = courseInfo.Topic.Trim();
+            course.PriceVnd = courseInfo.PriceVnd ?? course.PriceVnd;
+            course.CoverImage = string.IsNullOrWhiteSpace(courseInfo.CoverImage) ? null : courseInfo.CoverImage;
+        }
         var oldChapters = await db.CourseChapters.Where(x => x.CourseId == courseId).ToListAsync(ct);
         var oldChapterIds = oldChapters.Select(x => x.Id).ToList();
         var oldLessons = await db.CourseLessons.Where(x => oldChapterIds.Contains(x.ChapterId)).ToListAsync(ct);
@@ -207,6 +229,8 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
 
     private async Task<string> ComputeVersion(long courseId, CancellationToken ct)
     {
+        var info = await db.LearningCourses.AsNoTracking().Where(item => item.Id == courseId)
+            .Select(item => $"{item.Id}|{item.Title}|{item.Description}|{item.Level}|{item.Topic}|{item.CoverImage}|{item.PriceVnd}|{item.Status}").ToListAsync(ct);
         var chapters = await db.CourseChapters.AsNoTracking().Where(item => item.CourseId == courseId)
             .OrderBy(item => item.Id).Select(item => $"{item.Id}|{item.Title}|{item.Order}").ToListAsync(ct);
         var lessons = await (from lesson in db.CourseLessons.AsNoTracking()
@@ -237,7 +261,7 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
                              orderby rubric.Id
                              select $"{rubric.Id}|{rubric.AssignmentId}|{rubric.Name}|{rubric.Weight}|{rubric.Order}")
             .ToListAsync(ct);
-        var value = string.Join("\n", chapters.Concat(lessons).Concat(assignments).Concat(attachments).Concat(rubrics));
+        var value = string.Join("\n", info.Concat(chapters).Concat(lessons).Concat(assignments).Concat(attachments).Concat(rubrics));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     }
 }
