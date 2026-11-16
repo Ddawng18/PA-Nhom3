@@ -338,11 +338,9 @@ function TeacherRow({
 
 export default function ApprovalsPanel({
   section,
-  setSection,
   data,
 }: {
   section: ApprovalSection;
-  setSection: (section: ApprovalSection) => void;
   data: ApprovalData;
 }) {
   const [pending, setPending] = useState<PendingDialog | null>(null);
@@ -378,24 +376,6 @@ export default function ApprovalsPanel({
 
   return (
     <section className="appr-panel" aria-label="Khu vực phê duyệt">
-      <nav className="settings-tabs appr-subtabs" aria-label="Mục phê duyệt">
-        <button
-          className={`settings-tab${section === "khoa-hoc" ? " active" : ""}`}
-          type="button"
-          aria-current={section === "khoa-hoc" ? "page" : undefined}
-          onClick={() => setSection("khoa-hoc")}
-        >
-          Duyệt khóa học ({data.counts.courses})
-        </button>
-        <button
-          className={`settings-tab${section === "giao-vien" ? " active" : ""}`}
-          type="button"
-          aria-current={section === "giao-vien" ? "page" : undefined}
-          onClick={() => setSection("giao-vien")}
-        >
-          Duyệt giáo viên ({data.counts.teachers})
-        </button>
-      </nav>
       {notice && <p className="appr-notice" role="status">{notice}</p>}
       {section === "giao-vien" ? (
         <section className="appr-card">
