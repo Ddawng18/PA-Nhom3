@@ -18,6 +18,8 @@ import SettingsPage from "./pages/SettingsPage";
 import TeacherCourseFormPage from "./pages/TeacherCourseFormPage";
 import TeacherOnboardingPage from "./pages/TeacherOnboardingPage";
 import CourseLearningPage from "./pages/CourseLearningPage";
+import CourseCompletePage from "./pages/CourseCompletePage";
+import CourseDetailPage from "./pages/CourseDetailPage";
 import TeacherSubmissionsPage from "./pages/TeacherSubmissionsPage";
 import StudentLearningOverviewPage from "./pages/StudentLearningOverviewPage";
 import HomeRoute from "./components/HomeRoute";
@@ -82,13 +84,18 @@ const router = createBrowserRouter(createRoutesFromElements(
           <Route path="/studio" element={<StudioPage />} />
           <Route path="/community" element={<CommunityPage />} />
           <Route path="/community/:postId" element={<CommunityPage />} />
+          <Route path="/courses/:courseId" element={<CourseDetailPage />} />
           <Route
-            path="/courses/:courseId"
+            path="/courses/:courseId/learn"
             element={<ProtectedRoute><CourseLearningPage /></ProtectedRoute>}
           />
           <Route
             path="/courses/:courseId/learn/:lessonId"
             element={<ProtectedRoute><CourseLearningPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/courses/:courseId/complete"
+            element={<ProtectedRoute><CourseCompletePage /></ProtectedRoute>}
           />
           <Route
             path="/notifications"
