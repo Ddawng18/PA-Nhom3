@@ -57,7 +57,7 @@ describe("approval formatting and counts", () => {
 
   it("maps API errors", () => {
     expect(mapApiError(409, "INVALID_STATUS_TRANSITION")).toBe(
-      "Mục này đã được xử lý trước đó. Danh sách đã được làm mới."
+      "Mục này đã được xử lý trước đó. Bấm Tải lại dữ liệu để cập nhật danh sách."
     );
     expect(mapApiError(403, "OTHER")).toBe("Bạn không có quyền thực hiện thao tác này.");
     expect(mapApiError(401, "OTHER")).toBe("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
