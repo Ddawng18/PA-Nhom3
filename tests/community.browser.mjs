@@ -32,16 +32,17 @@ try {
   await page.route("**/api/**", async route => {
     const request = route.request(), path = new URL(request.url()).pathname;
     let data = {};
-    if (request.method() === "POST" && path.endsWith("/with-image")) {
+    if (request.method() === "POST" && path === "/api/community/posts/with-image") {
       assert.match(request.headers()["content-type"], /multipart\/form-data/);
-      assert.match(request.postData(), /filename="art.png"/);
+      assert.match(request.postData(), /filename="community.webp"/);
       if (failPost) return route.fulfill({ status: 503, contentType: "application/json", body: '{"detail":"Upload temporarily unavailable"}' });
       data = { id: 1, title: "Test community post", body: "My artwork", author: "Member", createdAt: new Date().toISOString(), imageUrl: "https://example.test/art.png", commentCount: 0 };
       posts = [data];
-    } else if (path.endsWith("/comments")) {
+    } else if (path.endsWith("/comments") || path.endsWith("/comments/with-image")) {
       if (request.method() === "POST") {
         if (failComment) return route.fulfill({ status: 503, contentType: "application/json", body: '{}' });
-        data = { id: 1, body: request.postDataJSON().body, author: "Member", createdAt: new Date().toISOString() }; comments = [data];
+        assert.match(request.postData(), /Great artwork!/);
+        data = { id: 1, body: "Great artwork!", author: "Member", createdAt: new Date().toISOString() }; comments = [data];
       } else data = comments;
     } else if (path === "/api/community/posts") data = posts;
     await route.fulfill({ contentType: "application/json", body: JSON.stringify(data) });
@@ -50,7 +51,8 @@ try {
   await page.goto(`${origin}/community`);
   await page.locator("#post-title").fill("Test community post");
   await page.locator("#post-body").fill("My artwork");
-  await page.locator("#post-image").setInputFiles({ name: "art.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") });
+  const png = await page.evaluate(() => { const canvas = document.createElement("canvas"); canvas.width = 32; canvas.height = 32; return canvas.toDataURL("image/png").split(",")[1]; });
+  await page.locator("#post-image").setInputFiles({ name: "art.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
   await page.getByAltText("Ảnh xem trước bài viết").waitFor();
   await page.getByRole("button", { name: "Đăng bài", exact: true }).click();
   await page.getByText(/Upload temporarily unavailable/).waitFor();
@@ -62,7 +64,7 @@ try {
   await page.getByRole("button", { name: "Bình luận (0)", exact: true }).click();
   await page.locator("#comment-1").fill("Great artwork!");
   await page.getByRole("button", { name: "Gửi bình luận", exact: true }).click();
-  await page.getByText(/Chưa gửi được bình luận/).waitFor();
+  await page.getByText(/Nội dung và ảnh được giữ lại để thử lại/).waitFor();
   assert.equal(await page.locator("#comment-1").inputValue(), "Great artwork!");
   failComment = false;
   await page.getByRole("button", { name: "Gửi bình luận", exact: true }).click();

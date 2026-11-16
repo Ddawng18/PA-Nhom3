@@ -1,14 +1,34 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
 import { AdminApiError, requestAdminApi } from "../lib/adminApi";
+import { prepareCommunityImage } from "../lib/communityImages";
 import "../styles/studio.css";
 
-const postSchema = z.object({ id: z.number().int().positive(), title: z.string(), body: z.string(), author: z.string(), createdAt: z.string(), imageUrl: z.string().nullable().optional(), commentCount: z.number().default(0) });
+const postSchema = z.object({ id: z.number().int().positive(), authorId: z.string().optional(), title: z.string(), body: z.string(), author: z.string(), createdAt: z.string(), imageUrl: z.string().nullable().optional(), commentCount: z.number().default(0) });
 type Post = z.infer<typeof postSchema>;
-const commentSchema = z.object({ id: z.number(), body: z.string(), author: z.string(), createdAt: z.string() });
+const commentSchema = z.object({ id: z.number(), body: z.string(), author: z.string(), createdAt: z.string(), imageUrl: z.string().nullable().optional() });
+
+function ImagePicker({ id, file, setFile, disabled }: { id: string; file: File | null; setFile: (file: File | null) => void; disabled: boolean }) {
+  const [preview, setPreview] = useState("");
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!file) { setPreview(""); return; }
+    const url = URL.createObjectURL(file); setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  return <div className="community-image-picker"><label htmlFor={id}>Đính kèm ảnh</label><input id={id} type="file" accept="image/jpeg,image/png,image/webp" disabled={disabled} onChange={event => {
+    const image = event.target.files?.[0]; event.target.value = "";
+    if (!image) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(image.type) || image.size === 0 || image.size > 5 * 1024 * 1024) { setError("Chọn JPG, PNG hoặc WEBP tối đa 5 MB."); return; }
+    setError(""); setFile(image);
+  }} /><small>1 ảnh · tự nén tối đa 512 KB trước khi tải lên</small>
+    {error && <p role="alert">{error}</p>}
+    {preview && <div className="community-image-preview"><img src={preview} alt="Ảnh đính kèm xem trước" /><button type="button" disabled={disabled} onClick={() => setFile(null)}>Gỡ ảnh</button></div>}
+  </div>;
+}
 
 function Comments({ id, count, initiallyOpen, onAdded }: { id: number; count: number; initiallyOpen: boolean; onAdded: () => void }) {
   const { session } = useAuth();
@@ -21,6 +41,7 @@ function Comments({ id, count, initiallyOpen, onAdded }: { id: number; count: nu
   const [body, setBody] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [image, setImage] = useState<File | null>(null);
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
@@ -33,14 +54,16 @@ function Comments({ id, count, initiallyOpen, onAdded }: { id: number; count: nu
   }, [id, open, page, attempt]);
   async function send(event: FormEvent) {
     event.preventDefault();
-    if (!session || busy || !body.trim()) return;
+    if (!session || busy || (!body.trim() && !image)) return;
     setBusy(true); setNotice("");
     try {
-      commentSchema.parse(await requestAdminApi(`/api/community/posts/${id}/comments`, {
-        token: session.access_token, method: "POST", body: { body: body.trim() },
+      const form = new FormData(); form.append("body", body.trim());
+      if (image) form.append("image", await prepareCommunityImage(image));
+      commentSchema.parse(await requestAdminApi(`/api/community/posts/${id}/comments/with-image`, {
+        token: session.access_token, method: "POST", body: form,
       }));
-      setBody(""); setPage(1); setAttempt(n => n + 1); onAdded(); setNotice("Đã gửi bình luận.");
-    } catch { setNotice("Chưa gửi được bình luận. Nội dung được giữ lại để thử lại."); }
+      setBody(""); setImage(null); setPage(1); setAttempt(n => n + 1); onAdded(); setNotice("Đã gửi bình luận.");
+    } catch (error) { setNotice(`${error instanceof Error ? error.message : "Chưa gửi được bình luận."} Nội dung và ảnh được giữ lại để thử lại.`); }
     finally { setBusy(false); }
   }
   return <section className="community-comments">
@@ -48,17 +71,68 @@ function Comments({ id, count, initiallyOpen, onAdded }: { id: number; count: nu
     {open && <>
       {loading ? <p role="status">Đang tải bình luận...</p> : error ? <p role="alert">{error} <button type="button" onClick={() => setAttempt(n => n + 1)}>Thử lại</button></p>
         : items.length === 0 ? <p>Chưa có bình luận. Hãy chia sẻ ý kiến đầu tiên.</p>
-        : <ul className="community-comment-list">{items.map(item => <li key={item.id}><strong>{item.author}</strong><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString("vi-VN")}</time><p>{item.body}</p></li>)}</ul>}
+        : <ul className="community-comment-list">{items.map(item => <li key={item.id}><strong>{item.author}</strong><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString("vi-VN")}</time><p>{item.body}</p>{item.imageUrl && <a href={item.imageUrl} target="_blank" rel="noopener noreferrer"><img className="community-comment-image" src={item.imageUrl} alt={`Ảnh bình luận của ${item.author}`} loading="lazy" /></a>}</li>)}</ul>}
       {!loading && !error && <nav aria-label="Phân trang bình luận"><button type="button" disabled={page <= 1} onClick={() => setPage(n => n - 1)}>Trước</button><span>Trang {page}</span><button type="button" disabled={items.length < 20} onClick={() => setPage(n => n + 1)}>Sau</button></nav>}
-      {session ? <form onSubmit={send}><label htmlFor={`comment-${id}`}>Viết bình luận</label><textarea id={`comment-${id}`} maxLength={2000} required disabled={busy} value={body} onChange={event => setBody(event.target.value)} placeholder="Chia sẻ góp ý của bạn..." /><button type="submit" disabled={busy || !body.trim()}>{busy ? "Đang gửi..." : "Gửi bình luận"}</button></form>
+      {session ? <form onSubmit={send}><label htmlFor={`comment-${id}`}>Viết bình luận</label><textarea id={`comment-${id}`} maxLength={2000} disabled={busy} value={body} onChange={event => setBody(event.target.value)} placeholder="Viết bình luận hoặc đính kèm ảnh..." /><ImagePicker id={`comment-image-${id}`} file={image} setFile={setImage} disabled={busy} /><button type="submit" disabled={busy || (!body.trim() && !image)}>{busy ? "Đang gửi..." : "Gửi bình luận"}</button></form>
         : <p><Link to="/login">Đăng nhập</Link> để bình luận.</p>}
       {notice && <p role="status">{notice}</p>}
     </>}
   </section>;
 }
 
+function CommunityPost({ post, detail, onUpdated, onDeleted, onComment }: {
+  post: Post; detail: boolean; onUpdated: (post: Post) => void; onDeleted: () => void; onComment: () => void;
+}) {
+  const { user, session } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(post.title);
+  const [body, setBody] = useState(post.body);
+  const [image, setImage] = useState<File | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const own = Boolean(user && post.authorId === user.id);
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    if (!session || busy || !own) return;
+    setBusy(true); setNotice("");
+    try {
+      const form = new FormData(); form.append("title", title.trim()); form.append("body", body.trim()); form.append("removeImage", String(removeImage));
+      if (image) form.append("image", await prepareCommunityImage(image));
+      const saved = postSchema.parse(await requestAdminApi(`/api/community/posts/${post.id}`, { token: session.access_token, method: "PUT", body: form }));
+      onUpdated(saved); setEditing(false); setImage(null); setNotice("Đã lưu bài viết.");
+    } catch (error) { setNotice(`${error instanceof Error ? error.message : "Chưa lưu được bài viết."} Bản sửa vẫn được giữ lại.`); }
+    finally { setBusy(false); }
+  }
+  async function remove() {
+    if (!session || busy || !own || !window.confirm("Xóa bài viết này cùng toàn bộ bình luận và ảnh đính kèm?")) return;
+    setBusy(true); setNotice("");
+    try {
+      await requestAdminApi(`/api/community/posts/${post.id}`, { token: session.access_token, method: "DELETE" });
+      onDeleted();
+    } catch { setNotice("Chưa xóa được bài viết. Vui lòng thử lại."); }
+    finally { setBusy(false); }
+  }
+  return <article className="community-post community-post-text"><div className="community-post-body">
+    <p className="community-author">{post.author} <span>· {new Date(post.createdAt).toLocaleString("vi-VN")}</span></p>
+    {own && !editing && <div className="community-post-actions"><button type="button" disabled={busy} onClick={() => { setTitle(post.title); setBody(post.body); setImage(null); setRemoveImage(false); setNotice(""); setEditing(true); }}>Sửa bài viết</button><button type="button" disabled={busy} onClick={() => void remove()}>{busy ? "Đang xóa..." : "Xóa bài viết"}</button></div>}
+    {editing ? <form className="community-compose" onSubmit={save}>
+      <label htmlFor={`edit-title-${post.id}`}>Tiêu đề</label><input id={`edit-title-${post.id}`} value={title} maxLength={160} required disabled={busy} onChange={event => setTitle(event.target.value)} />
+      <label htmlFor={`edit-body-${post.id}`}>Nội dung</label><textarea id={`edit-body-${post.id}`} value={body} maxLength={5000} required disabled={busy} onChange={event => setBody(event.target.value)} />
+      {post.imageUrl && !removeImage && !image && <div className="community-image-preview"><img src={post.imageUrl} alt="Ảnh hiện tại" loading="lazy" /><button type="button" disabled={busy} onClick={() => setRemoveImage(true)}>Gỡ ảnh hiện tại</button></div>}
+      <ImagePicker id={`edit-image-${post.id}`} file={image} setFile={setImage} disabled={busy} />
+      <div className="community-post-actions"><button type="submit" disabled={busy}>{busy ? "Đang lưu..." : "Lưu thay đổi"}</button><button type="button" disabled={busy} onClick={() => { setEditing(false); setImage(null); setNotice(""); }}>Hủy</button></div>
+    </form> : <><h2><Link to={`/community/${post.id}`}>{post.title}</Link></h2><p className="community-post-content">{post.body}</p>
+      {post.imageUrl && <a href={post.imageUrl} target="_blank" rel="noopener noreferrer"><img className="community-post-image" src={post.imageUrl} alt={`Ảnh đính kèm: ${post.title}`} loading="lazy" /></a>}
+    </>}
+    {notice && <p role="status">{notice}</p>}
+    <Comments id={post.id} count={post.commentCount} initiallyOpen={detail} onAdded={onComment} />
+  </div></article>;
+}
+
 export default function CommunityPage() {
   const { postId } = useParams();
+  const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,11 +168,11 @@ export default function CommunityPage() {
     setBusy(true); setNotice("");
     try {
       const form = new FormData(); form.append("title", title.trim()); form.append("body", body.trim());
-      if (image) form.append("image", image);
+      if (image) form.append("image", await prepareCommunityImage(image));
       const post = postSchema.parse(await requestAdminApi("/api/community/posts/with-image", { token: session.access_token, method: "POST", body: form }));
       setTitle(""); setBody(""); setImage(null); setPage(1); setPosts(current => [post, ...current].slice(0, 20)); setNotice("Đã đăng bài viết.");
       setRetry(value => value + 1);
-    } catch (error) { setNotice(`${error instanceof AdminApiError ? error.message : "Không thể đăng bài."} Nội dung và ảnh vẫn được giữ lại để thử lại.`); }
+    } catch (error) { setNotice(`${error instanceof Error ? error.message : "Không thể đăng bài."} Nội dung và ảnh vẫn được giữ lại để thử lại.`); }
     finally { setBusy(false); }
   }
 
@@ -114,16 +188,16 @@ export default function CommunityPage() {
         if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024 || file.size === 0) { setNotice("Chọn ảnh JPG, PNG hoặc WEBP tối đa 5 MB."); return; }
         setImage(file); setNotice("");
       }} />
-      <small>JPG, PNG, WEBP · tối đa 5 MB · 1 ảnh mỗi bài viết</small>
+      <small>JPG, PNG, WEBP · chọn ảnh tối đa 5 MB · tự nén tối đa 512 KB khi đăng</small>
       {preview && <div className="community-image-preview"><img src={preview} alt="Ảnh xem trước bài viết" /><button type="button" disabled={busy} onClick={() => setImage(null)}>Gỡ ảnh</button></div>}
       <button type="submit" disabled={busy}>{busy ? "Đang đăng..." : "Đăng bài"}</button>{notice && <p role="status">{notice}</p>}
     </form> : <p><Link to="/login">Đăng nhập</Link> để chia sẻ bài viết.</p>)}
     {loading ? <p role="status">Đang tải bài viết...</p> : error ? <section role="alert"><p>{error}</p><button type="button" onClick={() => setRetry(v => v + 1)}>Thử lại</button></section>
       : posts.length === 0 ? <section className="community-empty"><h2>Chưa có bài viết</h2><p>Hãy là người đầu tiên chia sẻ.</p></section>
-      : <div className="community-feed">{posts.map(post => <article className="community-post community-post-text" key={post.id}><div className="community-post-body"><p className="community-author">{post.author} <span>· {new Date(post.createdAt).toLocaleString("vi-VN")}</span></p><h2><Link to={`/community/${post.id}`}>{post.title}</Link></h2><p className="community-post-content">{post.body}</p>
-        {post.imageUrl && <a href={post.imageUrl} target="_blank" rel="noopener noreferrer"><img className="community-post-image" src={post.imageUrl} alt={`Ảnh đính kèm: ${post.title}`} loading="lazy" /></a>}
-        <Comments id={post.id} count={post.commentCount} initiallyOpen={Boolean(postId)} onAdded={() => setPosts(current => current.map(item => item.id === post.id ? { ...item, commentCount: item.commentCount + 1 } : item))} />
-      </div></article>)}</div>}
+      : <div className="community-feed">{posts.map(post => <CommunityPost key={post.id} post={post} detail={Boolean(postId)}
+        onUpdated={saved => setPosts(current => current.map(item => item.id === saved.id ? saved : item))}
+        onDeleted={() => { setPosts(current => current.filter(item => item.id !== post.id)); if (postId) navigate("/community", { replace: true }); }}
+        onComment={() => setPosts(current => current.map(item => item.id === post.id ? { ...item, commentCount: item.commentCount + 1 } : item))} />)}</div>}
     {!postId && !loading && !error && <nav aria-label="Phân trang bài viết" className="community-pagination"><button type="button" disabled={page <= 1} onClick={() => setPage(v => v - 1)}>Trước</button><span>Trang {page}</span><button type="button" disabled={posts.length < 20} onClick={() => setPage(v => v + 1)}>Sau</button></nav>}
   </main></div>;
 }
