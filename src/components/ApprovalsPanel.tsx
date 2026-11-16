@@ -10,6 +10,7 @@ import {
   type ApprovalSection,
 } from "../logic/approvals";
 import { useApprovals } from "../hooks/useApprovals";
+import AdminCourseDetails from "./AdminCourseDetails";
 import "../styles/approvals.css";
 
 type ApprovalData = ReturnType<typeof useApprovals>;
@@ -478,6 +479,7 @@ export default function ApprovalsPanel({
               <h2>Duyệt khóa học</h2>
               <p>Khóa học đang chờ duyệt đăng. Duyệt để đăng công khai hoặc từ chối kèm lý do.</p>
             </div>
+            <button className="appr-button appr-button-quiet" type="button" disabled={data.courseLoading} onClick={data.refresh}>{data.courseLoading ? "Đang tải..." : "Tải lại danh sách"}</button>
           </header>
           {data.courseError && (
             <div className="appr-error" role="alert">
@@ -514,26 +516,27 @@ function CourseRow({
   course: ApprovalData["courses"][number];
   onDialog: (action: DialogAction, id: number, name: string, opener: HTMLButtonElement) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   return (
     <article className="appr-course-row">
+      {showDetails && <AdminCourseDetails courseId={course.ma_khoa_hoc} onClose={() => setShowDetails(false)} />}
       {course.anh_dai_dien
         ? <img className="appr-course-cover" src={course.anh_dai_dien} alt="" />
         : <span className="appr-course-cover appr-course-cover-empty" aria-hidden="true" />}
       <div className="appr-course-main">
         <div className="appr-course-copy">
-          <strong>{course.tieu_de}</strong>
+          <button className="appr-course-title" type="button" onClick={() => setShowDetails(true)}>{course.tieu_de}</button>
           <span>{course.teacherName} · {getCourseLevelLabel(course.cap_do)} · {course.chu_de}</span>
-          <span>{course.chapters.length} chương · {course.lessonCount} bài học · Tạo ngày {formatDateVi(course.ngay_tao)}</span>
+          <span>{course.chapterCount} chương · Tạo ngày {formatDateVi(course.ngay_tao)}</span>
         </div>
         <div className="appr-row-actions">
           <button
             className="appr-button appr-button-quiet"
             type="button"
-            aria-expanded={expanded}
-            onClick={() => setExpanded((value) => !value)}
+            aria-haspopup="dialog"
+            onClick={() => setShowDetails(true)}
           >
-            {expanded ? "Ẩn nội dung" : "Xem nội dung"}
+            Xem nội dung
           </button>
           <button
             className="appr-button appr-button-primary"
@@ -551,20 +554,7 @@ function CourseRow({
           </button>
         </div>
       </div>
-      {expanded && (
-        <div className="appr-expanded appr-course-outline">
-          {course.chapters.length ? course.chapters.map((chapter) => (
-            <section key={chapter.ma_chuong}>
-              <h3>{chapter.thu_tu}. {chapter.tieu_de}</h3>
-              {chapter.lessons.length ? (
-                <ol>
-                  {chapter.lessons.map((lesson) => <li key={lesson.ma_bai_hoc}>{lesson.thu_tu}. {lesson.tieu_de}</li>)}
-                </ol>
-              ) : <p>Chưa có bài học.</p>}
-            </section>
-          )) : <p>Chưa có chương.</p>}
-        </div>
-      )}
+
     </article>
   );
 }

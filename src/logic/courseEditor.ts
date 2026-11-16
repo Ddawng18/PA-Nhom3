@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createUuid } from "./uuid";
 import { courseLevels, courseStatuses } from "../data/courseEditorOptions";
 
 export type CourseLevel = keyof typeof courseLevels;
@@ -228,7 +229,7 @@ export function buildStorageKey(input: {
   uuid?: string;
 }): string {
   const extension = input.fileKind === "jpeg" ? "jpg" : input.fileKind;
-  const uuid = input.uuid ?? crypto.randomUUID();
+  const uuid = input.uuid ?? createUuid();
   if (input.kind === "cover") return `courses/${input.courseId}/cover/${uuid}.${extension}`;
   if (input.lessonId === undefined) throw new Error("Thiếu mã bài học.");
   const folder = input.kind === "lesson" ? "lessons" : "attachments";

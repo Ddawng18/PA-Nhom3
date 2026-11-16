@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createUuid } from "../logic/uuid";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
@@ -94,7 +95,7 @@ export default function CourseDetailPage() {
     if (!token || !user || state.status !== "success") return;
     setBusy(true); setActionError("");
     const keyName = `linea-demo-order:${user.id}:${courseId}`;
-    const key = sessionStorage.getItem(keyName) ?? crypto.randomUUID();
+    const key = sessionStorage.getItem(keyName) ?? createUuid();
     sessionStorage.setItem(keyName, key);
     try {
       let created = await createDemoOrder(token, state.data.khoa_hoc.ma_khoa_hoc, key);
@@ -103,7 +104,7 @@ export default function CourseDetailPage() {
         return;
       }
       if (created.status === "FAILED" || created.status === "CANCELLED") {
-        const nextKey = crypto.randomUUID();
+        const nextKey = createUuid();
         sessionStorage.setItem(keyName, nextKey);
         created = await createDemoOrder(token, state.data.khoa_hoc.ma_khoa_hoc, nextKey);
         if (created.paymentUrl) {

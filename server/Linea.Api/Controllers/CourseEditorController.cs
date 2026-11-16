@@ -33,7 +33,10 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
     {
         if (!User.TryGetUserId(out var userId)) return Unauthorized();
         await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
-        if (!await db.LearningCourses.AnyAsync(x => x.Id == courseId && x.TeacherId == userId, ct)) return NotFound();
+        // Administrators can inspect course content for moderation. Writes below
+        // still require the current user to own the draft.
+        var isAdmin = User.IsAdmin();
+        if (!await db.LearningCourses.AnyAsync(x => x.Id == courseId && (x.TeacherId == userId || isAdmin), ct)) return NotFound();
         var chapters = await db.CourseChapters.AsNoTracking().Where(x => x.CourseId == courseId).OrderBy(x => x.Order).ToListAsync(ct);
         var chapterIds = chapters.Select(x => x.Id).ToList();
         var lessons = await db.CourseLessons.AsNoTracking().Where(x => chapterIds.Contains(x.ChapterId)).OrderBy(x => x.Order).ToListAsync(ct);
