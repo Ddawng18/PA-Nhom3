@@ -22,7 +22,8 @@ export type LearningCourse = z.infer<typeof learningCourseSchema>;
 export type LessonContent = z.infer<typeof lessonContentSchema>;
 export type LearnerAssignment = z.infer<typeof assignmentSchema>;
 export const myCourseSchema = z.object({ id, title: z.string(), level: z.string(), status: z.string(), available: z.boolean(),
-  coverImage: z.string().nullable(), percent: z.number(), totalLessons: z.number(), completedLessons: z.number() });
+  coverImage: z.string().nullable(), percent: z.number(), totalLessons: z.number(), completedLessons: z.number(),
+  requiredAssignments: z.number().int().nonnegative().optional(), submittedAssignments: z.number().int().nonnegative().optional() });
 export type MyCourse = z.infer<typeof myCourseSchema>;
 
 export async function loadMyCourses(token: string, signal?: AbortSignal) {

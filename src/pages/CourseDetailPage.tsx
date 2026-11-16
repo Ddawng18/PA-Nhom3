@@ -6,6 +6,7 @@ import CatalogCourseCard from "../components/CatalogCourseCard";
 import { AdminApiError, AdminApiTimeoutError } from "../lib/adminApi";
 import { getCatalogCourse, type CatalogDetail } from "../lib/catalogApi";
 import { enrollInCourse } from "../lib/courseApi";
+import { confirmDemoOrder, createDemoOrder, type DemoOrder } from "../lib/demoOrders";
 import { learningError, loadLearningCourse, type LearningCourse } from "../lib/learningApi";
 import { formatLessonCount, formatPriceLabel, formatStudentCount, getInitials } from "../logic/catalog";
 import { mapApiError } from "../logic/approvals";
@@ -37,6 +38,7 @@ export default function CourseDetailPage() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
   const [coverFailed, setCoverFailed] = useState(false);
+  const [order, setOrder] = useState<DemoOrder | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -78,6 +80,29 @@ export default function CourseDetailPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function startDemoOrder() {
+    if (!token || !user || state.status !== "success") return;
+    setBusy(true); setActionError("");
+    const keyName = `linea-demo-order:${user.id}:${courseId}`;
+    const key = sessionStorage.getItem(keyName) ?? crypto.randomUUID();
+    sessionStorage.setItem(keyName, key);
+    try { setOrder(await createDemoOrder(token, state.data.khoa_hoc.ma_khoa_hoc, key)); }
+    catch (error) { setActionError(learningError(error)); }
+    finally { setBusy(false); }
+  }
+
+  async function finishDemoOrder(result: "SUCCEEDED" | "FAILED" | "CANCELLED") {
+    if (!token || !user || !order) return;
+    setBusy(true); setActionError("");
+    try {
+      const saved = await confirmDemoOrder(token, order.id, result);
+      setOrder(saved);
+      sessionStorage.removeItem(`linea-demo-order:${user.id}:${courseId}`);
+      if (saved.status === "SUCCEEDED") navigate(`/courses/${courseId}/learn`);
+    } catch (error) { setActionError(learningError(error)); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -150,15 +175,26 @@ export default function CourseDetailPage() {
                     {price && <p className="cd-price">{price}</p>}
                     {enrolled && learning && (
                       <label className="cd-progress">
-                        Tiến độ: {learning.phan_tram}%
+                        Tiến độ bài học: {learning.phan_tram}%
                         <progress value={learning.phan_tram} max={100} />
                       </label>
                     )}
                     {actionError && <p className="cd-error" role="alert">{actionError}</p>}
+                    {order?.status === "PENDING" && <div role="group" aria-label="Thanh toán mô phỏng">
+                      <p><strong>DEMO — KHÔNG THU TIỀN THẬT</strong></p>
+                      <p>Đơn #{order.id}: {order.priceVnd.toLocaleString("vi-VN")} ₫</p>
+                      <button type="button" disabled={busy} onClick={() => void finishDemoOrder("SUCCEEDED")}>Mô phỏng thành công</button>{" "}
+                      <button type="button" disabled={busy} onClick={() => void finishDemoOrder("FAILED")}>Mô phỏng thất bại</button>{" "}
+                      <button type="button" disabled={busy} onClick={() => void finishDemoOrder("CANCELLED")}>Hủy đơn</button>
+                    </div>}
+                    {order && order.status !== "PENDING" && order.status !== "SUCCEEDED" && <p role="status">Đơn demo đã {order.status === "FAILED" ? "thất bại" : "hủy"}. Bạn có thể thử lại.</p>}
                     {enrolled ? (
                       <Link className="cd-button cd-button-primary" to={`/courses/${courseId}/learn`}>
                         {completed ? "Xem lại khóa học" : "Tiếp tục học"}
                       </Link>
+                    ) : user && course.gia_vnd !== null && course.gia_vnd > 0 ? (
+                      <button className="cd-button cd-button-primary" type="button" disabled={busy || order?.status === "PENDING"}
+                        onClick={() => void startDemoOrder()}>{busy ? "Đang xử lý..." : "Thanh toán demo"}</button>
                     ) : user ? (
                       <button className="cd-button cd-button-primary" type="button" disabled={busy}
                         onClick={() => void enroll()}>

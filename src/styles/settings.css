@@ -14,6 +14,15 @@
   padding: 27px 17px 18px;
   border-right: 1px solid #e8ebe2;
   background: #fffefa;
+  overflow-y: auto;
+}
+
+/* Pages that also serve guests retain their public header for guests and use
+   the same fixed sidebar as the signed-in learning pages for members. */
+.register-page:has(> .settings-sidebar),
+.studio-page:has(> .settings-sidebar),
+.community-page:has(> .settings-sidebar) {
+  padding-left: 238px;
 }
 
 .settings-brand {
@@ -120,7 +129,7 @@
   min-width: 0;
   align-items: center;
   gap: 10px;
-  margin-top: 17px;
+  margin-top: auto;
   padding: 13px 3px 0;
   border-top: 1px solid #edf0e9;
 }
@@ -1912,12 +1921,16 @@
 }
 
 @media (max-width: 900px) {
+  .register-page:has(> .settings-sidebar),
+  .studio-page:has(> .settings-sidebar),
+  .community-page:has(> .settings-sidebar) { padding-left: 0; }
   .settings-sidebar {
     position: static;
     width: 100%;
     padding: 12px 20px;
     border-right: 0;
     border-bottom: 1px solid #e8ebe2;
+    overflow-y: visible;
   }
 
   .settings-brand {

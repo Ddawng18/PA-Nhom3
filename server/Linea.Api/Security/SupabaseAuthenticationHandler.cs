@@ -44,9 +44,11 @@ public sealed class SupabaseAuthenticationHandler(
         {
             var status = await Context.RequestServices.GetRequiredService<ActiveAccountHandler>()
                 .CheckAsync(account.Id, Context.RequestAborted);
-            if (status.Available && (!status.Found || status.IsLocked))
+            if (!status.Available)
+                return AuthenticateResult.Fail("The account state could not be verified.");
+            if (!status.Found || status.IsLocked || string.IsNullOrWhiteSpace(status.Role))
                 return AuthenticateResult.Fail("The account is unavailable or locked.");
-            if (status.Available && status.Role is not null) role = status.Role;
+            role = status.Role;
         }
         else if (account.IsLocked)
         {

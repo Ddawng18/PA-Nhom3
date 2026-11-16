@@ -41,7 +41,7 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
             submission = SubmissionView(submissions.SingleOrDefault(s => s.AssignmentId == a.id), grades) }));
     }
 
-    [HttpPost("{id:long}/submission"), Authorize(Policy = AuthPolicies.StudentOnly)]
+    [HttpPost("{id:long}/submission"), Authorize(Policy = AuthPolicies.LearnerAccess)]
     [RequestSizeLimit(11 * 1024 * 1024), RequestFormLimits(MultipartBodyLengthLimit = 11 * 1024 * 1024)]
     public async Task<IActionResult> Submit(long id, [FromForm] IFormFile file, CancellationToken ct)
     {
@@ -59,7 +59,7 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
         var saved = await storage.Files.SaveAsync(file, ct);
         if (!saved.Success) return StatusCode(saved.StatusCode, new { detail = saved.Message, code = saved.Code });
         var oldPath = submission?.ImagePath;
-        var now = DateTimeOffset.UtcNow;
+        var now = DatabaseTimestamp();
         if (submission is null)
         {
             submission = new AssignmentSubmission { AssignmentId = id, UserId = userId, SubmittedAt = now };
@@ -70,8 +70,20 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
         submission.Status = "CHO_CHAM";
         db.Notifications.Add(new NotificationMessage { UserId = context.TeacherId, Type = "loi_nhan",
             Content = "Có bài tập mới đang chờ chấm.", Link = $"/teacher/courses/{context.CourseId}/submissions", CreatedAt = now });
-        await db.SaveChangesAsync(ct);
-        await progress.RefreshAsync(userId, context.CourseId, ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            await progress.RefreshAsync(userId, context.CourseId, ct);
+        }
+        catch
+        {
+            // No commit has been attempted: this upload cannot be referenced by
+            // the database. Cleanup uses its own timeout even if the request was cancelled.
+            await storage.DeleteReplacedAsync(saved.File!.FilePath);
+            throw;
+        }
+        // A failed commit can have an unknown outcome. Keep the object in that
+        // case rather than risk deleting an image referenced by a committed row.
         await tx.CommitAsync(ct);
         await storage.DeleteReplacedAsync(oldPath);
         return Ok(SubmissionView(submission, []));
@@ -134,7 +146,7 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
         var previous = grade is null ? null : JsonSerializer.Serialize(GradeView(grade));
         if (grade is null) { grade = new SubmissionGrade { SubmissionId = id }; db.Grades.Add(grade); }
         grade.Score = request.Score; grade.Feedback = request.Feedback.Trim();
-        grade.GraderId = userId; grade.GradedAt = DateTimeOffset.UtcNow;
+        grade.GraderId = userId; grade.GradedAt = DatabaseTimestamp();
         submission.Status = "DA_CHAM";
         db.StatusHistory.Add(new StatusHistoryEntry { ObjectType = "BAI_NOP", ObjectId = id.ToString(),
             PreviousStatus = previous is null ? "CHO_CHAM" : "DA_CHAM", Status = "DA_CHAM", ActorId = userId,
@@ -152,7 +164,11 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
     {
         if (!User.TryGetUserId(out var userId)) return Unauthorized();
         var submission = await (from s in db.Submissions.AsNoTracking() join c in Contexts on s.AssignmentId equals c.Id
-                                where s.Id == id && (s.UserId == userId || c.TeacherId == userId) select s).SingleOrDefaultAsync(ct);
+                                where s.Id == id && (c.TeacherId == userId ||
+                                    (s.UserId == userId && c.Status == "DA_DANG" &&
+                                     db.CourseEnrollments.Any(e => e.UserId == userId && e.CourseId == c.CourseId &&
+                                         (e.Status == "DANG_HOC" || e.Status == "HOAN_THANH"))))
+                                select s).SingleOrDefaultAsync(ct);
         if (submission is null) return NotFound();
         Response.Headers.CacheControl = "private, no-store";
         var content = await storage.Files.OpenAsync(submission.ImagePath, ct);
@@ -164,6 +180,13 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
 
     private Task<bool> Enrolled(Guid userId, long courseId, CancellationToken ct) => db.CourseEnrollments.AnyAsync(e =>
         e.UserId == userId && e.CourseId == courseId && (e.Status == "DANG_HOC" || e.Status == "HOAN_THANH"), ct);
+    // PostgreSQL timestamps retain microseconds; return the same precision that
+    // is persisted so the client's optimistic concurrency token remains valid.
+    private static DateTimeOffset DatabaseTimestamp()
+    {
+        var now = DateTimeOffset.UtcNow;
+        return now.AddTicks(-(now.Ticks % 10));
+    }
     private static object GradeView(SubmissionGrade g) => new { score = g.Score, feedback = g.Feedback, gradedAt = g.GradedAt };
     private static object? SubmissionView(AssignmentSubmission? s, List<SubmissionGrade> grades) => s is null ? null : new {
         id = s.Id, status = s.Status, submittedAt = s.SubmittedAt, updatedAt = s.UpdatedAt,

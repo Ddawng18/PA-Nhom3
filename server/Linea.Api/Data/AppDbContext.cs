@@ -75,6 +75,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         learningCourse.Property(item => item.Topic).HasColumnName("chu_de").HasMaxLength(100).IsRequired();
         learningCourse.Property(item => item.Description).HasColumnName("mo_ta").IsRequired();
         learningCourse.Property(item => item.CoverImage).HasColumnName("anh_dai_dien").HasMaxLength(500);
+        learningCourse.Property(item => item.PriceVnd).HasColumnName("gia_vnd");
         learningCourse.Property(item => item.Status).HasColumnName("trang_thai").HasMaxLength(20).IsRequired();
         learningCourse.Property(item => item.CreatedAt).HasColumnName("ngay_tao").IsRequired();
         learningCourse.HasIndex(item => item.TeacherId);
