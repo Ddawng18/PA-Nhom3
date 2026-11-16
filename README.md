@@ -153,10 +153,21 @@ chạy frontend, có thể để trống biến này; chức năng gọi API và
 qua backend sẽ không hoạt động. Không commit `.env` hoặc đưa `service_role`,
 secret key hay mật khẩu CSDL vào biến `VITE_`.
 
-Để `SUPABASE_DB_URL`, `SEED_ADMIN_EMAIL` và `SEED_ADMIN_PASSWORD` trống khi
-chạy theo hướng dẫn này. Backend mặc định xác thực bằng Supabase Auth; không cần
-`JWT_KEY` cho luồng này. Đăng nhập Google và URL callback cần được cấu hình
-trong Supabase; việc gửi email xác nhận phụ thuộc cấu hình email của dự án.
+`SUPABASE_DB_URL` cần có khi chạy backend: lấy chuỗi PostgreSQL ở Supabase →
+Connect → Connection string → Session pooler (IPv4), thay `[YOUR-PASSWORD]`
+bằng mật khẩu database và URL-encode ký tự đặc biệt trong mật khẩu. Không đưa
+chuỗi này vào biến `VITE_*` hoặc commit `.env`. Có thể để
+`SEED_ADMIN_EMAIL` và `SEED_ADMIN_PASSWORD` trống. Backend mặc định xác thực
+bằng Supabase Auth nên không cần `JWT_KEY` cho luồng này. Đăng nhập Google và
+URL callback cần được cấu hình trong Supabase; việc gửi email xác nhận phụ
+thuộc cấu hình email của dự án.
+
+Thanh toán hỗ trợ `DEMO` và `VNPAY_SANDBOX`; chưa hỗ trợ thu tiền thật.
+Để thử VNPAY, đăng ký merchant sandbox rồi đặt `PAYMENT_MODE=VNPAY_SANDBOX`,
+`VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL`, `VNPAY_IPN_URL` và
+`VNPAY_RETURN_PAGE_URL` ở backend. Return/IPN cần URL HTTPS công khai; đăng ký
+đúng IPN URL với VNPAY. Khi chạy local, dùng một HTTPS tunnel cho callback.
+Không đưa mã terminal hoặc hash secret vào frontend, Git hay chat.
 
 ### 3. Chạy backend
 
@@ -167,10 +178,10 @@ dotnet run --project server/Linea.Api
 ```
 
 API mặc định chạy tại `http://localhost:4174`. Mở
-`http://localhost:4174/api/health` để kiểm tra kết nối Supabase Auth. Khi chạy
-Development, backend áp dụng EF migration cho SQLite cục bộ; không điền
-`SUPABASE_DB_URL` nếu không chủ động muốn dùng database chung. Nếu dùng backend
-đang deploy thay vì local, đặt `VITE_API_URL=https://linea-api-7f2q.onrender.com`
+`http://localhost:4174/api/health` để kiểm tra kết nối Supabase Auth và
+PostgreSQL. Backend dùng database chung được chỉ định bởi `SUPABASE_DB_URL`;
+migration chỉ chạy khi chủ động đặt `RUN_MIGRATIONS=true`. Nếu dùng backend đang
+deploy thay vì local, đặt `VITE_API_URL=https://linea-api-7f2q.onrender.com`
 và lưu ý CORS backend hiện chỉ cho phép origin website production.
 
 ### 4. Chạy frontend

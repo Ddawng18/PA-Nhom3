@@ -20,6 +20,7 @@ public sealed class PreflightController(
     AppDbContext db,
     IConfiguration configuration,
     IHttpClientFactory clients,
+    VnPayPaymentService vnPay,
     IWebHostEnvironment environment) : ControllerBase
 {
     private static readonly string[] RequiredNames =
@@ -77,11 +78,13 @@ public sealed class PreflightController(
             authUri.Scheme == Uri.UriSchemeHttps &&
             !string.IsNullOrWhiteSpace(configuration["SUPABASE_PUBLISHABLE_KEY"]);
 
+        var paymentMode = (configuration["PAYMENT_MODE"] ?? "DEMO").Trim().ToUpperInvariant();
+        var paymentReady = paymentMode == "DEMO" || paymentMode == "VNPAY_SANDBOX" && vnPay.IsConfigured;
         var schemaReady = schema.UsersTable && schema.CoursesTable &&
             schema.AuthUsersTable && schema.AdminLockColumns &&
             schema.CourseVisibilityColumns && schema.DemoOrdersTable;
         var productionNeedsPostgres = environment.IsProduction() && mode != "postgres";
-        var ok = connected && authConfigured && !productionNeedsPostgres &&
+        var ok = connected && authConfigured && paymentReady && !productionNeedsPostgres &&
             (mode == "postgres" ? schemaReady : true);
 
         return Ok(new
@@ -116,7 +119,7 @@ public sealed class PreflightController(
                 available = storageAvailable,
                 note = "Storage readiness is separate so a missing upload bucket does not hide GET assignment readiness."
             },
-            payment = new { mode = configuration["PAYMENT_MODE"] ?? "DEMO" }
+            payment = new { mode = paymentMode, vnpaySandboxConfigured = vnPay.IsConfigured, ready = paymentReady }
         });
     }
 
