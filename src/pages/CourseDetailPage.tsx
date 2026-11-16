@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
@@ -6,7 +6,7 @@ import CatalogCourseCard from "../components/CatalogCourseCard";
 import { AdminApiError, AdminApiTimeoutError } from "../lib/adminApi";
 import { getCatalogCourse, type CatalogDetail } from "../lib/catalogApi";
 import { enrollInCourse } from "../lib/courseApi";
-import { confirmDemoOrder, createDemoOrder, type DemoOrder } from "../lib/demoOrders";
+import { createDemoOrder, type DemoOrder } from "../lib/demoOrders";
 import { learningError, loadLearningCourse, type LearningCourse } from "../lib/learningApi";
 import { formatLessonCount, formatPriceLabel, formatStudentCount, getInitials } from "../logic/catalog";
 import { mapApiError } from "../logic/approvals";
@@ -39,6 +39,14 @@ export default function CourseDetailPage() {
   const [actionError, setActionError] = useState("");
   const [coverFailed, setCoverFailed] = useState(false);
   const [order, setOrder] = useState<DemoOrder | null>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const paymentDialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = paymentDialogRef.current;
+    if (paymentDialogOpen && dialog && !dialog.open) dialog.showModal();
+    else if (!paymentDialogOpen && dialog?.open) dialog.close();
+  }, [paymentDialogOpen]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -88,21 +96,34 @@ export default function CourseDetailPage() {
     const keyName = `linea-demo-order:${user.id}:${courseId}`;
     const key = sessionStorage.getItem(keyName) ?? crypto.randomUUID();
     sessionStorage.setItem(keyName, key);
-    try { setOrder(await createDemoOrder(token, state.data.khoa_hoc.ma_khoa_hoc, key)); }
+    try {
+      let created = await createDemoOrder(token, state.data.khoa_hoc.ma_khoa_hoc, key);
+      if (created.paymentUrl) {
+        window.location.assign(created.paymentUrl);
+        return;
+      }
+      if (created.status === "FAILED" || created.status === "CANCELLED") {
+        const nextKey = crypto.randomUUID();
+        sessionStorage.setItem(keyName, nextKey);
+        created = await createDemoOrder(token, state.data.khoa_hoc.ma_khoa_hoc, nextKey);
+        if (created.paymentUrl) {
+          window.location.assign(created.paymentUrl);
+          return;
+        }
+      }
+      if (created.status === "SUCCEEDED") navigate(`/courses/${courseId}/learn`);
+      else {
+        setOrder(created);
+        setPaymentDialogOpen(true);
+      }
+    }
     catch (error) { setActionError(learningError(error)); }
     finally { setBusy(false); }
   }
 
-  async function finishDemoOrder(result: "SUCCEEDED" | "FAILED" | "CANCELLED") {
-    if (!token || !user || !order) return;
-    setBusy(true); setActionError("");
-    try {
-      const saved = await confirmDemoOrder(token, order.id, result);
-      setOrder(saved);
-      sessionStorage.removeItem(`linea-demo-order:${user.id}:${courseId}`);
-      if (saved.status === "SUCCEEDED") navigate(`/courses/${courseId}/learn`);
-    } catch (error) { setActionError(learningError(error)); }
-    finally { setBusy(false); }
+  function openPaymentInfo() {
+    if (order?.status === "PENDING") setPaymentDialogOpen(true);
+    else void startDemoOrder();
   }
 
   return (
@@ -173,6 +194,10 @@ export default function CourseDetailPage() {
 
                   <div className="cd-buy">
                     {price && <p className="cd-price">{price}</p>}
+                    {course.gia_vnd !== null && course.gia_vnd > 0 && <div className="cd-payment-note">
+                      <span className="cd-payment-note-icon" aria-hidden="true">✓</span>
+                      <span><strong>Thanh toán thử nghiệm</strong><small>Chưa có thông tin ngân hàng để nhận tiền thật.</small></span>
+                    </div>}
                     {enrolled && learning && (
                       <label className="cd-progress">
                         Tiến độ bài học: {learning.phan_tram}%
@@ -180,21 +205,14 @@ export default function CourseDetailPage() {
                       </label>
                     )}
                     {actionError && <p className="cd-error" role="alert">{actionError}</p>}
-                    {order?.status === "PENDING" && <div role="group" aria-label="Thanh toán mô phỏng">
-                      <p><strong>DEMO — KHÔNG THU TIỀN THẬT</strong></p>
-                      <p>Đơn #{order.id}: {order.priceVnd.toLocaleString("vi-VN")} ₫</p>
-                      <button type="button" disabled={busy} onClick={() => void finishDemoOrder("SUCCEEDED")}>Mô phỏng thành công</button>{" "}
-                      <button type="button" disabled={busy} onClick={() => void finishDemoOrder("FAILED")}>Mô phỏng thất bại</button>{" "}
-                      <button type="button" disabled={busy} onClick={() => void finishDemoOrder("CANCELLED")}>Hủy đơn</button>
-                    </div>}
-                    {order && order.status !== "PENDING" && order.status !== "SUCCEEDED" && <p role="status">Đơn demo đã {order.status === "FAILED" ? "thất bại" : "hủy"}. Bạn có thể thử lại.</p>}
+                    {order?.status === "PENDING" && <p className="cd-order-pending-note" role="status">Đơn #{order.id} đang chờ thanh toán.</p>}
                     {enrolled ? (
                       <Link className="cd-button cd-button-primary" to={`/courses/${courseId}/learn`}>
                         {completed ? "Xem lại khóa học" : "Tiếp tục học"}
                       </Link>
                     ) : user && course.gia_vnd !== null && course.gia_vnd > 0 ? (
-                      <button className="cd-button cd-button-primary" type="button" disabled={busy || order?.status === "PENDING"}
-                        onClick={() => void startDemoOrder()}>{busy ? "Đang xử lý..." : "Thanh toán demo"}</button>
+                      <button className="cd-button cd-button-primary" type="button" disabled={busy}
+                        onClick={openPaymentInfo}>{busy ? "Đang xử lý..." : order?.status === "PENDING" ? "Xem thông tin thanh toán" : "Thanh toán"}</button>
                     ) : user ? (
                       <button className="cd-button cd-button-primary" type="button" disabled={busy}
                         onClick={() => void enroll()}>
@@ -204,6 +222,24 @@ export default function CourseDetailPage() {
                       <Link className="cd-button cd-button-primary" to="/login">Đăng nhập để ghi danh</Link>
                     )}
                   </div>
+                  <dialog className="cd-payment-dialog" ref={paymentDialogRef} aria-labelledby="cd-payment-title" aria-describedby="cd-payment-warning" onClose={() => setPaymentDialogOpen(false)}>
+                    {order?.status === "PENDING" && <div className="cd-payment-dialog-content">
+                      <button className="cd-payment-close" type="button" aria-label="Đóng thông tin thanh toán" onClick={() => paymentDialogRef.current?.close()}>×</button>
+                      <p className="cd-topic">ĐƠN HÀNG #{order.id}</p>
+                      <h2 id="cd-payment-title">Thông tin thanh toán</h2>
+                      <dl className="cd-payment-details">
+                        <div><dt>Khóa học</dt><dd>{order.courseTitle}</dd></div>
+                        <div><dt>Số tiền</dt><dd>{order.priceVnd.toLocaleString("vi-VN")} ₫</dd></div>
+                        <div><dt>Trạng thái</dt><dd>Chờ thanh toán</dd></div>
+                      </dl>
+                      <figure className="cd-payment-qr">
+                        <img src="/payment-qr-demo.png" alt="Mã QR minh họa, không dùng để thanh toán" />
+                        <figcaption>QR minh họa</figcaption>
+                      </figure>
+                      <p className="cd-payment-warning" id="cd-payment-warning">Mã QR này không phải mã thanh toán ngân hàng. Chưa có tài khoản nhận tiền được cấu hình; quét mã sẽ không thanh toán đơn hàng.</p>
+                      <button className="cd-button cd-button-primary" type="button" onClick={() => paymentDialogRef.current?.close()}>Đã hiểu</button>
+                    </div>}
+                  </dialog>
                 </div>
               </section>
 
