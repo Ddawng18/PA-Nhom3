@@ -66,7 +66,7 @@ try {
   assert.equal(usersGets, beforeLock + 1);
   assert.equal(await page.getByText("Trang 2", { exact: true }).count(), 1);
   console.log("PASS lock/unlock updates locally with current versions; manual reload preserves page");
-  await page.getByRole("button", { name: "Duyệt khóa học", exact: true }).click();
+  await page.getByRole("button", { name: /^Duyệt khóa học \(/ }).click();
   await page.getByText("Pending Course", { exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: "Duyệt đăng", exact: true })
     .evaluate(button => window.getComputedStyle(button).backgroundColor), "rgb(53, 92, 58)");
