@@ -78,7 +78,7 @@ export function mapApiError(status: number, code?: string): string {
   if (status === 403) return "Bạn không có quyền thực hiện thao tác này.";
   if (status === 404 && code === "NOT_FOUND") return "Không tìm thấy hồ sơ.";
   if (status === 409 && code === "INVALID_STATUS_TRANSITION") {
-    return "Mục này đã được xử lý trước đó. Danh sách đã được làm mới.";
+    return "Mục này đã được xử lý trước đó. Bấm Tải lại dữ liệu để cập nhật danh sách.";
   }
   if (code === "ACCOUNT_NOT_FOUND") return "Không tìm thấy tài khoản của người nộp hồ sơ.";
   if (code === "VALIDATION_ERROR") return "Dữ liệu chưa hợp lệ. Vui lòng kiểm tra lại.";

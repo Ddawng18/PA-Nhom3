@@ -83,9 +83,15 @@ export default function AdminManagementPage() {
     try {
       const path = isUser ? `/api/admin/users/${item.id}/lock` : `/api/admin/courses/${item.id}/visibility`;
       const body = isUser ? { isLocked: !item.isLocked, reason, expectedVersion: item.lockVersion } : { hidden: !item.hidden, reason, expectedVersion: item.visibilityVersion };
-      await requestAdminApi(path, { token, method: "PATCH", body });
+      const updated = await requestAdminApi(path, { token, method: "PATCH", body });
+      if (isUser) {
+        const row = userSchema.parse(updated);
+        setUsers(current => current.map(user => user.id === row.id ? row : user));
+      } else {
+        const row = courseSchema.parse(updated);
+        setCourses(current => current.map(course => course.id === row.id ? row : course));
+      }
       setNotice(`Đã ${action} ${label}.`);
-      setRefresh((n) => n + 1);
     } catch { setError("Không thể cập nhật. Dữ liệu có thể đã thay đổi; hãy tải lại và thử lại."); }
     finally { setBusy(false); }
   }
@@ -98,6 +104,13 @@ export default function AdminManagementPage() {
         <button type="button" aria-pressed={tab === "review" && section === "khoa-hoc"} onClick={() => setTab("review")}>Duyệt khóa học</button>
         <button type="button" aria-pressed={tab === "review" && section === "giao-vien"} onClick={() => setTab("review", "giao-vien")}>Duyệt giáo viên</button>
       </nav>
+      <div className="admin-manage-toolbar">
+        <button className="admin-manage-action" type="button" disabled={busy || loading || approvals.teacherLoading || approvals.courseLoading} onClick={() => {
+          if (tab === "review") approvals.refresh();
+          else setRefresh(current => current + 1);
+        }}>Tải lại dữ liệu</button>
+        <span>Giữ nguyên bộ lọc và trang hiện tại khi tải lại.</span>
+      </div>
       {tab === "review" ? <ApprovalsPanel section={section} setSection={(nextSection) => setTab("review", nextSection)} data={approvals} /> : <section className="admin-manage-panel"><div className="admin-manage-panel-head"><div><h2>{tab === "users" ? "Danh sách người dùng" : "Danh sách khóa học"}</h2><p>{loading ? "Đang tải dữ liệu" : `${total} kết quả`}</p></div>
       <form className="admin-manage-search" onSubmit={(e) => { e.preventDefault(); setPageNumber(1); setQuery(search.trim()); }}><label className="sr-only" htmlFor="admin-search">Tìm kiếm</label><input id="admin-search" placeholder={tab === "users" ? "Tìm theo tên hoặc email" : "Tìm theo tên khóa học"} value={search} onChange={(e) => setSearch(e.target.value)} /><button type="submit">Tìm kiếm</button></form></div>
       {notice && <p className="admin-manage-notice" role="status">{notice}</p>}

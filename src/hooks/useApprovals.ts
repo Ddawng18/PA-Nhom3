@@ -83,21 +83,10 @@ export function useApprovals(active: boolean, isAdmin: boolean, token: string | 
   const [signedUrls, setSignedUrls] = useState<Record<number, { url: string; expiresAt: string }>>({});
   const [imageErrors, setImageErrors] = useState<Record<number, string>>({});
   const [reloadKey, setReloadKey] = useState(0);
-  const [courseReloadKey, setCourseReloadKey] = useState(0);
-  useEffect(() => {
-    if (!active || !isAdmin || !token) return;
-    const update = () => { if (document.visibilityState === "visible") setCourseReloadKey(n => n + 1); };
-    window.addEventListener("focus", update);
-    document.addEventListener("visibilitychange", update);
-    const timer = window.setInterval(update, 30_000);
-    return () => {
-      window.removeEventListener("focus", update);
-      document.removeEventListener("visibilitychange", update);
-      window.clearInterval(timer);
-    };
-  }, [active, isAdmin, token]);
-
-  const refresh = useCallback(() => setReloadKey((value) => value + 1), []);
+  const refresh = useCallback(() => {
+    setDetails({}); setDetailErrors({}); setSignedUrls({}); setImageErrors({});
+    setReloadKey((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -162,7 +151,7 @@ export function useApprovals(active: boolean, isAdmin: boolean, token: string | 
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [active, isAdmin, token, reloadKey, courseReloadKey]);
+  }, [active, isAdmin, token, reloadKey]);
 
   useEffect(() => {
     if (!active || !isAdmin || !token) return;
@@ -222,14 +211,16 @@ export function useApprovals(active: boolean, isAdmin: boolean, token: string | 
     try {
       if (type === "approve-teacher") await approveTeacherProfile(token, id);
       else if (payload) await rejectTeacherProfile(token, id, payload);
-      refresh();
+      setTeacherItems(current => current.filter(item => item.id !== id));
+      setTeacherTotal(current => Math.max(0, current - 1));
+      setCounts(current => ({ ...current, teachers: Math.max(0, current.teachers - 1), total: Math.max(0, current.total - 1) }));
+      setDetails(current => { const next = { ...current }; delete next[id]; return next; });
       return { error: null };
     } catch (error) {
       const message = getApiErrorMessage(error);
-      if (error instanceof AdminApiError && error.code === "INVALID_STATUS_TRANSITION") refresh();
       return { error: message };
     }
-  }, [refresh, token]);
+  }, [token]);
 
   const runCourseMutation = useCallback(async (
     type: CourseMutation,
@@ -240,18 +231,15 @@ export function useApprovals(active: boolean, isAdmin: boolean, token: string | 
     try {
       if (type === "approve-course") await approveCourse(token, courseId);
       else await rejectCourse(token, courseId, reason ?? "");
-      refresh();
+      setCourses(current => current.filter(course => course.ma_khoa_hoc !== courseId));
+      setCounts(current => ({ ...current, courses: Math.max(0, current.courses - 1), total: Math.max(0, current.total - 1) }));
       return { error: null };
     } catch (error) {
-      if (error instanceof AdminApiError && error.code === "INVALID_STATUS_TRANSITION") refresh();
       return { error: getApiErrorMessage(error) };
     }
-  }, [refresh, token]);
+  }, [token]);
 
-  const pageCount = Math.max(1, Math.ceil(teacherTotal / 20));
-  useEffect(() => {
-    if (teacherPage > pageCount) setTeacherPage(pageCount);
-  }, [pageCount, teacherPage]);
+  const pageCount = Math.max(teacherPage, Math.ceil(teacherTotal / 20));
 
   return {
     teacherItems,

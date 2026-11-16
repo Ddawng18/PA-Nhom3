@@ -479,7 +479,6 @@ export default function ApprovalsPanel({
               <h2>Duyệt khóa học</h2>
               <p>Khóa học đang chờ duyệt đăng. Duyệt để đăng công khai hoặc từ chối kèm lý do.</p>
             </div>
-            <button className="appr-button appr-button-quiet" type="button" disabled={data.courseLoading} onClick={data.refresh}>{data.courseLoading ? "Đang tải..." : "Tải lại danh sách"}</button>
           </header>
           {data.courseError && (
             <div className="appr-error" role="alert">
