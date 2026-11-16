@@ -18,6 +18,7 @@ import { mapApiError } from "../logic/approvals";
 import { getTotalPages } from "../logic/publicCourses";
 import PublicHeader from "../components/PublicHeader";
 import CatalogCourseCard from "../components/CatalogCourseCard";
+import "../styles/settings.css";
 import "../styles/courses.css";
 
 type CoursesResult =
@@ -40,6 +41,7 @@ export default function CoursesPage() {
   const [retryCount, setRetryCount] = useState(0);
   const [result, setResult] = useState<CoursesResult>({ status: "loading" });
   const [knownTopics, setKnownTopics] = useState<CatalogList["chu_de"]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     document.title = "Khóa học · LINEA";
@@ -107,134 +109,155 @@ export default function CoursesPage() {
   return (
     <div className="register-page cat-page">
       <PublicHeader authLink={{ to: "/login", label: "Đăng nhập" }} />
-      <section className="cat-banner" aria-labelledby="cat-banner-title">
-        <div className="cat-banner-inner">
-          <p className="cat-banner-eyebrow">LUYỆN VẼ TỪ NỀN TẢNG ĐẾN SÁNG TẠO</p>
-          <h1 id="cat-banner-title">Tìm cảm hứng,<br />bắt đầu nét vẽ đầu tiên</h1>
-          <p className="cat-banner-copy">Khóa học thực hành từ nền tảng đến minh họa hoàn chỉnh.</p>
-        </div>
-      </section>
 
-      <main className="cat-main">
-        <aside className="cat-filters" aria-label="Lọc khóa học">
-          <h2>Lọc khóa học</h2>
-          <fieldset>
-            <legend>CHỦ ĐỀ</legend>
-            {knownTopics.length === 0 && <p className="cat-filter-empty">Chưa có chủ đề nào.</p>}
-            {knownTopics.map((item) => (
-              <label className="cat-check" key={item.chu_de}>
-                <input
-                  type="checkbox"
-                  checked={query.topics.includes(item.chu_de)}
-                  onChange={() => go({ ...query, page: 1, topics: toggleValue(query.topics, item.chu_de) })}
-                />
-                <span>{item.chu_de}</span>
-                <small>{item.so_khoa_hoc}</small>
-              </label>
-            ))}
-          </fieldset>
-          <fieldset>
-            <legend>TRÌNH ĐỘ</legend>
-            {catalogLevels.map((item) => (
-              <label className="cat-check" key={item.value}>
-                <input
-                  type="checkbox"
-                  checked={query.levels.includes(item.value)}
-                  onChange={() => go({ ...query, page: 1, levels: toggleValue(query.levels, item.value) })}
-                />
-                <span>{item.label}</span>
-              </label>
-            ))}
-          </fieldset>
-        </aside>
-
-        <section className="cat-results" aria-label="Danh sách khóa học">
-          <div className="cat-results-head">
+      <main className="cat-frame">
+        <div className="cat-content">
+          <header className="settings-page-heading">
             <div>
-              <h2>Khóa học</h2>
+              <p className="settings-eyebrow">KHÔNG GIAN HỌC TẬP</p>
+              <h1>Khóa học</h1>
               <p>Chọn khóa học phù hợp và bắt đầu hành trình vẽ của bạn.</p>
             </div>
-            <div className="cat-results-tools">
-              <label className="cat-sort">
-                <span>Sắp xếp</span>
-                <select
-                  value={query.sort}
-                  onChange={(event) => go({ ...query, page: 1, sort: event.currentTarget.value as CatalogSort })}
+          </header>
+
+          <div className="cat-layout">
+            <aside className={`cat-filters${filtersOpen ? " is-open" : ""}`} aria-label="Lọc khóa học">
+              <div className="cat-filters-heading">
+                <h2>Lọc khóa học</h2>
+                <button
+                  type="button"
+                  className="cat-filters-toggle"
+                  aria-expanded={filtersOpen}
+                  aria-controls="cat-filters-body"
+                  onClick={() => setFiltersOpen((open) => !open)}
                 >
-                  {catalogSorts.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                </select>
-              </label>
-              <span className="cat-count" aria-live="polite">
-                {totalCount === null ? "" : `${totalCount} khóa học`}
-              </span>
-            </div>
-          </div>
-
-          <form className="cat-search" role="search" onSubmit={submitSearch}>
-            <Search aria-hidden="true" size={18} />
-            <input
-              type="search"
-              aria-label="Tìm khóa học"
-              placeholder="Tìm theo tên, chủ đề hoặc mô tả"
-              maxLength={100}
-              value={searchValue}
-              onChange={(event) => setSearchValue(event.currentTarget.value)}
-            />
-          </form>
-
-          {hasActiveFilters(query) && (
-            <div className="cat-chips">
-              {query.search && (
-                <button type="button" onClick={() => { setSearchValue(""); go({ ...query, page: 1, search: "" }); }}>
-                  “{query.search}” ×
+                  {filtersOpen ? "Thu gọn" : "Mở lọc"}
                 </button>
-              )}
-              {query.topics.map((topic) => (
-                <button type="button" key={topic}
-                  onClick={() => go({ ...query, page: 1, topics: toggleValue(query.topics, topic) })}>
-                  {topic} ×
-                </button>
-              ))}
-              {query.levels.map((level) => (
-                <button type="button" key={level}
-                  onClick={() => go({ ...query, page: 1, levels: toggleValue(query.levels, level) })}>
-                  {levelLabel(level)} ×
-                </button>
-              ))}
-              <button className="cat-chips-clear" type="button" onClick={clearFilters}>Xóa bộ lọc</button>
-            </div>
-          )}
-
-          {result.status === "loading" && <p className="cat-status" role="status">Đang tải khóa học...</p>}
-          {result.status === "error" && (
-            <div className="cat-status cat-status-error" role="alert">
-              <p>{result.message}</p>
-              <button type="button" onClick={() => setRetryCount((count) => count + 1)}>Thử lại</button>
-            </div>
-          )}
-          {result.status === "success" && result.data.items.length === 0 && (
-            <div className="cat-status">
-              <p>{hasActiveFilters(query) ? "Không có khóa học nào phù hợp với bộ lọc hiện tại." : "Chưa có khóa học nào được đăng."}</p>
-              {hasActiveFilters(query) && <button type="button" onClick={clearFilters}>Xóa bộ lọc</button>}
-            </div>
-          )}
-          {result.status === "success" && result.data.items.length > 0 && (
-            <>
-              <div className="cat-grid" role="list">
-                {result.data.items.map((course) => <CatalogCourseCard key={course.ma_khoa_hoc} course={course} />)}
               </div>
-              {totalPages > 1 && (
-                <nav className="cat-pagination" aria-label="Phân trang khóa học">
-                  <button type="button" disabled={query.page <= 1}
-                    onClick={() => go({ ...query, page: query.page - 1 }, false)}>Trước</button>
-                  <span>Trang {query.page} / {totalPages}</span>
-                  <button type="button" disabled={query.page >= totalPages}
-                    onClick={() => go({ ...query, page: query.page + 1 }, false)}>Sau</button>
-                </nav>
+              <div className="cat-filters-body" id="cat-filters-body">
+                <div className="cat-filter-group">
+                  <fieldset>
+                    <legend>CHỦ ĐỀ</legend>
+                    <div className="cat-filter-list">
+                      {knownTopics.length === 0 && <p className="cat-filter-empty">Chưa có chủ đề nào.</p>}
+                      {knownTopics.map((item) => (
+                        <label className="cat-check" key={item.chu_de}>
+                          <input
+                            type="checkbox"
+                            checked={query.topics.includes(item.chu_de)}
+                            onChange={() => go({ ...query, page: 1, topics: toggleValue(query.topics, item.chu_de) })}
+                          />
+                          <span>{item.chu_de}</span>
+                          <small>{item.so_khoa_hoc}</small>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </div>
+                <div className="cat-filter-group">
+                  <fieldset>
+                    <legend>TRÌNH ĐỘ</legend>
+                    <div className="cat-filter-list">
+                      {catalogLevels.map((item) => (
+                        <label className="cat-check" key={item.value}>
+                          <input
+                            type="checkbox"
+                            checked={query.levels.includes(item.value)}
+                            onChange={() => go({ ...query, page: 1, levels: toggleValue(query.levels, item.value) })}
+                          />
+                          <span>{item.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </div>
+              </div>
+            </aside>
+
+            <section className="cat-results" aria-label="Danh sách khóa học">
+              <div className="cat-toolbar">
+                <form className="cat-search" role="search" onSubmit={submitSearch}>
+                  <Search aria-hidden="true" size={16} />
+                  <input
+                    type="search"
+                    aria-label="Tìm khóa học"
+                    placeholder="Tìm theo tên, chủ đề hoặc mô tả"
+                    maxLength={100}
+                    value={searchValue}
+                    onChange={(event) => setSearchValue(event.currentTarget.value)}
+                  />
+                </form>
+                <div className="cat-results-tools">
+                  <label className="cat-sort">
+                    <span>Sắp xếp</span>
+                    <select
+                      value={query.sort}
+                      onChange={(event) => go({ ...query, page: 1, sort: event.currentTarget.value as CatalogSort })}
+                    >
+                      {catalogSorts.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    </select>
+                  </label>
+                  <span className="cat-count" aria-live="polite">
+                    {totalCount === null ? "" : `${totalCount} khóa học`}
+                  </span>
+                </div>
+              </div>
+
+              {hasActiveFilters(query) && (
+                <div className="cat-chips">
+                  {query.search && (
+                    <button type="button" onClick={() => { setSearchValue(""); go({ ...query, page: 1, search: "" }); }}>
+                      “{query.search}” ×
+                    </button>
+                  )}
+                  {query.topics.map((topic) => (
+                    <button type="button" key={topic}
+                      onClick={() => go({ ...query, page: 1, topics: toggleValue(query.topics, topic) })}>
+                      {topic} ×
+                    </button>
+                  ))}
+                  {query.levels.map((level) => (
+                    <button type="button" key={level}
+                      onClick={() => go({ ...query, page: 1, levels: toggleValue(query.levels, level) })}>
+                      {levelLabel(level)} ×
+                    </button>
+                  ))}
+                  <button className="cat-chips-clear" type="button" onClick={clearFilters}>Xóa bộ lọc</button>
+                </div>
               )}
-            </>
-          )}
-        </section>
+
+              {result.status === "loading" && <p className="cat-status" role="status">Đang tải khóa học...</p>}
+              {result.status === "error" && (
+                <div className="cat-status cat-status-error" role="alert">
+                  <p>{result.message}</p>
+                  <button type="button" onClick={() => setRetryCount((count) => count + 1)}>Thử lại</button>
+                </div>
+              )}
+              {result.status === "success" && result.data.items.length === 0 && (
+                <div className="cat-status">
+                  <p>{hasActiveFilters(query) ? "Không có khóa học nào phù hợp với bộ lọc hiện tại." : "Chưa có khóa học nào được đăng."}</p>
+                  {hasActiveFilters(query) && <button type="button" onClick={clearFilters}>Xóa bộ lọc</button>}
+                </div>
+              )}
+              {result.status === "success" && result.data.items.length > 0 && (
+                <>
+                  <div className="cat-grid" role="list">
+                    {result.data.items.map((course) => <CatalogCourseCard key={course.ma_khoa_hoc} course={course} />)}
+                  </div>
+                  {totalPages > 1 && (
+                    <nav className="cat-pagination" aria-label="Phân trang khóa học">
+                      <button type="button" disabled={query.page <= 1}
+                        onClick={() => go({ ...query, page: query.page - 1 }, false)}>Trước</button>
+                      <span>Trang {query.page} / {totalPages}</span>
+                      <button type="button" disabled={query.page >= totalPages}
+                        onClick={() => go({ ...query, page: query.page + 1 }, false)}>Sau</button>
+                    </nav>
+                  )}
+                </>
+              )}
+            </section>
+          </div>
+        </div>
       </main>
     </div>
   );
