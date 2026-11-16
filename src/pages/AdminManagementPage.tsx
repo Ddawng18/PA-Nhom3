@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
@@ -105,11 +106,10 @@ export default function AdminManagementPage() {
         <button type="button" aria-pressed={tab === "review" && section === "giao-vien"} onClick={() => setTab("review", "giao-vien")}>Duyệt giáo viên</button>
       </nav>
       <div className="admin-manage-toolbar">
-        <button className="admin-manage-action" type="button" disabled={busy || loading || approvals.teacherLoading || approvals.courseLoading} onClick={() => {
+        <button className="admin-manage-action admin-manage-refresh" type="button" aria-label="Tải lại dữ liệu" title="Tải lại dữ liệu" aria-busy={loading || approvals.teacherLoading || approvals.courseLoading} disabled={busy || loading || approvals.teacherLoading || approvals.courseLoading} onClick={() => {
           if (tab === "review") approvals.refresh();
           else setRefresh(current => current + 1);
-        }}>Tải lại dữ liệu</button>
-        <span>Giữ nguyên bộ lọc và trang hiện tại khi tải lại.</span>
+        }}><RefreshCw size={20} aria-hidden="true" className={loading || approvals.teacherLoading || approvals.courseLoading ? "is-spinning" : undefined} /></button>
       </div>
       {tab === "review" ? <ApprovalsPanel section={section} setSection={(nextSection) => setTab("review", nextSection)} data={approvals} /> : <section className="admin-manage-panel"><div className="admin-manage-panel-head"><div><h2>{tab === "users" ? "Danh sách người dùng" : "Danh sách khóa học"}</h2><p>{loading ? "Đang tải dữ liệu" : `${total} kết quả`}</p></div>
       <form className="admin-manage-search" onSubmit={(e) => { e.preventDefault(); setPageNumber(1); setQuery(search.trim()); }}><label className="sr-only" htmlFor="admin-search">Tìm kiếm</label><input id="admin-search" placeholder={tab === "users" ? "Tìm theo tên hoặc email" : "Tìm theo tên khóa học"} value={search} onChange={(e) => setSearch(e.target.value)} /><button type="submit">Tìm kiếm</button></form></div>
