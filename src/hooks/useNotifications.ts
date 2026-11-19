@@ -3,10 +3,10 @@ import { z } from "zod";
 import type { UserRole } from "./useUserRole";
 import {
   filterForRole,
-  getAllowedTypes,
   type NotificationItem,
 } from "../logic/notifications";
-import { supabase } from "../lib/supabase";
+import { useAuth } from "../auth/useAuth";
+import { requestAdminApi } from "../lib/adminApi";
 
 const notificationRowSchema = z.object({
   ma_thong_bao: z.union([
@@ -32,6 +32,8 @@ const invalidDataMessage = "Dữ liệu thông báo không hợp lệ. Vui lòng
 const updateErrorMessage = "Không thể cập nhật trạng thái thông báo. Vui lòng thử lại sau.";
 
 export function useNotifications(userId: string | null, role: UserRole | null) {
+  const { session } = useAuth();
+  const token = session?.access_token;
   const [state, setState] = useState<NotificationsState>({
     key: null,
     items: [],
@@ -54,8 +56,7 @@ export function useNotifications(userId: string | null, role: UserRole | null) {
       };
     }
 
-    const client = supabase;
-    if (!client) {
+    if (!token) {
       setState({ key: requestKey, items: [], loading: false, error: loadErrorMessage });
       return () => {
         isCurrent = false;
@@ -65,28 +66,17 @@ export function useNotifications(userId: string | null, role: UserRole | null) {
     setState({ key: requestKey, items: [], loading: true, error: null });
 
     async function loadNotifications(
-      activeClient: NonNullable<typeof supabase>,
-      activeUserId: string,
+      accessToken: string,
       activeRole: UserRole,
       activeKey: string,
       activeRequestId: number
     ) {
       try {
-        const { data, error } = await activeClient
-          .from("thong_bao")
-          .select("ma_thong_bao, loai_thong_bao, noi_dung, duong_dan_lien_ket, da_doc, ngay_tao")
-          .eq("ma_nguoi_dung", activeUserId)
-          .in("loai_thong_bao", getAllowedTypes(activeRole))
-          .order("ngay_tao", { ascending: false })
-          .limit(100);
+        const data = await requestAdminApi("/api/notifications", { token: accessToken });
 
         if (!isCurrent || requestIdRef.current !== activeRequestId) return;
-        if (error) {
-          setState({ key: activeKey, items: [], loading: false, error: loadErrorMessage });
-          return;
-        }
-
-        const parsedRows = (data ?? []).map((row) => notificationRowSchema.safeParse(row));
+        const rows = z.array(z.unknown()).parse(data);
+        const parsedRows = rows.map((row) => notificationRowSchema.safeParse(row));
         if (parsedRows.some((result) => !result.success)) {
           setState({ key: activeKey, items: [], loading: false, error: invalidDataMessage });
           return;
@@ -105,17 +95,16 @@ export function useNotifications(userId: string | null, role: UserRole | null) {
       }
     }
 
-    void loadNotifications(client, userId, role, requestKey, requestId);
+    void loadNotifications(token, role, requestKey, requestId);
 
     return () => {
       isCurrent = false;
     };
-  }, [requestKey, retryCount, role, userId]);
+  }, [requestKey, retryCount, role, userId, token]);
 
   async function markRead(id: NotificationItem["ma_thong_bao"]): Promise<void> {
-    const client = supabase;
     const requestId = requestIdRef.current;
-    if (!client || !userId || !role || !requestKey || requestId === 0) return;
+    if (!token || !userId || !role || !requestKey || requestId === 0) return;
     const previous = state.items.find((item) => item.ma_thong_bao === id);
     if (!previous || previous.da_doc) return;
 
@@ -130,14 +119,9 @@ export function useNotifications(userId: string | null, role: UserRole | null) {
       : current);
 
     try {
-      const { error } = await client
-        .from("thong_bao")
-        .update({ da_doc: true })
-        .eq("ma_thong_bao", id)
-        .eq("ma_nguoi_dung", userId);
+      await requestAdminApi(`/api/notifications/${encodeURIComponent(id)}/read`, { token, method: "PUT" });
 
       if (requestIdRef.current !== requestId) return;
-      if (error) throw error;
     } catch {
       if (requestIdRef.current !== requestId) return;
       setState((current) => current.key === requestKey
@@ -153,9 +137,8 @@ export function useNotifications(userId: string | null, role: UserRole | null) {
   }
 
   async function markAllRead(): Promise<void> {
-    const client = supabase;
     const requestId = requestIdRef.current;
-    if (!client || !userId || !role || !requestKey || requestId === 0) return;
+    if (!token || !userId || !role || !requestKey || requestId === 0) return;
     const unreadItems = state.items.filter((item) => !item.da_doc);
     if (unreadItems.length === 0) return;
 
@@ -171,15 +154,9 @@ export function useNotifications(userId: string | null, role: UserRole | null) {
       : current);
 
     try {
-      const { error } = await client
-        .from("thong_bao")
-        .update({ da_doc: true })
-        .eq("ma_nguoi_dung", userId)
-        .eq("da_doc", false)
-        .in("loai_thong_bao", getAllowedTypes(role));
+      await requestAdminApi("/api/notifications/read", { token, method: "PUT", body: { ids: unreadItems.map(item => Number(item.ma_thong_bao)) } });
 
       if (requestIdRef.current !== requestId) return;
-      if (error) throw error;
     } catch {
       if (requestIdRef.current !== requestId) return;
       setState((current) => current.key === requestKey

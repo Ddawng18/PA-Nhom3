@@ -479,6 +479,8 @@
 
   .cat-search {
     width: 100%;
+    flex: 0 0 38px;
+    min-height: 38px;
   }
 
   .cat-results-tools {

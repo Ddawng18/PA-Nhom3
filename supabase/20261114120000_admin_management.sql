@@ -64,6 +64,16 @@ create table if not exists public.don_hang_demo (
   unique (ma_nguoi_dung, idempotency_key)
 );
 
+-- Persist gateway ownership so DEMO confirmation cannot finalize a sandbox gateway order.
+alter table public.don_hang_demo
+  add column if not exists payment_provider text not null default 'DEMO'
+    check (payment_provider in ('DEMO', 'VNPAY_SANDBOX', 'ZALOPAY_SANDBOX')),
+  add column if not exists provider_transaction_id text,
+  add column if not exists payment_url text;
+create unique index if not exists don_hang_demo_provider_transaction_unique
+  on public.don_hang_demo (payment_provider, provider_transaction_id)
+  where provider_transaction_id is not null;
+
 create index if not exists ix_don_hang_demo_user on public.don_hang_demo (ma_nguoi_dung);
 create index if not exists ix_don_hang_demo_status on public.don_hang_demo (trang_thai);
 

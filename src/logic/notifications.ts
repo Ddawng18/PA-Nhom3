@@ -48,7 +48,10 @@ export function filterForRole(
   items: NotificationItem[]
 ): NotificationItem[] {
   const permitted = new Set(getAllowedTypes(role));
-  return items.filter((item) => permitted.has(item.loai_thong_bao as NotificationType));
+  return items.map(item => ({ ...item,
+    loai_thong_bao: ["KHOA_HOC", "HO_SO_GIAO_VIEN", "DUYET_HO_SO"].includes(item.loai_thong_bao)
+      ? NOTIFICATION_TYPES.system : item.loai_thong_bao,
+  })).filter((item) => permitted.has(item.loai_thong_bao as NotificationType));
 }
 
 export function countUnread(items: NotificationItem[]): number {

@@ -98,7 +98,13 @@ export default function CourseDetailPage() {
     const key = sessionStorage.getItem(keyName) ?? createUuid();
     sessionStorage.setItem(keyName, key);
     try {
-      let created = await createDemoOrder(token, state.data.khoa_hoc.ma_khoa_hoc, key);
+      let created: DemoOrder;
+      try { created = await createDemoOrder(token, state.data.khoa_hoc.ma_khoa_hoc, key); }
+      catch (error) {
+        if (!(error instanceof AdminApiError) || error.code !== "PAYMENT_ORDER_EXPIRED") throw error;
+        const nextKey = createUuid(); sessionStorage.setItem(keyName, nextKey);
+        created = await createDemoOrder(token, state.data.khoa_hoc.ma_khoa_hoc, nextKey);
+      }
       if (created.paymentUrl) {
         window.location.assign(created.paymentUrl);
         return;
