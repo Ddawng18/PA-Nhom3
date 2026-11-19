@@ -53,7 +53,7 @@ export default function DemoOrdersPage() {
         : orders.length === 0 ? <section className="cd-orders-empty"><span aria-hidden="true">₫</span><h2>Chưa có giao dịch</h2><p>Khi bạn đăng ký khóa học, đơn sẽ xuất hiện tại đây.</p><Link className="cd-button cd-button-primary" to="/courses">Khám phá khóa học</Link></section>
         : <ul className="cd-order-list">{orders.map((order) => <li className="cd-order-row" key={order.id}>
           <div className="cd-order-info"><strong><Link to={`/courses/${order.courseId}`}>{order.courseTitle}</Link></strong><span>Đơn #{order.id} · {new Date(order.createdAt).toLocaleString("vi-VN")}</span></div>
-          <div className="cd-order-amount"><strong>{order.priceVnd.toLocaleString("vi-VN")} ₫</strong><span className={`cd-order-status cd-order-status-${order.status.toLowerCase()}`}>{labels[order.status]}</span></div>
+          <div className="cd-order-amount"><strong>{order.priceVnd.toLocaleString("vi-VN")} ₫</strong><span className={`cd-order-status cd-order-status-${order.status.toLowerCase()}`}>{order.paymentProvider === "ZALOPAY_SANDBOX" && order.status === "PENDING" && Date.now() - new Date(order.createdAt).getTime() >= 15 * 60_000 ? "Quá hạn · chờ đối soát" : labels[order.status]}</span></div>
           {order.paymentProvider === "ZALOPAY_SANDBOX" && order.status === "PENDING" && <div className="cd-order-payment-actions">
             {order.paymentUrl && <a className="cd-button" href={order.paymentUrl}>Tiếp tục với ZaloPay sandbox</a>}
             <button type="button" className="cd-button" disabled={refreshing !== null} onClick={() => void refresh(order.id)}>{refreshing === order.id ? "Đang kiểm tra..." : "Kiểm tra trạng thái"}</button>
