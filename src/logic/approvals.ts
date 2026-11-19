@@ -1,4 +1,6 @@
-export const settingsTabIds = ["ho-so", "ua-thich", "bao-mat", "lich-su-mua-hang", "phe-duyet"] as const;
+import { assertApiUrlAllowed } from "./apiUrlPolicy";
+
+export const settingsTabIds = ["ho-so", "ua-thich", "bao-mat", "lich-su-mua-hang"] as const;
 export type SettingsTab = typeof settingsTabIds[number];
 export type ApprovalSection = "khoa-hoc" | "giao-vien";
 export type RejectionCode =
@@ -30,26 +32,19 @@ export const rejectionCodeLabels: Record<RejectionCode, string> = {
   OTHER: "Lý do khác",
 };
 
-export function getSettingsTabs(role: string | null | undefined): SettingsTab[] {
-  return role === "admin"
-    ? [...settingsTabIds]
-    : ["ho-so", "ua-thich", "bao-mat", "lich-su-mua-hang"];
+export function getSettingsTabs(): SettingsTab[] {
+  return [...settingsTabIds];
 }
 
 export function parseSettingsView(
-  search: string,
-  role: string | null | undefined
+  search: string
 ): { tab: SettingsTab; muc: ApprovalSection } {
   const params = new URLSearchParams(search);
   const requestedTab = params.get("tab");
-  const tab = requestedTab === "phe-duyet" && role === "admin"
-    ? "phe-duyet"
-    : requestedTab && getSettingsTabs(role).includes(requestedTab as SettingsTab)
+  const tab = requestedTab && getSettingsTabs().includes(requestedTab as SettingsTab)
       ? requestedTab as SettingsTab
       : "ho-so";
-  const requestedSection = params.get("muc");
-  const muc = tab === "phe-duyet" && requestedSection === "giao-vien" ? "giao-vien" : "khoa-hoc";
-  return { tab, muc };
+  return { tab, muc: "khoa-hoc" };
 }
 
 export function validateRejectReason(text: string): string | null {
@@ -69,12 +64,7 @@ export function buildApiUrl(
   params?: Record<string, string | number | undefined>
 ): string {
   const baseUrl = new URL(base);
-  if (
-    baseUrl.protocol !== "https:"
-    && !(baseUrl.protocol === "http:" && ["localhost", "127.0.0.1"].includes(baseUrl.hostname))
-  ) {
-    throw new Error("API URL must use HTTPS");
-  }
+  assertApiUrlAllowed(baseUrl);
   const url = new URL(path.startsWith("/") ? path : `/${path}`, baseUrl);
   for (const [key, value] of Object.entries(params ?? {})) {
     if (value === undefined || String(value).trim() === "") continue;
@@ -88,7 +78,7 @@ export function mapApiError(status: number, code?: string): string {
   if (status === 403) return "Bạn không có quyền thực hiện thao tác này.";
   if (status === 404 && code === "NOT_FOUND") return "Không tìm thấy hồ sơ.";
   if (status === 409 && code === "INVALID_STATUS_TRANSITION") {
-    return "Mục này đã được xử lý trước đó. Danh sách đã được làm mới.";
+    return "Mục này đã được xử lý trước đó. Bấm Tải lại dữ liệu để cập nhật danh sách.";
   }
   if (code === "ACCOUNT_NOT_FOUND") return "Không tìm thấy tài khoản của người nộp hồ sơ.";
   if (code === "VALIDATION_ERROR") return "Dữ liệu chưa hợp lệ. Vui lòng kiểm tra lại.";

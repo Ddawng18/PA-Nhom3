@@ -10,49 +10,26 @@ import {
   getTeacherProfiles,
   rejectCourse,
   rejectTeacherProfile,
+  requestAdminApi,
   UnsupportedCourseApprovalError,
   type PortfolioFile,
   type TeacherProfileDetail,
   type TeacherProfileListItem,
 } from "../lib/adminApi";
 import { mapApiError } from "../logic/approvals";
-import { supabase } from "../lib/supabase";
-import { listCourses } from "../lib/courseApi";
 
-const courseRowSchema = z.object({
-  ma_khoa_hoc: z.number().int().safe(),
-  ma_giao_vien: z.string(),
-  tieu_de: z.string(),
-  cap_do: z.string(),
-  chu_de: z.string(),
-  anh_dai_dien: z.string().url().refine((value) => new URL(value).protocol === "https:").nullable(),
-  ngay_tao: z.string().datetime({ offset: true }),
-  trang_thai: z.string(),
+const pendingCourseSchema = z.object({
+  id: z.number().int().safe(), teacherId: z.string(), title: z.string(),
+  teacherName: z.string().nullable(), teacherEmail: z.string().nullable(),
+  level: z.string(), topic: z.string(), status: z.string(),
+  chapterCount: z.number().int(), createdAt: z.string(),
+  coverImage: z.string().nullable().optional(),
 });
-
-const teacherNameSchema = z.object({
-  id: z.string(),
-  display_name: z.string().nullable(),
-});
-
-const chapterSchema = z.object({
-  ma_chuong: z.number().int().safe(),
-  ma_khoa_hoc: z.number().int().safe(),
-  tieu_de: z.string(),
-  thu_tu: z.number().int(),
-});
-
-const lessonSchema = z.object({
-  ma_bai_hoc: z.number().int().safe(),
-  ma_chuong: z.number().int().safe(),
-  tieu_de: z.string(),
-  thu_tu: z.number().int(),
-});
-
-export type ApprovalCourse = z.infer<typeof courseRowSchema> & {
-  teacherName: string;
-  chapters: Array<z.infer<typeof chapterSchema> & { lessons: z.infer<typeof lessonSchema>[] }>;
-  lessonCount: number;
+const pendingCoursePageSchema = z.object({ items: z.array(pendingCourseSchema), totalCount: z.number().int() });
+export type ApprovalCourse = {
+  ma_khoa_hoc: number; ma_giao_vien: string; tieu_de: string; cap_do: string;
+  chu_de: string; trang_thai: string; ngay_tao: string;
+  anh_dai_dien: string | null; teacherName: string; chapterCount: number;
 };
 
 type ApprovalCounts = { teachers: number; courses: number; total: number };
@@ -61,7 +38,6 @@ type CourseMutation = "approve-course" | "reject-course";
 type TeacherMutation = "approve-teacher" | "reject-teacher";
 
 const emptyCounts: ApprovalCounts = { teachers: 0, courses: 0, total: 0 };
-const invalidDataError = "Dữ liệu nhận được không đúng định dạng. Vui lòng thử lại.";
 const loadError = "Chưa thể tải danh sách. Vui lòng thử lại.";
 
 function getApiErrorMessage(error: unknown): string {
@@ -72,77 +48,21 @@ function getApiErrorMessage(error: unknown): string {
   return mapApiError(0);
 }
 
-function getSupabaseErrorMessage(error: { code?: string; status?: number }): string {
-  if (error.status === 401) return mapApiError(401);
-  if (error.status === 403 || error.code === "42501") return mapApiError(403);
-  return loadError;
-}
-
 async function loadCourseRows(token: string, signal: AbortSignal): Promise<ApprovalCourse[]> {
-  if (!supabase) throw new Error("Ứng dụng chưa được cấu hình Supabase.");
-  const rawCourses = (await listCourses(token, signal)).filter(course => course.trang_thai === "CHO_DUYET");
-  const parsedCourses = z.array(courseRowSchema).safeParse(rawCourses);
-  if (!parsedCourses.success) throw new Error(invalidDataError);
-  if (!parsedCourses.data.length) return [];
-
-  const teacherIds = [...new Set(parsedCourses.data.map((course) => course.ma_giao_vien))];
-  const { data: rawTeachers, error: teachersError } = await supabase
-    .from("nguoi_dung")
-    .select("id, display_name")
-    .in("id", teacherIds)
-    .abortSignal(signal);
-  if (teachersError) throw new Error(getSupabaseErrorMessage(teachersError));
-  const parsedTeachers = z.array(teacherNameSchema).safeParse(rawTeachers);
-  if (!parsedTeachers.success) throw new Error(invalidDataError);
-  const teacherNames = new Map(parsedTeachers.data.map((teacher) => [
-    teacher.id,
-    teacher.display_name?.trim() || "Giáo viên LINEA",
-  ]));
-
-  const { data: rawChapters, error: chaptersError } = await supabase
-    .from("chuong")
-    .select("ma_chuong, ma_khoa_hoc, tieu_de, thu_tu")
-    .in("ma_khoa_hoc", parsedCourses.data.map((course) => course.ma_khoa_hoc))
-    .order("thu_tu", { ascending: true })
-    .abortSignal(signal);
-  if (chaptersError) throw new Error(getSupabaseErrorMessage(chaptersError));
-  const parsedChapters = z.array(chapterSchema).safeParse(rawChapters);
-  if (!parsedChapters.success) throw new Error(invalidDataError);
-
-  const chapterIds = parsedChapters.data.map((chapter) => chapter.ma_chuong);
-  let lessons: z.infer<typeof lessonSchema>[] = [];
-  if (chapterIds.length) {
-    const { data: rawLessons, error: lessonsError } = await supabase
-      .from("bai_hoc")
-      .select("ma_bai_hoc, ma_chuong, tieu_de, thu_tu")
-      .in("ma_chuong", chapterIds)
-      .order("thu_tu", { ascending: true })
-      .abortSignal(signal);
-    if (lessonsError) throw new Error(getSupabaseErrorMessage(lessonsError));
-    const parsedLessons = z.array(lessonSchema).safeParse(rawLessons);
-    if (!parsedLessons.success) throw new Error(invalidDataError);
-    lessons = parsedLessons.data;
+  const rows: ApprovalCourse[] = [];
+  for (let page = 1; ; page++) {
+    const result = pendingCoursePageSchema.parse(await requestAdminApi("/api/admin/courses", { token, signal }, {
+      status: "CHO_DUYET", page, pageSize: 100,
+    }));
+    rows.push(...result.items.map(course => ({
+      ma_khoa_hoc: course.id, ma_giao_vien: course.teacherId, tieu_de: course.title,
+      cap_do: course.level, chu_de: course.topic, trang_thai: course.status,
+      ngay_tao: course.createdAt, anh_dai_dien: course.coverImage ?? null,
+      teacherName: course.teacherName?.trim() || course.teacherEmail || "Giáo viên LINEA",
+      chapterCount: course.chapterCount,
+    })));
+    if (rows.length >= result.totalCount || result.items.length === 0) return rows;
   }
-
-  const chaptersByCourse = new Map<number, ApprovalCourse["chapters"]>();
-  for (const chapter of parsedChapters.data) {
-    const courseChapters = chaptersByCourse.get(chapter.ma_khoa_hoc) ?? [];
-    courseChapters.push({
-      ...chapter,
-      lessons: lessons.filter((lesson) => lesson.ma_chuong === chapter.ma_chuong),
-    });
-    chaptersByCourse.set(chapter.ma_khoa_hoc, courseChapters);
-  }
-
-  return parsedCourses.data.map((course) => {
-    const chapters = chaptersByCourse.get(course.ma_khoa_hoc) ?? [];
-    return {
-      ...course,
-      teacherName: teacherNames.get(course.ma_giao_vien) ?? "Giáo viên LINEA",
-      chapters,
-      lessonCount: chapters.reduce((total, chapter) => total + chapter.lessons.length, 0),
-    };
-  });
 }
 
 export function useApprovals(active: boolean, isAdmin: boolean, token: string | undefined) {
@@ -163,8 +83,10 @@ export function useApprovals(active: boolean, isAdmin: boolean, token: string | 
   const [signedUrls, setSignedUrls] = useState<Record<number, { url: string; expiresAt: string }>>({});
   const [imageErrors, setImageErrors] = useState<Record<number, string>>({});
   const [reloadKey, setReloadKey] = useState(0);
-
-  const refresh = useCallback(() => setReloadKey((value) => value + 1), []);
+  const refresh = useCallback(() => {
+    setDetails({}); setDetailErrors({}); setSignedUrls({}); setImageErrors({});
+    setReloadKey((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -211,6 +133,7 @@ export function useApprovals(active: boolean, isAdmin: boolean, token: string | 
     setCourseError(null);
     loadCourseRows(token, controller.signal)
       .then((rows) => {
+        if (controller.signal.aborted) return;
         setCourses(rows);
         setCounts((current) => ({ ...current, courses: rows.length, total: current.teachers + rows.length }));
       })
@@ -288,14 +211,16 @@ export function useApprovals(active: boolean, isAdmin: boolean, token: string | 
     try {
       if (type === "approve-teacher") await approveTeacherProfile(token, id);
       else if (payload) await rejectTeacherProfile(token, id, payload);
-      refresh();
+      setTeacherItems(current => current.filter(item => item.id !== id));
+      setTeacherTotal(current => Math.max(0, current - 1));
+      setCounts(current => ({ ...current, teachers: Math.max(0, current.teachers - 1), total: Math.max(0, current.total - 1) }));
+      setDetails(current => { const next = { ...current }; delete next[id]; return next; });
       return { error: null };
     } catch (error) {
       const message = getApiErrorMessage(error);
-      if (error instanceof AdminApiError && error.code === "INVALID_STATUS_TRANSITION") refresh();
       return { error: message };
     }
-  }, [refresh, token]);
+  }, [token]);
 
   const runCourseMutation = useCallback(async (
     type: CourseMutation,
@@ -306,18 +231,15 @@ export function useApprovals(active: boolean, isAdmin: boolean, token: string | 
     try {
       if (type === "approve-course") await approveCourse(token, courseId);
       else await rejectCourse(token, courseId, reason ?? "");
-      refresh();
+      setCourses(current => current.filter(course => course.ma_khoa_hoc !== courseId));
+      setCounts(current => ({ ...current, courses: Math.max(0, current.courses - 1), total: Math.max(0, current.total - 1) }));
       return { error: null };
     } catch (error) {
-      if (error instanceof AdminApiError && error.code === "INVALID_STATUS_TRANSITION") refresh();
       return { error: getApiErrorMessage(error) };
     }
-  }, [refresh, token]);
+  }, [token]);
 
-  const pageCount = Math.max(1, Math.ceil(teacherTotal / 20));
-  useEffect(() => {
-    if (teacherPage > pageCount) setTeacherPage(pageCount);
-  }, [pageCount, teacherPage]);
+  const pageCount = Math.max(teacherPage, Math.ceil(teacherTotal / 20));
 
   return {
     teacherItems,

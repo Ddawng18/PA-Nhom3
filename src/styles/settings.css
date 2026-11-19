@@ -14,6 +14,15 @@
   padding: 27px 17px 18px;
   border-right: 1px solid #e8ebe2;
   background: #fffefa;
+  overflow-y: auto;
+}
+
+/* Pages that also serve guests retain their public header for guests and use
+   the same fixed sidebar as the signed-in learning pages for members. */
+.register-page:has(> .settings-sidebar),
+.studio-page:has(> .settings-sidebar),
+.community-page:has(> .settings-sidebar) {
+  padding-left: 238px;
 }
 
 .settings-brand {
@@ -115,12 +124,20 @@
   background: #8eb776;
 }
 
+.sidebar-account { position: relative; margin-top: auto; }
+.sidebar-user-toggle { width: 100%; background: transparent; border: 0; text-align: left; font: inherit; cursor: pointer; }
+.sidebar-user-toggle:focus-visible { outline: 2px solid #355c3a; outline-offset: 3px; }
+.sidebar-account-menu { position: absolute; bottom: calc(100% + 8px); left: 0; right: 0; z-index: 30; padding: 6px; background: #fff; border: 1px solid #e4e9dd; border-radius: 12px; box-shadow: 0 8px 28px #26332b20; }
+.sidebar-account-menu a, .sidebar-account-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 11px 9px; border: 0; border-radius: 8px; background: transparent; color: #355c3a; text-align: left; font: inherit; font-size: 13px; text-decoration: none; cursor: pointer; }
+.sidebar-account-menu a:hover, .sidebar-account-menu button:hover { background: #eef4e8; }
+.sidebar-account-menu button:disabled { opacity: .6; cursor: wait; }
+.sidebar-account-menu p { margin: 6px; color: #a12626; font-size: 12px; }
 .sidebar-user {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 10px;
-  margin-top: 17px;
+  margin-top: auto;
   padding: 13px 3px 0;
   border-top: 1px solid #edf0e9;
 }
@@ -350,13 +367,18 @@
 }
 
 .settings-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 34px;
   padding: 0 14px;
   border: 0;
   border-radius: 9px;
   background: transparent;
   color: #7b857c;
+  font-family: inherit;
   font-size: 10px;
+  line-height: 1.4;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -876,8 +898,106 @@
 
 .my-courses-list {
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 18px;
   margin-top: 20px;
+}
+
+.my-course-card {
+  display: flex;
+  min-width: 0;
+  min-height: 250px;
+  flex-direction: column;
+  padding: 20px;
+  border: 1px solid #e8ebe3;
+  border-radius: 18px;
+  background: var(--color-surface);
+  color: #354a38;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.my-course-card:hover,
+.my-course-card:focus-within {
+  border-color: #c4df70;
+  box-shadow: 0 8px 20px rgb(75 104 61 / 10%);
+  transform: translateY(-2px);
+}
+
+.my-course-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.my-course-card-title {
+  min-width: 0;
+  margin: 0;
+  color: #304337;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.my-course-card .my-course-status {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.my-course-level,
+.my-course-progress-label {
+  margin: 12px 0 0;
+  color: #899286;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.my-course-description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 10px 0 0;
+  color: #7d887e;
+  font-size: 12px;
+  line-height: 1.65;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.my-course-footer {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.my-course-footer .button {
+  width: 100%;
+  justify-content: center;
+}
+
+.my-course-unavailable {
+  margin: 0;
+  color: #7d887e;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+@media (max-width: 1099px) {
+  .my-courses-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 699px) {
+  .my-courses-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .my-course-card {
+    min-height: 0;
+  }
 }
 
 .my-courses-item {
@@ -1814,12 +1934,16 @@
 }
 
 @media (max-width: 900px) {
+  .register-page:has(> .settings-sidebar),
+  .studio-page:has(> .settings-sidebar),
+  .community-page:has(> .settings-sidebar) { padding-left: 0; }
   .settings-sidebar {
     position: static;
     width: 100%;
     padding: 12px 20px;
     border-right: 0;
     border-bottom: 1px solid #e8ebe2;
+    overflow-y: visible;
   }
 
   .settings-brand {
@@ -1857,6 +1981,9 @@
   .sidebar-user {
     display: none;
   }
+
+  .sidebar-account .sidebar-user-toggle { display: flex; margin-top: 8px; padding-top: 10px; }
+  .sidebar-account-menu { bottom: auto; top: calc(100% + 6px); }
 
   .settings-main {
     min-height: 0;

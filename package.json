@@ -6,11 +6,17 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
+    "build:deploy": "node deploy/build-frontend.mjs",
     "lint": "eslint .",
     "test": "vitest run",
     "test:browser": "node tests/sprint5.browser.mjs",
+    "test:course-review": "node tests/course-review.browser.mjs",
+    "test:admin-refresh": "node tests/admin-refresh.browser.mjs",
+    "test:community": "node tests/community.browser.mjs",
+    "test:public-header": "node tests/public-header.browser.mjs",
     "test:student-courses": "node tests/student-courses.browser.mjs",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "dev:api": "dotnet run --project server/Linea.Api --no-launch-profile --urls http://localhost:4174"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

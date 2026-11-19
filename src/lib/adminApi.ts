@@ -137,7 +137,7 @@ export class UnsupportedCourseApprovalError extends Error {
 }
 
 type ApiRequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   token?: string;
   body?: unknown;
   signal?: AbortSignal;
@@ -162,6 +162,11 @@ export async function requestAdminApi(
   const base = import.meta.env.VITE_API_URL;
   if (!base?.trim()) throw new Error("Chưa cấu hình địa chỉ máy chủ.");
   const url = buildApiUrl(base, path, params);
+  // Local API requests go through Vite's proxy, including when the page is
+  // opened through a LAN/VPN address where localhost means the viewer's PC.
+  const apiUrl = new URL(url);
+  const useDevProxy = import.meta.env.DEV && ["localhost", "127.0.0.1", "[::1]"].includes(apiUrl.hostname);
+  const requestUrl = useDevProxy ? `${apiUrl.pathname}${apiUrl.search}` : url;
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 30_000);
   const abortParent = () => controller.abort();
@@ -169,7 +174,7 @@ export async function requestAdminApi(
   if (options.signal?.aborted) controller.abort();
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(requestUrl, {
       method: options.method ?? "GET",
       headers: {
         ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
