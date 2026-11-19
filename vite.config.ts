@@ -1,12 +1,16 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const localEnv = loadEnv(mode, process.cwd(), "LOCAL_");
+  return {
   plugins: [react()],
   server: {
     port: 5173,
+    watch: { ignored: ["**/server/**/bin/**", "**/server/**/obj/**", "**/server/.data/**", "**/artifacts/**"] },
     proxy: {
-      "/api": "http://localhost:4174"
+      "/api": localEnv.LOCAL_API_PROXY_TARGET || "http://localhost:4174"
     }
   }
+  };
 });

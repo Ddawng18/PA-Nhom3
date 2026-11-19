@@ -7,12 +7,10 @@ using Linea.Api.Security;
 using Linea.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Npgsql;
 
-LoadDotEnvFile();
+DatabaseConfiguration.LoadDotEnvFile();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,25 +19,10 @@ builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpClient();
 
-var supabaseDbUrl = builder.Configuration["SUPABASE_DB_URL"];
-if (!string.IsNullOrWhiteSpace(supabaseDbUrl))
-{
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(BuildPostgresConnectionString(supabaseDbUrl)));
-}
-else
-{
-    var rawConnectionString = builder.Configuration["DB_CONNECTION"] ?? "Data Source=linea-dev.db";
-    var sqliteBuilder = new SqliteConnectionStringBuilder(rawConnectionString);
-    if (!string.IsNullOrWhiteSpace(sqliteBuilder.DataSource) &&
-        sqliteBuilder.DataSource != ":memory:" &&
-        !Path.IsPathRooted(sqliteBuilder.DataSource))
-    {
-        sqliteBuilder.DataSource = Path.Combine(builder.Environment.ContentRootPath, sqliteBuilder.DataSource);
-    }
-
-    builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(sqliteBuilder.ToString()));
-}
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(DatabaseConfiguration.GetConnectionString(builder.Configuration)));
+// Validate database configuration before starting the HTTP server.
+_ = DatabaseConfiguration.GetConnectionString(builder.Configuration);
 
 var useLegacyAuth = builder.Environment.IsDevelopment() && builder.Configuration["AUTH_MODE"] == "legacy";
 var jwtKey = builder.Configuration["JWT_KEY"];
@@ -78,7 +61,13 @@ builder.Services.AddSingleton<IPortfolioStorage>(services =>
     return ActivatorUtilities.CreateInstance<LocalPortfolioStorage>(services);
 });
 builder.Services.AddScoped<AccountDirectory>();
+builder.Services.AddScoped<ActiveAccountHandler>();
 builder.Services.AddScoped<LearningProgressService>();
+builder.Services.AddScoped<AdminManagementService>();
+builder.Services.AddScoped<AdminOrderService>();
+builder.Services.AddScoped<CourseCatalogService>();
+builder.Services.AddSingleton<VnPayPaymentService>();
+builder.Services.AddSingleton<ZaloPayPaymentService>();
 builder.Services.AddSingleton<AssignmentStorage>();
 
 builder.Services
@@ -111,19 +100,23 @@ builder.Services
                     return;
                 }
 
-                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-                var user = await db.Users
-                    .AsNoTracking()
-                    .SingleOrDefaultAsync(candidate => candidate.Id == userId);
+                var accounts = context.HttpContext.RequestServices.GetRequiredService<ActiveAccountHandler>();
+                var status = await accounts.CheckAsync(userId, context.HttpContext.RequestAborted);
 
-                if (user is null || user.IsLocked)
+                if (!status.Available)
+                {
+                    context.Fail("The account state could not be verified.");
+                    return;
+                }
+
+                if (!status.Found || status.IsLocked)
                 {
                     context.Fail("The account is unavailable or locked.");
                     return;
                 }
 
                 var tokenRole = context.Principal?.FindFirstValue("role");
-                if (!string.Equals(tokenRole, user.Role.ToString(), StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(tokenRole, status.Role, StringComparison.OrdinalIgnoreCase))
                 {
                     context.Fail("The account role has changed. Sign in again.");
                 }
@@ -167,6 +160,7 @@ builder.Services
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(AuthPolicies.StudentOnly, policy => policy.RequireRole("student"));
+    options.AddPolicy(AuthPolicies.LearnerAccess, policy => policy.RequireRole("student", "admin"));
     options.AddPolicy(AuthPolicies.TeacherAccess, policy => policy.RequireRole("teacher", "admin"));
     options.AddPolicy(AuthPolicies.AdminOnly, policy => policy.RequireRole("admin"));
 });
@@ -211,7 +205,21 @@ app.MapGet("/api/account/me", async (HttpRequest request, IConfiguration configu
     client.BaseAddress = uri;
     var result = await new SupabaseAccountService(client, publicKey).GetAccountAsync(header.Parameter, cancellationToken);
     if (result.Unavailable) return Results.Problem("Không thể xác minh tài khoản lúc này.", statusCode: 503);
-    return result.Account is null ? Results.Unauthorized() : Results.Ok(result.Account);
+    if (result.Account is null) return Results.Unauthorized();
+    if (result.Account.IsLocked)
+        return Results.Problem("Tài khoản đã bị khóa.", statusCode: StatusCodes.Status403Forbidden);
+    var accountDb = request.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+    if (accountDb.Database.IsNpgsql())
+    {
+        var status = await request.HttpContext.RequestServices.GetRequiredService<ActiveAccountHandler>()
+            .CheckAsync(result.Account.Id, cancellationToken);
+        if (!status.Available)
+            return Results.Problem("Không thể xác minh trạng thái tài khoản lúc này.", statusCode: 503);
+        if (!status.Found || status.IsLocked)
+            return Results.Problem("Tài khoản đã bị khóa hoặc không còn hiệu lực.",
+                statusCode: StatusCodes.Status403Forbidden);
+    }
+    return Results.Ok(result.Account);
 });
 
 app.MapGet("/api/health", async (AppDbContext db, IConfiguration configuration, IHttpClientFactory clients, CancellationToken cancellationToken) =>
@@ -228,9 +236,18 @@ app.MapGet("/api/health", async (AppDbContext db, IConfiguration configuration, 
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Add("apikey", key);
             using var response = await clients.CreateClient().SendAsync(request, cancellationToken);
-            return response.IsSuccessStatusCode
-                ? Results.Ok(new { status = "ok", auth = "connected" })
-                : Results.Problem("Không thể kết nối Supabase Auth.", statusCode: 503);
+            if (!response.IsSuccessStatusCode)
+                return Results.Problem("Không thể kết nối Supabase Auth.", statusCode: 503);
+
+            var databaseConnected = await db.Database.CanConnectAsync(cancellationToken);
+            return Results.Ok(new
+            {
+                status = databaseConnected ? "ok" : "degraded",
+                auth = "connected",
+                database = databaseConnected ? "connected" : "unavailable",
+                databaseMode = db.Database.IsNpgsql() ? "postgres" : "sqlite",
+                preflight = "/api/health/preflight"
+            });
         }
         catch (HttpRequestException)
         {
@@ -243,8 +260,7 @@ app.MapGet("/api/health", async (AppDbContext db, IConfiguration configuration, 
         : Results.Problem("Không thể kết nối cơ sở dữ liệu.", statusCode: StatusCodes.Status503ServiceUnavailable);
 });
 
-var runMigrations = app.Environment.IsDevelopment() ||
-    string.Equals(
+var runMigrations = string.Equals(
         builder.Configuration["RUN_MIGRATIONS"],
         "true",
         StringComparison.OrdinalIgnoreCase);
@@ -254,6 +270,15 @@ if (runMigrations)
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
+    if (db.Database.IsNpgsql())
+    {
+        // Sprint 6 admin/order columns and the D05 completion backfill are kept
+        // as reviewed, idempotent SQL so they do not modify the EF model snapshot.
+        await db.Database.ExecuteSqlRawAsync(
+            ReadEmbeddedSql("Linea.Api.Data.Sql.admin-management.sql"), app.Lifetime.ApplicationStopping);
+        await db.Database.ExecuteSqlRawAsync(
+            ReadEmbeddedSql("Linea.Api.Data.Sql.progress-completion-d05.sql"), app.Lifetime.ApplicationStopping);
+    }
     await DbSeeder.SeedAdminAsync(
         scope.ServiceProvider,
         app.Configuration,
@@ -262,82 +287,12 @@ if (runMigrations)
 
 app.Run();
 
-static string BuildPostgresConnectionString(string url)
+static string ReadEmbeddedSql(string name)
 {
-    if (!url.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
-        !url.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
-    {
-        throw new InvalidOperationException(
-            "SUPABASE_DB_URL must start with postgres:// or postgresql://.");
-    }
-
-    if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-    {
-        throw new InvalidOperationException("SUPABASE_DB_URL is not a valid PostgreSQL URL.");
-    }
-
-    var userInfo = uri.UserInfo.Split(':', 2);
-    if (userInfo.Length < 2 || string.IsNullOrWhiteSpace(uri.Host))
-    {
-        throw new InvalidOperationException(
-            "SUPABASE_DB_URL must include the user, password and host.");
-    }
-
-    var database = uri.AbsolutePath.Trim('/');
-    var builder = new NpgsqlConnectionStringBuilder
-    {
-        Host = uri.Host,
-        Port = uri.Port > 0 ? uri.Port : 5432,
-        Database = string.IsNullOrWhiteSpace(database) ? "postgres" : database,
-        Username = Uri.UnescapeDataString(userInfo[0]),
-        Password = Uri.UnescapeDataString(userInfo[1]),
-        SslMode = SslMode.Require,
-        Timeout = 15
-    };
-
-    return builder.ConnectionString;
-}
-
-static void LoadDotEnvFile()
-{
-    var directory = new DirectoryInfo(AppContext.BaseDirectory);
-    while (directory is not null)
-    {
-        var path = Path.Combine(directory.FullName, ".env");
-        if (File.Exists(path))
-        {
-            foreach (var rawLine in File.ReadLines(path))
-            {
-                var line = rawLine.Trim();
-                if (line.Length == 0 || line.StartsWith('#'))
-                {
-                    continue;
-                }
-
-                if (line.StartsWith("export ", StringComparison.Ordinal))
-                {
-                    line = line["export ".Length..].Trim();
-                }
-
-                var separator = line.IndexOf('=');
-                if (separator <= 0)
-                {
-                    continue;
-                }
-
-                var key = line[..separator].Trim();
-                var value = line[(separator + 1)..].Trim().Trim('"', '\'');
-                if (Environment.GetEnvironmentVariable(key) is null)
-                {
-                    Environment.SetEnvironmentVariable(key, value);
-                }
-            }
-
-            return;
-        }
-
-        directory = directory.Parent;
-    }
+    using var stream = typeof(AppDbContext).Assembly.GetManifestResourceStream(name)
+        ?? throw new InvalidOperationException($"Missing embedded SQL resource {name}.");
+    using var reader = new StreamReader(stream);
+    return reader.ReadToEnd();
 }
 
 public partial class Program;

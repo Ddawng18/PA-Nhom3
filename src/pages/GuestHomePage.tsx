@@ -19,7 +19,14 @@ export default function GuestHomePage() {
             Bài học có lộ trình, bài tập mỗi ngày, khu vực luyện vẽ và đánh giá tiến độ dành cho
             người mới bắt đầu đến trung cấp.
           </p>
-          <Link className="guest-cta" to="/register">Bắt đầu luyện vẽ</Link>
+          <div className="guest-actions">
+            <Link className="guest-cta" to="/register">Bắt đầu luyện vẽ</Link>
+            <Link className="guest-secondary-cta" to="/courses">Khám phá khóa học</Link>
+          </div>
+          <nav className="guest-explore" aria-label="Khám phá LINEA">
+            <Link to="/studio">Thử vẽ trong Studio</Link>
+            <Link to="/community">Khám phá cộng đồng</Link>
+          </nav>
         </section>
       </main>
     </div>

@@ -1,89 +1,47 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { BookOpen, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AdminApiError, AdminApiTimeoutError } from "../lib/adminApi";
-import { listPublishedCourses } from "../lib/publicCourseApi";
-import { getCourseLevelLabel } from "../logic/courseEditor";
+import { catalogQueryPath, listCatalogCourses, type CatalogList } from "../lib/catalogApi";
 import {
-  buildCoursesQuery,
-  formatCourseCount,
-  getTotalPages,
-  parseCoursesQuery,
-  sanitizeCoverUrl,
-  type PublicCourse,
-} from "../logic/publicCourses";
+  buildCatalogQuery,
+  catalogLevels,
+  catalogPageSize,
+  catalogSorts,
+  hasActiveFilters,
+  parseCatalogQuery,
+  toggleValue,
+  type CatalogQuery,
+  type CatalogSort,
+} from "../logic/catalog";
 import { mapApiError } from "../logic/approvals";
+import { getTotalPages } from "../logic/publicCourses";
 import PublicHeader from "../components/PublicHeader";
+import CatalogCourseCard from "../components/CatalogCourseCard";
+import "../styles/settings.css";
 import "../styles/courses.css";
 
 type CoursesResult =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "success"; items: PublicCourse[]; totalCount: number };
+  | { status: "success"; data: CatalogList };
 
 function getLoadErrorMessage(error: unknown): string {
   if (error instanceof AdminApiTimeoutError) return error.message;
-  if (error instanceof Error && error.message === "Chưa cấu hình địa chỉ máy chủ.") {
-    return error.message;
-  }
+  if (error instanceof Error && error.message === "Chưa cấu hình địa chỉ máy chủ.") return error.message;
   if (error instanceof AdminApiError) return mapApiError(error.status, error.code);
   return mapApiError(0);
-}
-
-function getCoursesPath(search: string): string {
-  const query = buildCoursesQuery(parseCoursesQuery(search));
-  return query ? `/courses?${query}` : "/courses";
-}
-
-function CourseCard({ course }: { course: PublicCourse }) {
-  const coverUrl = sanitizeCoverUrl(course.anh_dai_dien);
-  const [imageFailed, setImageFailed] = useState(false);
-
-  return (
-    <article className="course-card" role="listitem">
-      {coverUrl && !imageFailed ? (
-        <img
-          className="course-cover"
-          src={coverUrl}
-          alt=""
-          loading="lazy"
-          onError={() => setImageFailed(true)}
-        />
-      ) : (
-        <div className="course-cover-placeholder" aria-hidden="true">
-          <BookOpen size={36} strokeWidth={1.7} />
-        </div>
-      )}
-      <div className="course-card-content">
-        <div className="course-badges">
-          <span className="course-level-badge">{getCourseLevelLabel(course.cap_do)}</span>
-          <span className="course-free-badge">Miễn phí</span>
-        </div>
-        <p className="course-topic">{course.chu_de}</p>
-        <h2 className="course-title">{course.tieu_de}</h2>
-        <p className="course-description">{course.mo_ta}</p>
-        <div className="course-card-footer">
-          <button
-            className="course-detail-button"
-            type="button"
-            aria-disabled="true"
-            title="Tính năng đang phát triển"
-          >
-            Xem chi tiết
-          </button>
-        </div>
-      </div>
-    </article>
-  );
 }
 
 export default function CoursesPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const query = parseCoursesQuery(location.search);
+  const query = parseCatalogQuery(location.search);
   const [searchValue, setSearchValue] = useState(query.search);
   const [retryCount, setRetryCount] = useState(0);
   const [result, setResult] = useState<CoursesResult>({ status: "loading" });
+  const [knownTopics, setKnownTopics] = useState<CatalogList["chu_de"]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     document.title = "Khóa học · LINEA";
@@ -93,158 +51,213 @@ export default function CoursesPage() {
     setSearchValue(query.search);
   }, [query.search]);
 
+  function go(next: CatalogQuery, replace = true) {
+    navigate(catalogQueryPath(next), { replace });
+  }
+
   useEffect(() => {
-    const normalizedSearch = searchValue.trim().slice(0, 100);
-    if (normalizedSearch === query.search) return;
+    const normalized = searchValue.trim().slice(0, 100);
+    if (normalized === query.search) return;
     const timeout = window.setTimeout(() => {
-      const queryString = buildCoursesQuery({ page: 1, search: normalizedSearch });
-      navigate(queryString ? `/courses?${queryString}` : "/courses", { replace: true });
+      navigate(catalogQueryPath({ ...query, page: 1, search: normalized }), { replace: true });
     }, 400);
     return () => window.clearTimeout(timeout);
-  }, [navigate, query.search, searchValue]);
+  }, [navigate, query, searchValue]);
 
   useEffect(() => {
-    const canonicalPath = getCoursesPath(location.search);
-    if (`${location.pathname}${location.search}` !== canonicalPath) {
-      navigate(canonicalPath, { replace: true });
-    }
+    const canonical = catalogQueryPath(parseCatalogQuery(location.search));
+    if (`${location.pathname}${location.search}` !== canonical) navigate(canonical, { replace: true });
   }, [location.pathname, location.search, navigate]);
 
+  const queryKey = buildCatalogQuery(query);
   useEffect(() => {
     const controller = new AbortController();
     setResult({ status: "loading" });
-    void listPublishedCourses({
-      page: query.page,
-      pageSize: 12,
-      search: query.search,
-      signal: controller.signal,
-    }).then((response) => {
-      if (controller.signal.aborted) return;
-      const totalPages = getTotalPages(response.totalCount, 12);
-      if (query.page > totalPages) {
-        const queryString = buildCoursesQuery({ page: totalPages, search: query.search });
-        navigate(queryString ? `/courses?${queryString}` : "/courses", { replace: true });
-        return;
-      }
-      setResult({
-        status: "success",
-        items: response.items,
-        totalCount: response.totalCount,
+    void listCatalogCourses(parseCatalogQuery(`?${queryKey}`), controller.signal)
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        const totalPages = getTotalPages(data.totalCount, catalogPageSize);
+        const current = parseCatalogQuery(`?${queryKey}`);
+        if (current.page > totalPages) {
+          navigate(catalogQueryPath({ ...current, page: totalPages }), { replace: true });
+          return;
+        }
+        setKnownTopics(data.chu_de);
+        setResult({ status: "success", data });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setResult({ status: "error", message: getLoadErrorMessage(error) });
       });
-    }).catch((error: unknown) => {
-      if (controller.signal.aborted) return;
-      setResult({ status: "error", message: getLoadErrorMessage(error) });
-    });
-
     return () => controller.abort();
-  }, [navigate, query.page, query.search, retryCount]);
-
-  function navigateToQuery(next: { page: number; search: string }, replace = true) {
-    const queryString = buildCoursesQuery(next);
-    navigate(queryString ? `/courses?${queryString}` : "/courses", { replace });
-  }
+  }, [navigate, queryKey, retryCount]);
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    navigateToQuery({ page: 1, search: searchValue });
+    go({ ...query, page: 1, search: searchValue });
   }
 
-  function clearSearch() {
+  function clearFilters() {
     setSearchValue("");
-    navigateToQuery({ page: 1, search: "" });
+    go({ ...query, page: 1, search: "", topics: [], levels: [] });
   }
 
-  const totalPages = result.status === "success" ? getTotalPages(result.totalCount, 12) : 1;
+  const totalCount = result.status === "success" ? result.data.totalCount : null;
+  const totalPages = totalCount === null ? 1 : getTotalPages(totalCount, catalogPageSize);
+  const levelLabel = (value: string) => catalogLevels.find((item) => item.value === value)?.label ?? value;
 
   return (
-    <div className="register-page course-page">
+    <div className="register-page cat-page">
       <PublicHeader authLink={{ to: "/login", label: "Đăng nhập" }} />
-      <main className="course-main">
-        <header className="course-heading">
-          <p className="course-eyebrow">KHÓA HỌC</p>
-          <h1>Khóa học hiện có</h1>
-          <p className="course-intro">Chọn khóa học phù hợp và bắt đầu hành trình vẽ của bạn.</p>
-        </header>
 
-        <div className="course-toolbar">
-          <form className="course-search-form" role="search" onSubmit={submitSearch}>
-            <label className="course-search-field">
-              <Search aria-hidden="true" size={18} />
-              <input
-                type="search"
-                aria-label="Tìm khóa học"
-                placeholder="Tìm theo tên, chủ đề hoặc mô tả"
-                maxLength={100}
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.currentTarget.value)}
-              />
-            </label>
-            {searchValue && (
-              <button className="course-clear-button" type="button" onClick={clearSearch}>
-                Xóa
-              </button>
-            )}
-          </form>
-          <p className="course-count" aria-live="polite">
-            {result.status === "success" ? formatCourseCount(result.totalCount) : ""}
-          </p>
-        </div>
+      <main className="cat-frame">
+        <div className="cat-content">
+          <header className="settings-page-heading">
+            <div>
+              <p className="settings-eyebrow">KHÔNG GIAN HỌC TẬP</p>
+              <h1>Khóa học</h1>
+              <p>Chọn khóa học phù hợp và bắt đầu hành trình vẽ của bạn.</p>
+            </div>
+          </header>
 
-        <section className="course-results" aria-label="Danh sách khóa học">
-          {result.status === "loading" && (
-            <p className="course-status" role="status">Đang tải khóa học...</p>
-          )}
-          {result.status === "error" && (
-            <div className="course-error" role="alert">
-              <p>{result.message}</p>
-              <button type="button" onClick={() => setRetryCount((count) => count + 1)}>
-                Thử lại
-              </button>
-            </div>
-          )}
-          {result.status === "success" && result.items.length === 0 && query.search && (
-            <div className="course-empty">
-              <p>Không tìm thấy khóa học phù hợp với “{query.search}”.</p>
-              <button type="button" onClick={clearSearch}>Xóa tìm kiếm</button>
-            </div>
-          )}
-          {result.status === "success" && result.items.length === 0 && !query.search && (
-            <p className="course-empty">Chưa có khóa học nào được đăng.</p>
-          )}
-          {result.status === "success" && result.items.length > 0 && (
-            <>
-              <div className="course-grid" role="list">
-                {result.items.map((course) => (
-                  <CourseCard
-                    key={`${course.ma_khoa_hoc}-${course.anh_dai_dien ?? ""}`}
-                    course={course}
-                  />
-                ))}
+          <div className="cat-layout">
+            <aside className={`cat-filters${filtersOpen ? " is-open" : ""}`} aria-label="Lọc khóa học">
+              <div className="cat-filters-heading">
+                <h2>Lọc khóa học</h2>
+                <button
+                  type="button"
+                  className="cat-filters-toggle"
+                  aria-expanded={filtersOpen}
+                  aria-controls="cat-filters-body"
+                  onClick={() => setFiltersOpen((open) => !open)}
+                >
+                  {filtersOpen ? "Thu gọn" : "Mở lọc"}
+                </button>
               </div>
-              {totalPages > 1 && (
-                <nav className="course-pagination" aria-label="Phân trang khóa học">
-                  <button
-                    className="course-page-button"
-                    type="button"
-                    disabled={query.page <= 1}
-                    onClick={() => navigateToQuery({ page: query.page - 1, search: query.search }, false)}
-                  >
-                    Trước
-                  </button>
-                  <span className="course-page-indicator">Trang {query.page} / {totalPages}</span>
-                  <button
-                    className="course-page-button"
-                    type="button"
-                    disabled={query.page >= totalPages}
-                    onClick={() => navigateToQuery({ page: query.page + 1, search: query.search }, false)}
-                  >
-                    Sau
-                  </button>
-                </nav>
+              <div className="cat-filters-body" id="cat-filters-body">
+                <div className="cat-filter-group">
+                  <fieldset>
+                    <legend>CHỦ ĐỀ</legend>
+                    <div className="cat-filter-list">
+                      {knownTopics.length === 0 && <p className="cat-filter-empty">Chưa có chủ đề nào.</p>}
+                      {knownTopics.map((item) => (
+                        <label className="cat-check" key={item.chu_de}>
+                          <input
+                            type="checkbox"
+                            checked={query.topics.includes(item.chu_de)}
+                            onChange={() => go({ ...query, page: 1, topics: toggleValue(query.topics, item.chu_de) })}
+                          />
+                          <span>{item.chu_de}</span>
+                          <small>{item.so_khoa_hoc}</small>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </div>
+                <div className="cat-filter-group">
+                  <fieldset>
+                    <legend>TRÌNH ĐỘ</legend>
+                    <div className="cat-filter-list">
+                      {catalogLevels.map((item) => (
+                        <label className="cat-check" key={item.value}>
+                          <input
+                            type="checkbox"
+                            checked={query.levels.includes(item.value)}
+                            onChange={() => go({ ...query, page: 1, levels: toggleValue(query.levels, item.value) })}
+                          />
+                          <span>{item.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </div>
+              </div>
+            </aside>
+
+            <section className="cat-results" aria-label="Danh sách khóa học">
+              <div className="cat-toolbar">
+                <form className="cat-search" role="search" onSubmit={submitSearch}>
+                  <Search aria-hidden="true" size={16} />
+                  <input
+                    type="search"
+                    aria-label="Tìm khóa học"
+                    placeholder="Tìm theo tên, chủ đề hoặc mô tả"
+                    maxLength={100}
+                    value={searchValue}
+                    onChange={(event) => setSearchValue(event.currentTarget.value)}
+                  />
+                </form>
+                <div className="cat-results-tools">
+                  <label className="cat-sort">
+                    <span>Sắp xếp</span>
+                    <select
+                      value={query.sort}
+                      onChange={(event) => go({ ...query, page: 1, sort: event.currentTarget.value as CatalogSort })}
+                    >
+                      {catalogSorts.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                    </select>
+                  </label>
+                  <span className="cat-count" aria-live="polite">
+                    {totalCount === null ? "" : `${totalCount} khóa học`}
+                  </span>
+                </div>
+              </div>
+
+              {hasActiveFilters(query) && (
+                <div className="cat-chips">
+                  {query.search && (
+                    <button type="button" onClick={() => { setSearchValue(""); go({ ...query, page: 1, search: "" }); }}>
+                      “{query.search}” ×
+                    </button>
+                  )}
+                  {query.topics.map((topic) => (
+                    <button type="button" key={topic}
+                      onClick={() => go({ ...query, page: 1, topics: toggleValue(query.topics, topic) })}>
+                      {topic} ×
+                    </button>
+                  ))}
+                  {query.levels.map((level) => (
+                    <button type="button" key={level}
+                      onClick={() => go({ ...query, page: 1, levels: toggleValue(query.levels, level) })}>
+                      {levelLabel(level)} ×
+                    </button>
+                  ))}
+                  <button className="cat-chips-clear" type="button" onClick={clearFilters}>Xóa bộ lọc</button>
+                </div>
               )}
-            </>
-          )}
-        </section>
+
+              {result.status === "loading" && <p className="cat-status" role="status">Đang tải khóa học...</p>}
+              {result.status === "error" && (
+                <div className="cat-status cat-status-error" role="alert">
+                  <p>{result.message}</p>
+                  <button type="button" onClick={() => setRetryCount((count) => count + 1)}>Thử lại</button>
+                </div>
+              )}
+              {result.status === "success" && result.data.items.length === 0 && (
+                <div className="cat-status">
+                  <p>{hasActiveFilters(query) ? "Không có khóa học nào phù hợp với bộ lọc hiện tại." : "Chưa có khóa học nào được đăng."}</p>
+                  {hasActiveFilters(query) && <button type="button" onClick={clearFilters}>Xóa bộ lọc</button>}
+                </div>
+              )}
+              {result.status === "success" && result.data.items.length > 0 && (
+                <>
+                  <div className="cat-grid" role="list">
+                    {result.data.items.map((course) => <CatalogCourseCard key={course.ma_khoa_hoc} course={course} />)}
+                  </div>
+                  {totalPages > 1 && (
+                    <nav className="cat-pagination" aria-label="Phân trang khóa học">
+                      <button type="button" disabled={query.page <= 1}
+                        onClick={() => go({ ...query, page: query.page - 1 }, false)}>Trước</button>
+                      <span>Trang {query.page} / {totalPages}</span>
+                      <button type="button" disabled={query.page >= totalPages}
+                        onClick={() => go({ ...query, page: query.page + 1 }, false)}>Sau</button>
+                    </nav>
+                  )}
+                </>
+              )}
+            </section>
+          </div>
+        </div>
       </main>
     </div>
   );

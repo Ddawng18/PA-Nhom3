@@ -12,25 +12,16 @@ import {
 } from "./approvals";
 import { teacherProfileListSchema } from "../lib/adminApi";
 
-describe("approval settings tabs", () => {
-  it.each(["student", "teacher", undefined, null])("returns four tabs for %s", (role) => {
-    expect(getSettingsTabs(role)).toEqual(["ho-so", "ua-thich", "bao-mat", "lich-su-mua-hang"]);
+describe("settings navigation", () => {
+  it("keeps all approval tools out of account settings", () => {
+    expect(getSettingsTabs()).toEqual(["ho-so", "ua-thich", "bao-mat", "lich-su-mua-hang"]);
+    expect(parseSettingsView("?tab=phe-duyet&muc=giao-vien").tab).toBe("ho-so");
   });
 
-  it("adds the approval tab for admins", () => {
-    expect(getSettingsTabs("admin")).toEqual([
-      "ho-so", "ua-thich", "bao-mat", "lich-su-mua-hang", "phe-duyet",
-    ]);
-  });
-
-  it("parses allowed settings URL state", () => {
-    expect(parseSettingsView("?tab=phe-duyet&muc=giao-vien", "admin"))
-      .toEqual({ tab: "phe-duyet", muc: "giao-vien" });
-    expect(parseSettingsView("?tab=phe-duyet&muc=giao-vien", "student"))
-      .toEqual({ tab: "ho-so", muc: "khoa-hoc" });
-    expect(parseSettingsView("?tab=abc", "admin").tab).toBe("ho-so");
-    expect(parseSettingsView("", "admin").tab).toBe("ho-so");
-    expect(parseSettingsView("?tab=phe-duyet&muc=xyz", "admin").muc).toBe("khoa-hoc");
+  it("preserves account tabs and falls back for unknown tabs", () => {
+    expect(parseSettingsView("?tab=bao-mat").tab).toBe("bao-mat");
+    expect(parseSettingsView("?tab=abc").tab).toBe("ho-so");
+    expect(parseSettingsView("").tab).toBe("ho-so");
   });
 });
 
@@ -66,7 +57,7 @@ describe("approval formatting and counts", () => {
 
   it("maps API errors", () => {
     expect(mapApiError(409, "INVALID_STATUS_TRANSITION")).toBe(
-      "Mục này đã được xử lý trước đó. Danh sách đã được làm mới."
+      "Mục này đã được xử lý trước đó. Bấm Tải lại dữ liệu để cập nhật danh sách."
     );
     expect(mapApiError(403, "OTHER")).toBe("Bạn không có quyền thực hiện thao tác này.");
     expect(mapApiError(401, "OTHER")).toBe("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");

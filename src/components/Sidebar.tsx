@@ -1,19 +1,21 @@
 import {
   BookOpen,
   ChartNoAxesColumnIncreasing,
-  Flame,
   FolderHeart,
   LayoutDashboard,
   PenTool,
   Settings,
   Sparkles,
   Users,
+  LogOut,
+  ChevronUp,
 } from "lucide-react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 import { useUserRole } from "../hooks/useUserRole";
 import { loadUserProfile, subscribeUserProfile } from "../lib/userProfile";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "../auth/useAuth";
 
 type SidebarProps = {
   user: User;
@@ -24,17 +26,52 @@ type SidebarProps = {
 const navigationItems = [
   { label: "Tổng quan", icon: LayoutDashboard, to: "/dashboard" },
   { label: "Khóa học", icon: BookOpen, to: "/my-courses" },
-  { label: "Studio", icon: PenTool, to: null },
+  { label: "Studio", icon: PenTool, to: "/studio" },
   { label: "Bài luyện tập", icon: Sparkles, to: "/assignments" },
   { label: "Tiến độ", icon: ChartNoAxesColumnIncreasing, to: "/progress" },
+  { label: "Đơn demo", icon: BookOpen, to: "/orders" },
   { label: "Tác phẩm", icon: FolderHeart, to: null },
-  { label: "Cộng đồng", icon: Users, to: null },
+  { label: "Cộng đồng", icon: Users, to: "/community" },
   { label: "Cài đặt", icon: Settings, to: "/settings" },
   { label: "Hồ sơ giáo viên", icon: PenTool, to: "/teacher/onboarding" },
 ];
 
 export default function Sidebar({ user, displayName, initials }: SidebarProps) {
   const { role } = useUserRole();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
+  const account = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    function closeOutside(event: PointerEvent) {
+      if (event.target instanceof Node && !account.current?.contains(event.target)) setMenuOpen(false);
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        account.current?.querySelector("button")?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [menuOpen]);
+  async function logout() {
+    if (signingOut) return;
+    setSigningOut(true); setSignOutError("");
+    try {
+      const result = await signOut();
+      if (result.error) { setSignOutError(result.error); return; }
+      navigate("/login", { replace: true });
+    } catch { setSignOutError("Chưa thể đăng xuất. Vui lòng thử lại."); }
+    finally { setSigningOut(false); }
+  }
   const [profile, setProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
   useEffect(() => {
     let active = true;
@@ -54,7 +91,7 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
   const sidebarName = profile?.display_name?.trim() || displayName;
   const sidebarInitials = sidebarName.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase();
   const adminNavigationItem = role === "admin"
-    ? { label: "Quản trị viên", icon: Users, to: "/admin/teachers" }
+    ? { label: "Quản trị viên", icon: Users, to: "/admin/manage" }
     : null;
 
   return (
@@ -85,18 +122,8 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
         ))}
       </nav>
 
-      <section className="streak-card" aria-label="Chuỗi học tập">
-        <div className="streak-heading">
-          <span className="streak-icon"><Flame aria-hidden="true" size={17} /></span>
-          <span>Chuỗi 7 ngày</span>
-        </div>
-        <p>Còn 3 ngày để nhận huy hiệu</p>
-        <div className="streak-progress" role="progressbar" aria-valuenow={70} aria-valuemin={0} aria-valuemax={100}>
-          <span />
-        </div>
-      </section>
-
-      <div className="sidebar-user">
+      <div className="sidebar-account" ref={account}>
+      <button type="button" className="sidebar-user sidebar-user-toggle" aria-label="Mở menu tài khoản" aria-expanded={menuOpen} aria-controls="sidebar-account-menu" onClick={() => setMenuOpen(current => !current)}>
         {profile?.avatar_url ? (
           <img className="avatar avatar-sidebar" src={profile.avatar_url} alt="" />
         ) : (
@@ -106,6 +133,13 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
           <span className="sidebar-user-name">{sidebarName}</span>
           <span className="sidebar-user-email">{user.email}</span>
         </span>
+        <ChevronUp size={16} aria-hidden="true" />
+      </button>
+      {menuOpen && <div className="sidebar-account-menu" id="sidebar-account-menu">
+        <Link to="/settings" onClick={() => setMenuOpen(false)}><Settings size={16} aria-hidden="true" /> Hồ sơ &amp; Cài đặt</Link>
+        <button type="button" disabled={signingOut} onClick={() => void logout()}><LogOut size={16} aria-hidden="true" />{signingOut ? "Đang đăng xuất..." : "Đăng xuất"}</button>
+        {signOutError && <p role="alert">{signOutError}</p>}
+      </div>}
       </div>
     </aside>
   );
