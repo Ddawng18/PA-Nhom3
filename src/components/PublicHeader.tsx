@@ -1,5 +1,6 @@
-import { Heart, Search } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Menu, Search, X } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { getUserChip } from "../lib/userDisplay";
 import { isNavItemActive, publicNavItems } from "../logic/publicNav";
@@ -13,9 +14,17 @@ type PublicHeaderProps = {
 };
 
 export default function PublicHeader({ authLink }: PublicHeaderProps) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
   const { user, loading } = useAuth();
   const accountChip = user ? getUserChip(user) : null;
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = String(new FormData(event.currentTarget).get("search") ?? "").trim().slice(0, 100);
+    navigate(value ? `/courses?search=${encodeURIComponent(value)}` : "/courses");
+    setMenuOpen(false);
+  }
 
   if (loading) return null;
   if (user) {
@@ -30,7 +39,7 @@ export default function PublicHeader({ authLink }: PublicHeaderProps) {
         <Link className="wordmark" to="/" aria-label="LINEA - Trang chủ">
           LINEA
         </Link>
-        <nav className="header-nav" aria-label="Điều hướng chính">
+        <nav id="public-navigation" className={`header-nav${menuOpen ? " is-open" : ""}`} aria-label="Điều hướng chính">
           {publicNavItems.map((item) => {
             return (
               <Link
@@ -38,6 +47,7 @@ export default function PublicHeader({ authLink }: PublicHeaderProps) {
                 className="header-nav-link"
                 to={item.to}
                 aria-current={isNavItemActive(pathname, item) ? "page" : undefined}
+                onClick={() => setMenuOpen(false)}
               >
                 {item.label}
               </Link>
@@ -46,14 +56,14 @@ export default function PublicHeader({ authLink }: PublicHeaderProps) {
         </nav>
       </div>
 
-      <label className="search-field">
+      <form className="search-field" role="search" aria-label="Tìm trên toàn bộ khóa học" onSubmit={submitSearch}>
         <Search aria-hidden="true" size={17} />
-        <input aria-label="Tìm khóa học" placeholder="Tìm khóa học" type="search" />
-      </label>
+        <input key={`${pathname}${search}`} name="search" defaultValue={new URLSearchParams(search).get("search") ?? ""} aria-label="Tìm khóa học trên thanh điều hướng" placeholder="Tìm khóa học" type="search" maxLength={100} />
+      </form>
 
       <div className="header-actions">
-        <button className="icon-button favorite-button" type="button" aria-label="Yêu thích">
-          <Heart aria-hidden="true" size={20} />
+        <button className="icon-button public-menu-toggle" type="button" aria-label={menuOpen ? "Đóng menu" : "Mở menu"} aria-controls="public-navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}>
+          {menuOpen ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
         </button>
         {accountChip ? (
           <Link

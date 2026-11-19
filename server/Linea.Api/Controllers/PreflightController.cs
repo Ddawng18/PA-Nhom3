@@ -21,6 +21,7 @@ public sealed class PreflightController(
     IConfiguration configuration,
     IHttpClientFactory clients,
     VnPayPaymentService vnPay,
+    ZaloPayPaymentService zaloPay,
     IWebHostEnvironment environment) : ControllerBase
 {
     private static readonly string[] RequiredNames =
@@ -79,10 +80,11 @@ public sealed class PreflightController(
             !string.IsNullOrWhiteSpace(configuration["SUPABASE_PUBLISHABLE_KEY"]);
 
         var paymentMode = (configuration["PAYMENT_MODE"] ?? "DEMO").Trim().ToUpperInvariant();
-        var paymentReady = paymentMode == "DEMO" || paymentMode == "VNPAY_SANDBOX" && vnPay.IsConfigured;
+        var paymentReady = paymentMode == "DEMO" || paymentMode == "VNPAY_SANDBOX" && vnPay.IsConfigured ||
+            paymentMode == "ZALOPAY_SANDBOX" && zaloPay.IsConfigured;
         var schemaReady = schema.UsersTable && schema.CoursesTable &&
             schema.AuthUsersTable && schema.AdminLockColumns &&
-            schema.CourseVisibilityColumns && schema.DemoOrdersTable;
+            schema.CourseVisibilityColumns && schema.DemoOrdersTable && schema.PaymentProviderColumns;
         var productionNeedsPostgres = environment.IsProduction() && mode != "postgres";
         var ok = connected && authConfigured && paymentReady && !productionNeedsPostgres &&
             (mode == "postgres" ? schemaReady : true);
@@ -109,6 +111,7 @@ public sealed class PreflightController(
                     adminLockColumns = schema.AdminLockColumns,
                     courseVisibilityColumns = schema.CourseVisibilityColumns,
                     demoOrdersTable = schema.DemoOrdersTable,
+                    paymentProviderColumns = schema.PaymentProviderColumns,
                     ready = schemaReady
                 }
             },
@@ -119,7 +122,8 @@ public sealed class PreflightController(
                 available = storageAvailable,
                 note = "Storage readiness is separate so a missing upload bucket does not hide GET assignment readiness."
             },
-            payment = new { mode = paymentMode, vnpaySandboxConfigured = vnPay.IsConfigured, ready = paymentReady }
+            payment = new { mode = paymentMode, vnpaySandboxConfigured = vnPay.IsConfigured,
+                zalopaySandboxConfigured = zaloPay.IsConfigured, ready = paymentReady }
         });
     }
 
@@ -159,7 +163,10 @@ public sealed class PreflightController(
                            and column_name in ('visibility_version', 'ngay_cap_nhat')
                          having count(*) = 2
                        ),
-                       to_regclass('public.don_hang_demo') is not null
+                       to_regclass('public.don_hang_demo') is not null,
+                       (select count(*)=3 from information_schema.columns
+                        where table_schema='public' and table_name='don_hang_demo'
+                          and column_name in ('payment_provider','provider_transaction_id','payment_url'))
                 """);
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             if (!await reader.ReadAsync(cancellationToken))
@@ -170,7 +177,8 @@ public sealed class PreflightController(
                 reader.GetBoolean(2),
                 reader.GetBoolean(3),
                 reader.GetBoolean(4),
-                reader.GetBoolean(5));
+                reader.GetBoolean(5),
+                reader.GetBoolean(6));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -248,5 +256,6 @@ public sealed class PreflightController(
         bool AuthUsersTable,
         bool AdminLockColumns,
         bool CourseVisibilityColumns,
-        bool DemoOrdersTable);
+        bool DemoOrdersTable,
+        bool PaymentProviderColumns = false);
 }

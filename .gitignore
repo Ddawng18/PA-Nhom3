@@ -16,6 +16,7 @@ server/.nuget-local/
 *.db-wal
 TestResults/
 test-results/
+artifacts/
 supabase/.temp/
 
 # Private teacher portfolio uploads stored by the API

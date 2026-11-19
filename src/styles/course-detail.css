@@ -438,6 +438,8 @@
   font-weight: 600;
 }
 
+.cd-order-payment-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
 .cd-related-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

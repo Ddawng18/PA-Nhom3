@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
-import { listDemoOrders, type DemoOrder } from "../lib/demoOrders";
+import { listDemoOrders, refreshZaloPayOrder, type DemoOrder } from "../lib/demoOrders";
 import "../styles/course-detail.css";
 
 export default function DemoOrdersPage() {
@@ -10,15 +10,34 @@ export default function DemoOrdersPage() {
   const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<DemoOrder[] | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [retry, setRetry] = useState(0);
+  const [refreshing, setRefreshing] = useState<number | null>(null);
+  const returnedOrder = searchParams.get("payment") === "zalopay_return" ? searchParams.get("orderId") : null;
   useEffect(() => {
     const controller = new AbortController();
-    setOrders(null); setError("");
-    if (session?.access_token) void listDemoOrders(session.access_token, controller.signal)
+    setOrders(null); setError(""); setNotice("");
+    const token = session?.access_token;
+    if (token) void (async () => {
+      if (returnedOrder && /^\d+$/.test(returnedOrder) && Number.isSafeInteger(Number(returnedOrder))) {
+        try { await refreshZaloPayOrder(token, Number(returnedOrder), controller.signal); }
+        catch { if (!controller.signal.aborted) setNotice("Chưa kiểm tra được kết quả ZaloPay. Bạn vẫn có thể xem lịch sử và kiểm tra lại trạng thái đơn."); }
+      }
+      return listDemoOrders(token, controller.signal);
+    })()
       .then((items) => { if (!controller.signal.aborted) setOrders(items); })
       .catch(() => { if (!controller.signal.aborted) setError("Không thể tải lịch sử đơn. Vui lòng thử lại."); });
     return () => controller.abort();
-  }, [session?.access_token, retry]);
+  }, [session?.access_token, retry, returnedOrder]);
+  async function refresh(orderId: number) {
+    if (!session || refreshing !== null) return;
+    setRefreshing(orderId); setNotice("");
+    try {
+      const updated = await refreshZaloPayOrder(session.access_token, orderId);
+      setOrders(items => items?.map(item => item.id === updated.id ? updated : item) ?? null);
+    } catch { setNotice("Chưa kiểm tra được trạng thái thanh toán. Vui lòng thử lại."); }
+    finally { setRefreshing(null); }
+  }
   const labels = { PENDING: "Chờ thanh toán", SUCCEEDED: "Thành công", FAILED: "Thất bại", CANCELLED: "Đã hủy" };
   return <div className="register-page cd-page"><PublicHeader authLink={{ to: "/dashboard", label: "Tổng quan" }} />
     <main className="cd-main cd-orders-main">
@@ -27,12 +46,18 @@ export default function DemoOrdersPage() {
       </header>
       {searchParams.get("payment") === "vnpay_return" && <p role="status">Đã quay lại từ VNPAY Sandbox. Đơn chỉ được xác nhận sau khi máy chủ nhận được thông báo thanh toán.</p>}
       {searchParams.get("payment") === "vnpay_invalid" && <p role="alert">Không thể xác minh kết quả trả về từ VNPAY. Trạng thái đơn trong danh sách vẫn là nguồn chính xác.</p>}
+      {returnedOrder && <p role="status">Đã quay lại từ ZaloPay sandbox. Nếu đơn vẫn chờ thanh toán, bấm Kiểm tra trạng thái.</p>}
+      {notice && <p role="alert">{notice}</p>}
       {error ? <div role="alert"><p>{error}</p><button type="button" onClick={() => setRetry((v) => v + 1)}>Thử lại</button></div>
         : orders === null ? <p role="status">Đang tải đơn...</p>
         : orders.length === 0 ? <section className="cd-orders-empty"><span aria-hidden="true">₫</span><h2>Chưa có giao dịch</h2><p>Khi bạn đăng ký khóa học, đơn sẽ xuất hiện tại đây.</p><Link className="cd-button cd-button-primary" to="/courses">Khám phá khóa học</Link></section>
         : <ul className="cd-order-list">{orders.map((order) => <li className="cd-order-row" key={order.id}>
           <div className="cd-order-info"><strong><Link to={`/courses/${order.courseId}`}>{order.courseTitle}</Link></strong><span>Đơn #{order.id} · {new Date(order.createdAt).toLocaleString("vi-VN")}</span></div>
           <div className="cd-order-amount"><strong>{order.priceVnd.toLocaleString("vi-VN")} ₫</strong><span className={`cd-order-status cd-order-status-${order.status.toLowerCase()}`}>{labels[order.status]}</span></div>
+          {order.paymentProvider === "ZALOPAY_SANDBOX" && order.status === "PENDING" && <div className="cd-order-payment-actions">
+            {order.paymentUrl && <a className="cd-button" href={order.paymentUrl}>Tiếp tục với ZaloPay sandbox</a>}
+            <button type="button" className="cd-button" disabled={refreshing !== null} onClick={() => void refresh(order.id)}>{refreshing === order.id ? "Đang kiểm tra..." : "Kiểm tra trạng thái"}</button>
+          </div>}
         </li>)}</ul>}
     </main></div>;
 }

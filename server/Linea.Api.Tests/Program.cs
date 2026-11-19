@@ -28,8 +28,9 @@ internal static class Program
     private const string AdminPassword = "AdminPass123!";
     private const string TestJwtKey = "test-only-signing-key-with-at-least-32-bytes";
 
-    private static async Task<int> Main()
+    private static async Task<int> Main(string[] args)
     {
+        if (args.Contains("--payment-unit")) return await PaymentUnitTests.RunAsync();
         var apiProject = FindApiProject();
         var dbPath = Environment.GetEnvironmentVariable("TEST_DATABASE_URL");
         if (string.IsNullOrWhiteSpace(dbPath))

@@ -39,6 +39,16 @@ services:
         sync: false
       - key: VNPAY_RETURN_PAGE_URL
         sync: false
+      - key: ZALOPAY_APP_ID
+        sync: false
+      - key: ZALOPAY_KEY1
+        sync: false
+      - key: ZALOPAY_KEY2
+        sync: false
+      - key: ZALOPAY_CALLBACK_URL
+        value: https://linea-api-6pw5.onrender.com/api/payments/zalopay/callback
+      - key: ZALOPAY_RETURN_PAGE_URL
+        value: https://pa-nhom3.vercel.app/orders
       - key: RUN_MIGRATIONS
         value: "false"
       - key: CLIENT_ORIGIN

@@ -23,6 +23,10 @@ function createItem(type: string, read = false): NotificationItem {
 }
 
 describe("notification role filtering", () => {
+  it("shows backend course/profile events as system notifications for their owner", () => {
+    const items = [createItem("KHOA_HOC"), createItem("HO_SO_GIAO_VIEN"), createItem("loai_la")];
+    expect(filterForRole("teacher", items).map(item => item.loai_thong_bao)).toEqual(["he_thong", "he_thong"]);
+  });
   it("returns the permitted types for each role", () => {
     expect(getAllowedTypes("student")).toEqual(["bai_hoc", "quang_cao", "loi_nhan", "he_thong"]);
     expect(getAllowedTypes("teacher")).toEqual(["bai_hoc", "he_thong", "loi_nhan"]);

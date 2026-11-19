@@ -80,4 +80,4 @@ Test API ghi dữ liệu yêu cầu `TEST_DATABASE_URL` là PostgreSQL kiểm th
 | 5 | Nguyễn Lâm Sỹ Phú | Phunguyen11-02 | 31241020835 | Tech Lead / DevOps |
 
 
-Xem [API giáo viên](docs/teacher-profile-api.md), [Supabase](docs/supabase-setup.md) và [triển khai](docs/deployment.md).
+Xem [API giáo viên](docs/teacher-profile-api.md), [Supabase](docs/supabase-setup.md), [triển khai](docs/deployment.md) và [ZaloPay sandbox](docs/zalopay-sandbox.md).

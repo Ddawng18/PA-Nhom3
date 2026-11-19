@@ -25,7 +25,7 @@ export default function GuestHomePage() {
           </div>
           <nav className="guest-explore" aria-label="Khám phá LINEA">
             <Link to="/studio">Thử vẽ trong Studio</Link>
-            <Link to="/community">Xem góc chia sẻ demo</Link>
+            <Link to="/community">Khám phá cộng đồng</Link>
           </nav>
         </section>
       </main>
