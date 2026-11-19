@@ -228,7 +228,7 @@ public sealed partial class DemoOrdersController(
         }
         catch (PaymentGatewayException e)
         {
-            return StatusCode(502, new { code = "PAYMENT_GATEWAY_UNAVAILABLE", detail = e.Message, orderId = order.Id });
+            return StatusCode(502, new { code = e.Ambiguous ? "PAYMENT_RECONCILIATION_REQUIRED" : "PAYMENT_GATEWAY_REJECTED", detail = e.Message, orderId = order.Id });
         }
     }
 
