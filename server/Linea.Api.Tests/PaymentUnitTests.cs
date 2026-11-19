@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Linea.Api.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Linea.Api.Tests;
 
@@ -18,7 +19,7 @@ internal static class PaymentUnitTests
             ["ZALOPAY_RETURN_PAGE_URL"] = "http://localhost:5173/orders",
         }).Build();
         var gateway = new FakeGateway();
-        var service = new ZaloPayPaymentService(config, gateway);
+        var service = new ZaloPayPaymentService(config, gateway, NullLogger<ZaloPayPaymentService>.Instance);
         var passed = 0;
         void Check(bool value, string name)
         {
@@ -36,6 +37,10 @@ internal static class PaymentUnitTests
             Check(values["amount"] == "30000" && values["app_user"] == user.ToString("N"), "server order amount and user");
             var canonical = $"1234|261119_linea_42|{user:N}|30000|{created.ToUnixTimeMilliseconds()}|{values["embed_data"]}|[]";
             Check(values["mac"] == Sign(canonical, "test-only-key1"), "create HMAC field order and key1");
+            Check(values["expire_duration_seconds"] == "900", "provider expiry is 15 minutes");
+            var invalidInputRejected = false;
+            try { service.CreateParameters(0, user, 30000, created); } catch (ArgumentOutOfRangeException) { invalidInputRejected = true; }
+            Check(invalidInputRejected, "invalid order identity rejected before signing");
             Check(service.ReturnPageUrl(42).Contains("payment=zalopay_return") && service.ReturnPageUrl(42).Contains("orderId=42"), "return page carries order only, never trusted success");
             var data = JsonSerializer.Serialize(new { app_id = 1234, app_trans_id = "261119_linea_42", app_user = user.ToString("N"), amount = 30000 });
             var mac = Sign(data, "test-only-key2");
@@ -61,6 +66,27 @@ internal static class PaymentUnitTests
             gateway.Response = "{\"return_code\":2,\"is_processing\":false}";
             var failed = await service.QueryAsync("261119_linea_42", default);
             Check(failed.Failed && !failed.Succeeded, "authoritative failed provider result is not success");
+            gateway.Response = "{\"return_code\":3,\"is_processing\":true}";
+            var pending = await service.QueryAsync("261119_linea_42", default);
+            Check(!pending.Succeeded && !pending.Failed, "query code 3 remains pending");
+            gateway.Response = "{\"return_code\":1,\"amount\":30001}";
+            Check((await service.QueryAsync("261119_linea_42", default)).Amount == 30001, "query amount remains provider authoritative for controller validation");
+            gateway.Throw = true;
+            var ambiguous = false;
+            try { await service.CreateAsync(42, user, 30000, created, default); }
+            catch (PaymentGatewayException e) { ambiguous = e.Ambiguous; }
+            Check(ambiguous, "create network timeout is marked ambiguous");
+            gateway.Throw = false;
+            gateway.Response = "{\"return_code\":2,\"return_message\":\"rejected\"}";
+            var rejectedByProvider = false;
+            try { await service.CreateAsync(42, user, 30000, created, default); }
+            catch (PaymentGatewayException e) { rejectedByProvider = !e.Ambiguous; }
+            Check(rejectedByProvider, "explicit provider rejection is definite");
+            gateway.Response = "{\"return_code\":0,\"sub_return_code\":-68}";
+            var duplicateIsAmbiguous = false;
+            try { await service.CreateAsync(42, user, 30000, created, default); }
+            catch (PaymentGatewayException e) { duplicateIsAmbiguous = e.Ambiguous; }
+            Check(duplicateIsAmbiguous, "provider duplicate transaction response requires reconciliation");
             gateway.Response = "{\"return_code\":1,\"order_url\":\"https://attacker.example/pay\"}";
             var rejected = false;
             try { await service.CreateAsync(42, user, 30000, created, default); } catch (PaymentGatewayException) { rejected = true; }
@@ -78,10 +104,12 @@ internal static class PaymentUnitTests
         public string Response { get; set; } = "{}";
         public string? LastUrl { get; private set; }
         public string? LastForm { get; private set; }
+        public bool Throw { get; set; }
         public HttpClient CreateClient(string name) => new(this, disposeHandler: false);
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             LastUrl = request.RequestUri!.ToString(); LastForm = await request.Content!.ReadAsStringAsync(ct);
+            if (Throw) throw new HttpRequestException("simulated timeout after request send");
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Response, Encoding.UTF8, "application/json") };
         }
     }

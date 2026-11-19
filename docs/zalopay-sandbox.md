@@ -59,8 +59,15 @@ Cần `payment.mode=ZALOPAY_SANDBOX`, `zalopaySandboxConfigured=true` và `ready
 4. Gửi lại callback: không tạo ghi danh trùng. Chữ ký sai, app sai, user hoặc số tiền sai
    không được cấp quyền; query trả `3` giữ chờ, `2` ghi thất bại.
 5. Đơn gắn provider từ lúc tạo; `/confirm` DEMO không xác nhận đơn ZaloPay, kể cả đổi mode.
-6. Phiên quá 15 phút tạo phiên mới khi người dùng mua lại; đơn cũ được giữ để đối chiếu,
-   không coi redirect hoặc đồng hồ frontend là bằng chứng đã thanh toán.
+6. Backend lưu `app_trans_id` trước khi gọi API tạo đơn. Nếu request timeout hoặc mất
+   phản hồi, lần thử sau không gửi `create` lần nữa: đơn vẫn chờ đối soát và người dùng
+   có thể truy vấn trạng thái. Log chỉ ghi action và mã đơn giao dịch, không ghi khóa hay
+   payload thanh toán. Một mã giao dịch đã được lưu nhưng chưa có URL là dấu hiệu phiên
+   có thể đã được ZaloPay tạo.
+7. Hết 15 phút, frontend chỉ hiển thị “Quá hạn · chờ đối soát”; backend không kết luận
+   thất bại chỉ dựa vào đồng hồ. Nút kiểm tra vẫn truy vấn ZaloPay để xử lý callback muộn.
+   Tạo đơn mới sau khi hết hạn giữ nguyên đơn cũ để đối chiếu. Redirect không phải bằng
+   chứng thanh toán.
 
 Kiểm tra chữ ký và giao thức không cần database:
 
@@ -71,6 +78,26 @@ dotnet run --project server/Linea.Api.Tests -- --payment-unit
 API tạo/query cố định ở `https://sb-openapi.zalopay.vn/v2/create` và `/v2/query`.
 Nguồn: https://developers.zalopay.vn/v2/general/overview.html và
 https://docs.zalopay.vn/docs/specs/callback-api/.
+
+## Bảo đảm và giới hạn
+
+- Create và query ký HMAC-SHA256 theo canonical input ZaloPay; callback dùng Key2.
+- Callback/query cập nhật trạng thái đơn và ghi danh trong cùng transaction DB, với
+  khóa đơn và khóa người học/khóa học để chống cập nhật đồng thời. Chỉ backend xác nhận
+  thành công mới cấp quyền học.
+- Query `1` chỉ hoàn tất khi số tiền khớp; `3` giữ trạng thái chờ; `2` ghi thất bại.
+- Sau timeout tạo phiên, không thể khôi phục URL cổng nếu phản hồi bị mất. Hệ thống giữ
+  transaction ID và cho phép query/đối soát, tránh tạo phiên thứ hai. Nếu ZaloPay chưa
+  nhận request thì đơn có thể tiếp tục chờ; xử lý thủ công cần tra soát theo mã này.
+- Đơn quá 15 phút vẫn có thể được xác nhận nếu callback hợp lệ hoặc query xác nhận đã
+  thanh toán; redirect và thời gian ở trình duyệt không làm thay đổi trạng thái.
+- Migration cần áp dụng thủ công đúng database backend trước khi chạy bản mới:
+  `supabase/migrations/20261119031331_payment_sandbox_provider.sql`. Không bật toàn bộ
+  migration để áp dụng riêng thay đổi này. Schema giữ đơn cũ provider `DEMO`, RLS và
+  quyền Data API bị thu hồi.
+- Chạy kiểm tra giao thức bằng `dotnet run --project server/Linea.Api.Tests -- --payment-unit`.
+  Các callback thành công được ký/mô phỏng trong test không chứng minh ví ZaloPay thật
+  đã thanh toán. Sandbox có thể không ổn định và không hỗ trợ kết luận về giao dịch thật.
 
 ## Vận hành
 

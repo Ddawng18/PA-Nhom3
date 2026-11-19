@@ -3,11 +3,12 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Logging;
 
 namespace Linea.Api.Services;
 
 // Sandbox endpoints are fixed. No production wallet/payment endpoint is supported.
-public sealed class ZaloPayPaymentService(IConfiguration config, IHttpClientFactory clients)
+public sealed class ZaloPayPaymentService(IConfiguration config, IHttpClientFactory clients, ILogger<ZaloPayPaymentService> logger)
 {
     public bool IsConfigured => int.TryParse(config["ZALOPAY_APP_ID"], out var id) && id > 0 &&
         !string.IsNullOrWhiteSpace(config["ZALOPAY_KEY1"]) && !string.IsNullOrWhiteSpace(config["ZALOPAY_KEY2"]) &&
@@ -19,6 +20,7 @@ public sealed class ZaloPayPaymentService(IConfiguration config, IHttpClientFact
     public Dictionary<string, string> CreateParameters(long orderId, Guid user, long amount, DateTimeOffset createdAt)
     {
         if (!IsConfigured) throw new InvalidOperationException("ZaloPay sandbox chưa được cấu hình đầy đủ.");
+        if (orderId <= 0 || user == Guid.Empty || amount <= 0) throw new ArgumentOutOfRangeException(nameof(orderId), "Đơn ZaloPay không hợp lệ.");
         var values = new Dictionary<string, string>
         {
             ["app_id"] = config["ZALOPAY_APP_ID"]!,
@@ -40,9 +42,15 @@ public sealed class ZaloPayPaymentService(IConfiguration config, IHttpClientFact
     public async Task<string> CreateAsync(long orderId, Guid user, long amount, DateTimeOffset createdAt, CancellationToken ct)
     {
         var result = await PostAsync("create", CreateParameters(orderId, user, amount, createdAt), ct);
-        if (result.GetProperty("return_code").GetInt32() != 1 ||
-            !result.TryGetProperty("order_url", out var url) || url.ValueKind != JsonValueKind.String || !IsSandboxGateway(url.GetString()))
-            throw new PaymentGatewayException("ZaloPay sandbox chưa tạo được liên kết thanh toán. Vui lòng thử lại hoặc kiểm tra trạng thái đơn.");
+        if (result.GetProperty("return_code").GetInt32() != 1)
+        {
+            var duplicate = result.TryGetProperty("sub_return_code", out var subCode) && subCode.TryGetInt32(out var code) && code == -68;
+            throw new PaymentGatewayException(duplicate
+                ? "ZaloPay đã nhận mã giao dịch này. Đơn đang được giữ để đối soát trạng thái."
+                : "ZaloPay sandbox từ chối tạo phiên thanh toán.", ambiguous: duplicate);
+        }
+        if (!result.TryGetProperty("order_url", out var url) || url.ValueKind != JsonValueKind.String || !IsSandboxGateway(url.GetString()))
+            throw new PaymentGatewayException("ZaloPay sandbox chưa tạo được liên kết thanh toán. Vui lòng kiểm tra trạng thái đơn.", ambiguous: true);
         return url.GetString()!;
     }
 
@@ -55,8 +63,8 @@ public sealed class ZaloPayPaymentService(IConfiguration config, IHttpClientFact
             ["app_id"] = appId, ["app_trans_id"] = transactionId,
             ["mac"] = Sign($"{appId}|{transactionId}|{config["ZALOPAY_KEY1"]}", config["ZALOPAY_KEY1"]!),
         }, ct);
-        var success = result.GetProperty("return_code").GetInt32() == 1;
-        return (success, result.GetProperty("return_code").GetInt32() == 2,
+        var code = result.GetProperty("return_code").GetInt32();
+        return (code == 1, code == 2,
             result.TryGetProperty("amount", out var amount) && amount.ValueKind == JsonValueKind.Number && amount.TryGetInt64(out var v) ? v : -1);
     }
 
@@ -90,11 +98,14 @@ public sealed class ZaloPayPaymentService(IConfiguration config, IHttpClientFact
             using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
             if (doc.RootElement.ValueKind != JsonValueKind.Object ||
                 !doc.RootElement.TryGetProperty("return_code", out var code) || code.ValueKind != JsonValueKind.Number || !code.TryGetInt32(out _))
-                throw new PaymentGatewayException("ZaloPay sandbox trả kết quả không hợp lệ. Đơn chưa được xác nhận.");
+                throw new PaymentGatewayException("ZaloPay sandbox trả kết quả không hợp lệ. Đơn chưa được xác nhận.", ambiguous: action == "create");
             return doc.RootElement.Clone();
         }
         catch (Exception e) when (e is HttpRequestException or JsonException || e is OperationCanceledException && !ct.IsCancellationRequested)
-        { throw new PaymentGatewayException("Không kết nối được ZaloPay sandbox. Đơn chưa được xác nhận; hãy kiểm tra trạng thái trước khi thử lại."); }
+        {
+            logger.LogWarning(e, "ZaloPay {Action} outcome is ambiguous for transaction {TransactionId}", action, values.GetValueOrDefault("app_trans_id"));
+            throw new PaymentGatewayException($"Không kết nối được ZaloPay sandbox khi {action}. Hãy kiểm tra trạng thái trước khi thử lại.", ambiguous: action == "create", innerException: e);
+        }
     }
 
     public static bool IsSandboxGateway(string? value) => Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
@@ -111,4 +122,7 @@ public sealed class ZaloPayPaymentService(IConfiguration config, IHttpClientFact
     }
 }
 
-public sealed class PaymentGatewayException(string message) : Exception(message);
+public sealed class PaymentGatewayException(string message, bool ambiguous = false, Exception? innerException = null) : Exception(message, innerException)
+{
+    public bool Ambiguous { get; } = ambiguous;
+}
