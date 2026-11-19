@@ -7,7 +7,7 @@ import CatalogCourseCard from "../components/CatalogCourseCard";
 import { AdminApiError, AdminApiTimeoutError } from "../lib/adminApi";
 import { getCatalogCourse, type CatalogDetail } from "../lib/catalogApi";
 import { enrollInCourse } from "../lib/courseApi";
-import { createDemoOrder, type DemoOrder } from "../lib/demoOrders";
+import { createDemoOrder, listDemoOrders, refreshZaloPayOrder, type DemoOrder } from "../lib/demoOrders";
 import { learningError, loadLearningCourse, type LearningCourse } from "../lib/learningApi";
 import { formatLessonCount, formatPriceLabel, formatStudentCount, getInitials } from "../logic/catalog";
 import { mapApiError } from "../logic/approvals";
@@ -102,6 +102,21 @@ export default function CourseDetailPage() {
       try { created = await createDemoOrder(token, state.data.khoa_hoc.ma_khoa_hoc, key); }
       catch (error) {
         if (!(error instanceof AdminApiError) || error.code !== "PAYMENT_ORDER_EXPIRED") throw error;
+        const previous = (await listDemoOrders(token)).filter(item => item.courseId === state.data.khoa_hoc.ma_khoa_hoc && item.paymentProvider === "ZALOPAY_SANDBOX" && item.status === "PENDING");
+        for (const oldOrder of previous) {
+          let reconciled: DemoOrder;
+          try { reconciled = await refreshZaloPayOrder(token, oldOrder.id); }
+          catch {
+            setActionError("Chưa xác minh được đơn ZaloPay cũ. Vui lòng kiểm tra trạng thái trong lịch sử thanh toán trước khi mua lại.");
+            return;
+          }
+          if (reconciled.status === "SUCCEEDED") { navigate(`/courses/${courseId}/learn`); return; }
+          if (reconciled.status === "PENDING") {
+            setOrder(reconciled); setPaymentDialogOpen(true);
+            setActionError("Đơn cũ vẫn đang chờ đối soát. Hệ thống chưa tạo phiên mới để tránh thanh toán trùng.");
+            return;
+          }
+        }
         const nextKey = createUuid(); sessionStorage.setItem(keyName, nextKey);
         created = await createDemoOrder(token, state.data.khoa_hoc.ma_khoa_hoc, nextKey);
       }
