@@ -33,7 +33,7 @@ import {
 } from "../logic/courseEditor";
 import type { CourseEditorAttachment, CourseEditorRubric } from "../hooks/useCourseEditor";
 import { cleanCourseMediaName, createCourseMediaSignedUrl, isCourseAttachmentConfigured, isCourseMediaConfigured, removeCourseMedia, uploadCourseMedia } from "../lib/courseStorage";
-import { saveCourseInfo, submitCourse } from "../lib/courseApi";
+import { deleteDraftCourse, saveCourseInfo, submitCourse } from "../lib/courseApi";
 import { loadCourseEditorVersion, saveCourseEditor } from "../lib/courseEditorApi";
 import "../styles/teacher-course.css";
 
@@ -178,6 +178,7 @@ export default function TeacherCourseFormPage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -571,6 +572,20 @@ export default function TeacherCourseFormPage() {
     } finally { setSaving(false); }
   }
 
+  async function deleteDraft() {
+    if (!session?.access_token || !courseId) return;
+    setDeleting(true);
+    try {
+      await deleteDraftCourse(session.access_token, courseId);
+      setHasUnsavedChanges(false);
+      navigate("/my-courses", { replace: true });
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Không thể xóa bản nháp. Vui lòng thử lại.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   function askConfirmation(title: string, text: string, action: () => void) {
     setConfirmation({ title, message: text, action: () => {
       setConfirmation(null);
@@ -631,6 +646,12 @@ export default function TeacherCourseFormPage() {
               <button className="button button-outline" type="button" disabled={!editable || saving || uploading} onClick={() => void saveCourse()}>
                 {saving ? "Đang lưu..." : "Lưu toàn bộ"}
               </button>
+              {isEditing && courseId && course.trang_thai === "NHAP" && (
+                <button className="button button-outline teacher-danger-action" type="button" disabled={saving || deleting || uploading} onClick={() => askConfirmation("Xóa bản nháp", "Khóa học nháp sẽ bị gỡ khỏi danh sách. Bạn có chắc muốn xóa?", () => void deleteDraft())}>
+                  <Trash2 aria-hidden="true" size={15} />
+                  {deleting ? "Đang xóa..." : "Xóa bản nháp"}
+                </button>
+              )}
               <button className="button button-primary" type="button" disabled={!editable || saving || uploading} onClick={() => askConfirmation("Gửi duyệt khóa học", "Thông tin hiện tại sẽ được lưu trước khi gửi xét duyệt. Bạn có muốn tiếp tục?", () => void sendForReview())}>
                 Gửi duyệt
               </button>

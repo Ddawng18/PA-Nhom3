@@ -28,6 +28,10 @@ export async function submitCourse(token: string, id: string | number) {
   return requestAdminApi(`/api/courses/${encodeURIComponent(id)}/submit`, { token, method: "POST" });
 }
 
+export async function deleteDraftCourse(token: string, id: string | number) {
+  return requestAdminApi(`/api/courses/${encodeURIComponent(id)}`, { token, method: "DELETE" });
+}
+
 export async function listEnrolledCourses(token: string, signal?: AbortSignal) {
   return z.array(z.object({
     ma_khoa_hoc: z.number().int().safe(),

@@ -268,6 +268,10 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
     public Task<IActionResult> Submit(long id, CancellationToken cancellationToken) =>
         Transition(id, "NHAP", "CHO_DUYET", null, false, cancellationToken);
 
+    [HttpDelete("{id:long}"), Authorize(Policy = AuthPolicies.TeacherAccess)]
+    public Task<IActionResult> DeleteDraft(long id, CancellationToken cancellationToken) =>
+        Transition(id, "NHAP", "DA_GO", "Giáo viên xóa bản nháp", false, cancellationToken);
+
     [HttpPost("/api/admin/courses/{id:long}/approve"), Authorize(Policy = AuthPolicies.AdminOnly)]
     public Task<IActionResult> Approve(long id, CancellationToken cancellationToken) =>
         Transition(id, "CHO_DUYET", "DA_DANG", null, true, cancellationToken);
