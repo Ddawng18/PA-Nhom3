@@ -139,7 +139,7 @@ function TeacherCourses({ user, displayName }: { user: User; displayName: string
   }, [user.id, token]);
 
   const loading = loadedUserId !== user.id;
-  const ownedCourses = courses.filter((course) => course.ma_giao_vien === user.id);
+  const ownedCourses = courses.filter((course) => course.ma_giao_vien === user.id && course.trang_thai !== "DA_GO");
   const visibleCourses = ownedCourses;
   const tabs: { id: TeacherCourseTab; label: string; count: number }[] = [
     { id: "owned", label: "Khóa học của tôi", count: ownedCourses.length },
