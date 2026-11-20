@@ -82,23 +82,8 @@
   border: 0;
 }
 
-.cat-filters legend {
-  display: block;
-  width: 100%;
-  margin: 0 0 8px;
-  padding: 0;
-  color: #7b857c;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-}
-
-.cat-filter-list {
-  display: grid;
-  gap: 5px;
-}
-
-.cat-check {
+.cat-topics,
+.cat-levels {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -159,8 +144,13 @@
   padding: 0 14px;
   border: 1px solid #e8ebe3;
   border-radius: 999px;
-  background: #fffefa;
-  color: #7b857c;
+  background: var(--cat-field);
+  color: #34443a;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .cat-search input {

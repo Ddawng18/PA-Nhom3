@@ -139,37 +139,37 @@ export default function CoursesPage() {
                   <fieldset>
                     <legend>CHỦ ĐỀ</legend>
                     <div className="cat-filter-list">
-                      {knownTopics.length === 0 && <p className="cat-filter-empty">Chưa có chủ đề nào.</p>}
-                      {knownTopics.map((item) => (
+              {knownTopics.length === 0 && <p className="cat-filter-empty">Chưa có chủ đề nào.</p>}
+              {knownTopics.map((item) => (
                         <label className="cat-check" key={item.chu_de}>
-                          <input
-                            type="checkbox"
-                            checked={query.topics.includes(item.chu_de)}
-                            onChange={() => go({ ...query, page: 1, topics: toggleValue(query.topics, item.chu_de) })}
-                          />
-                          <span>{item.chu_de}</span>
-                          <small>{item.so_khoa_hoc}</small>
-                        </label>
-                      ))}
+                  <input
+                    type="checkbox"
+                    checked={query.topics.includes(item.chu_de)}
+                    onChange={() => go({ ...query, page: 1, topics: toggleValue(query.topics, item.chu_de) })}
+                  />
+                  <span>{item.chu_de}</span>
+                  <small>{item.so_khoa_hoc}</small>
+                </label>
+              ))}
                     </div>
-                  </fieldset>
+            </fieldset>
                 </div>
                 <div className="cat-filter-group">
                   <fieldset>
                     <legend>TRÌNH ĐỘ</legend>
                     <div className="cat-filter-list">
-                      {catalogLevels.map((item) => (
+                {catalogLevels.map((item) => (
                         <label className="cat-check" key={item.value}>
-                          <input
-                            type="checkbox"
-                            checked={query.levels.includes(item.value)}
-                            onChange={() => go({ ...query, page: 1, levels: toggleValue(query.levels, item.value) })}
-                          />
-                          <span>{item.label}</span>
-                        </label>
-                      ))}
+                    <input
+                      type="checkbox"
+                      checked={query.levels.includes(item.value)}
+                      onChange={() => go({ ...query, page: 1, levels: toggleValue(query.levels, item.value) })}
+                    />
+                    <span>{item.label}</span>
+                  </label>
+                ))}
                     </div>
-                  </fieldset>
+              </fieldset>
                 </div>
               </div>
             </aside>
@@ -188,28 +188,28 @@ export default function CoursesPage() {
                   />
                 </form>
                 <div className="cat-results-tools">
-                  <label className="cat-sort">
-                    <span>Sắp xếp</span>
-                    <select
-                      value={query.sort}
-                      onChange={(event) => go({ ...query, page: 1, sort: event.currentTarget.value as CatalogSort })}
-                    >
-                      {catalogSorts.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                    </select>
-                  </label>
+              <label className="cat-sort">
+                <span>Sắp xếp</span>
+                <select
+                  value={query.sort}
+                  onChange={(event) => go({ ...query, page: 1, sort: event.currentTarget.value as CatalogSort })}
+                >
+                  {catalogSorts.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+              </label>
                   <span className="cat-count" aria-live="polite">
                     {totalCount === null ? "" : `${totalCount} khóa học`}
                   </span>
-                </div>
-              </div>
+            </div>
+          </div>
 
-              {hasActiveFilters(query) && (
-                <div className="cat-chips">
-                  {query.search && (
-                    <button type="button" onClick={() => { setSearchValue(""); go({ ...query, page: 1, search: "" }); }}>
+            {hasActiveFilters(query) && (
+              <div className="cat-chips">
+                {query.search && (
+                  <button type="button" onClick={() => { setSearchValue(""); go({ ...query, page: 1, search: "" }); }}>
                       “{query.search}” ×
-                    </button>
-                  )}
+                  </button>
+                )}
                   {query.topics.map((topic) => (
                     <button type="button" key={topic}
                       onClick={() => go({ ...query, page: 1, topics: toggleValue(query.topics, topic) })}>
@@ -224,38 +224,38 @@ export default function CoursesPage() {
                   ))}
                   <button className="cat-chips-clear" type="button" onClick={clearFilters}>Xóa bộ lọc</button>
                 </div>
-              )}
+            )}
 
               {result.status === "loading" && <p className="cat-status" role="status">Đang tải khóa học...</p>}
-              {result.status === "error" && (
-                <div className="cat-status cat-status-error" role="alert">
-                  <p>{result.message}</p>
-                  <button type="button" onClick={() => setRetryCount((count) => count + 1)}>Thử lại</button>
+            {result.status === "error" && (
+              <div className="cat-status cat-status-error" role="alert">
+                <p>{result.message}</p>
+                <button type="button" onClick={() => setRetryCount((count) => count + 1)}>Thử lại</button>
+              </div>
+            )}
+            {result.status === "success" && result.data.items.length === 0 && (
+              <div className="cat-status">
+                <p>{hasActiveFilters(query) ? "Không có khóa học nào phù hợp với bộ lọc hiện tại." : "Chưa có khóa học nào được đăng."}</p>
+                {hasActiveFilters(query) && <button type="button" onClick={clearFilters}>Xóa bộ lọc</button>}
+              </div>
+            )}
+            {result.status === "success" && result.data.items.length > 0 && (
+              <>
+                <div className="cat-grid" role="list">
+                  {result.data.items.map((course) => <CatalogCourseCard key={course.ma_khoa_hoc} course={course} />)}
                 </div>
-              )}
-              {result.status === "success" && result.data.items.length === 0 && (
-                <div className="cat-status">
-                  <p>{hasActiveFilters(query) ? "Không có khóa học nào phù hợp với bộ lọc hiện tại." : "Chưa có khóa học nào được đăng."}</p>
-                  {hasActiveFilters(query) && <button type="button" onClick={clearFilters}>Xóa bộ lọc</button>}
-                </div>
-              )}
-              {result.status === "success" && result.data.items.length > 0 && (
-                <>
-                  <div className="cat-grid" role="list">
-                    {result.data.items.map((course) => <CatalogCourseCard key={course.ma_khoa_hoc} course={course} />)}
-                  </div>
-                  {totalPages > 1 && (
-                    <nav className="cat-pagination" aria-label="Phân trang khóa học">
-                      <button type="button" disabled={query.page <= 1}
-                        onClick={() => go({ ...query, page: query.page - 1 }, false)}>Trước</button>
-                      <span>Trang {query.page} / {totalPages}</span>
-                      <button type="button" disabled={query.page >= totalPages}
-                        onClick={() => go({ ...query, page: query.page + 1 }, false)}>Sau</button>
-                    </nav>
-                  )}
-                </>
-              )}
-            </section>
+                {totalPages > 1 && (
+                  <nav className="cat-pagination" aria-label="Phân trang khóa học">
+                    <button type="button" disabled={query.page <= 1}
+                      onClick={() => go({ ...query, page: query.page - 1 }, false)}>Trước</button>
+                    <span>Trang {query.page} / {totalPages}</span>
+                    <button type="button" disabled={query.page >= totalPages}
+                      onClick={() => go({ ...query, page: query.page + 1 }, false)}>Sau</button>
+                  </nav>
+                )}
+              </>
+            )}
+          </section>
           </div>
         </div>
       </main>

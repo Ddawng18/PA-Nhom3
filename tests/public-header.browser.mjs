@@ -23,8 +23,8 @@ try {
   await page.route(/\/src\/lib\/supabase\.ts(?:\?|$)/, r => r.fulfill({ contentType: "application/javascript", body: "export const supabase=null; export const isSupabaseConfigured=false; export const getGoogleProviderStatus=async()=>false;" }));
   await page.route("**/api/catalog/courses?*", r => r.fulfill({ contentType: "application/json", body: JSON.stringify({ items: [], page: 1, pageSize: 12, totalCount: 0, chu_de: [] }) }));
   await page.goto(base + "/courses");
-  await page.locator('header input[type="search"]').fill("Gesture");
-  await page.locator('header input[type="search"]').press("Enter");
+  await page.locator('header.site-header input[type="search"]').fill("Gesture");
+  await page.locator('header.site-header input[type="search"]').press("Enter");
   await page.waitForURL("**/courses?search=Gesture");
   assert.equal(await page.locator('main input[type="search"]').inputValue(), "Gesture");
   assert.equal(await page.getByRole("button", { name: "Yêu thích", exact: true }).count(), 0);
