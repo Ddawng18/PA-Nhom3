@@ -181,7 +181,7 @@ export default function CoursesPage() {
                   <input
                     type="search"
                     aria-label="Tìm khóa học"
-                    placeholder="Tìm theo tên, chủ đề hoặc mô tả"
+                    placeholder="Tìm theo tên khóa học"
                     maxLength={100}
                     value={searchValue}
                     onChange={(event) => setSearchValue(event.currentTarget.value)}
