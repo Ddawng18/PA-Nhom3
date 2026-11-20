@@ -23,6 +23,12 @@ describe("settings navigation", () => {
     expect(parseSettingsView("?tab=abc").tab).toBe("ho-so");
     expect(parseSettingsView("").tab).toBe("ho-so");
   });
+
+  it("limits admin settings to profile and security", () => {
+    expect(getSettingsTabs("admin")).toEqual(["ho-so", "bao-mat"]);
+    expect(parseSettingsView("?tab=ua-thich", "admin").tab).toBe("ho-so");
+    expect(parseSettingsView("?tab=lich-su-mua-hang", "admin").tab).toBe("ho-so");
+  });
 });
 
 describe("approval rejection validation", () => {
