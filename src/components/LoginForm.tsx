@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { loginSchema } from "../auth/schemas";
@@ -13,11 +13,23 @@ export default function LoginForm() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const { signInWithEmail, signInWithGoogle, configured } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    let expired = false;
+    try {
+      expired = sessionStorage.getItem("linea:session-expired") === "1";
+      if (expired) sessionStorage.removeItem("linea:session-expired");
+    } catch {
+      expired = false;
+    }
+    if (expired) setMessage("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+  }, []);
 
   const locationState = location.state;
   const redirectTo =
@@ -61,6 +73,10 @@ export default function LoginForm() {
       if (result.error) {
         setMessage(result.error);
       } else {
+        try {
+          sessionStorage.setItem("linea:tab-session", "1");
+          localStorage.setItem("linea:remember-login", remember ? "1" : "0");
+        } catch { void 0; }
         navigate(redirectTo, { replace: true });
       }
     } catch (error) {
@@ -75,6 +91,10 @@ export default function LoginForm() {
     setIsGoogleSubmitting(true);
     setMessage(null);
     try {
+      try {
+        sessionStorage.setItem("linea:tab-session", "1");
+        localStorage.setItem("linea:remember-login", "1");
+      } catch { void 0; }
       const result = await signInWithGoogle();
       if (result.error) {
         setMessage(result.error);
@@ -138,6 +158,11 @@ export default function LoginForm() {
             </button>
           </div>
         </FormField>
+
+        <label className="remember-login">
+          <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.currentTarget.checked)} />
+          <span>Ghi nhớ đăng nhập</span>
+        </label>
 
         {!configured && (
           <p className="form-message form-message-error" role="alert">

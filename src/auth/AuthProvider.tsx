@@ -24,7 +24,20 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      setSession(data.session);
+      let remember = true;
+      let tabMarker = true;
+      try {
+        remember = localStorage.getItem("linea:remember-login") !== "0";
+        tabMarker = sessionStorage.getItem("linea:tab-session") === "1";
+      } catch {
+        remember = true;
+      }
+      if (data.session && !remember && !tabMarker) {
+        void supabase?.auth.signOut();
+        setSession(null);
+      } else {
+        setSession(data.session);
+      }
       setLoading(false);
     }).catch(() => {
       if (!active) return;
@@ -47,7 +60,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onSessionExpired = () => {
-      if (supabase) void supabase.auth.signOut();
+      try { sessionStorage.setItem("linea:session-expired", "1"); } catch { void 0; }
+      if (supabase) void supabase?.auth.signOut();
     };
     window.addEventListener("linea:session-expired", onSessionExpired);
     return () => window.removeEventListener("linea:session-expired", onSessionExpired);
@@ -125,6 +139,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     signOut: async () => {
       if (!supabase) return unavailable();
       const { error } = await supabase.auth.signOut();
+      try {
+        sessionStorage.removeItem("linea:tab-session");
+        localStorage.removeItem("linea:remember-login");
+      } catch { void 0; }
       return { error: error ? getAuthErrorMessage(error.message) : null };
     },
   };

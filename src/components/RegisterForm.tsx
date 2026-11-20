@@ -148,7 +148,7 @@ export default function RegisterForm() {
           />
         </FormField>
 
-        <FormField id="password" label="Mật khẩu" required className="password-field" hint="Mật khẩu cần có ít nhất 8 ký tự." error={fieldErrors.password}>
+        <FormField id="password" label="Mật khẩu" required className="password-field" hint="Mật khẩu cần từ 8 đến 64 ký tự, gồm ít nhất một chữ cái và một chữ số." error={fieldErrors.password}>
           <div className="password-input-wrap">
             <input
               id="password"

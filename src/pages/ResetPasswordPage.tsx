@@ -4,6 +4,8 @@ import AuthLayout from "../components/AuthLayout";
 import { newPasswordSchema } from "../auth/schemas";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
+import Button from "../components/ui/Button";
+import FormField from "../components/ui/FormField";
 
 export default function ResetPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,11 +48,10 @@ export default function ResetPasswordPage() {
         <div className="form-heading">
           <p className="eyebrow">KHÔI PHỤC TÀI KHOẢN</p>
           <h1 id="reset-title">Tạo mật khẩu mới</h1>
-          <p className="form-description">Mật khẩu cần có ít nhất 8 ký tự, gồm chữ hoa, chữ thường và số.</p>
+          <p className="form-description">Mật khẩu cần từ 8 đến 64 ký tự, gồm ít nhất một chữ cái và một chữ số.</p>
         </div>
         <form className="register-form" noValidate onSubmit={handleSubmit}>
-          <div className="form-field">
-            <label htmlFor="new-password">Mật khẩu mới *</label>
+          <FormField id="new-password" label="Mật khẩu mới" required error={passwordError ?? undefined}>
             <input
               id="new-password"
               name="password"
@@ -59,8 +60,7 @@ export default function ResetPasswordPage() {
               aria-invalid={Boolean(passwordError)}
               aria-describedby={passwordError ? "new-password-error" : undefined}
             />
-            {passwordError && <p className="field-error" id="new-password-error">{passwordError}</p>}
-          </div>
+          </FormField>
           {!configured && (
             <p className="form-message form-message-error" role="alert">
               Ứng dụng chưa được cấu hình Supabase. Vui lòng thử lại sau.
@@ -71,9 +71,9 @@ export default function ResetPasswordPage() {
               {message.text}
             </p>
           )}
-          <button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
+          <Button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
             {isSubmitting ? "Đang xử lý..." : "Cập nhật mật khẩu"}
-          </button>
+          </Button>
         </form>
       </section>
     </AuthLayout>
