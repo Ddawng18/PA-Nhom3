@@ -36,9 +36,7 @@ public sealed class CourseCatalogService(
         {
             var term = search.Trim().ToLowerInvariant();
             if (term.Length > 100) term = term[..100];
-            query = query.Where(course => course.Title.ToLower().Contains(term)
-                || course.Description.ToLower().Contains(term)
-                || course.Topic.ToLower().Contains(term));
+            query = query.Where(course => course.Title.ToLower().Contains(term));
         }
         var topicFilter = (topic ?? "")
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
