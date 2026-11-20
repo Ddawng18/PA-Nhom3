@@ -185,6 +185,9 @@ export async function requestAdminApi(
     });
     const payload: unknown = response.status === 204 ? null : await response.json().catch(() => null);
     if (!response.ok) {
+      if (response.status === 401) {
+        window.dispatchEvent(new Event("linea:session-expired"));
+      }
       if (options.allowUnsupportedCourseApi && [404, 405, 501].includes(response.status)) {
         throw new UnsupportedCourseApprovalError();
       }
