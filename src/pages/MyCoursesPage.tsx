@@ -98,7 +98,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
 function TeacherCourses({ user, displayName }: { user: User; displayName: string }) {
   const { session } = useAuth();
   const token = session?.access_token;
-  const [activeTab, setActiveTab] = useState<TeacherCourseTab>("all");
+  const [activeTab, setActiveTab] = useState<TeacherCourseTab>("owned");
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -140,9 +140,8 @@ function TeacherCourses({ user, displayName }: { user: User; displayName: string
 
   const loading = loadedUserId !== user.id;
   const ownedCourses = courses.filter((course) => course.ma_giao_vien === user.id);
-  const visibleCourses = activeTab === "all" ? courses : ownedCourses;
+  const visibleCourses = ownedCourses;
   const tabs: { id: TeacherCourseTab; label: string; count: number }[] = [
-    { id: "all", label: "Tất cả", count: courses.length },
     { id: "owned", label: "Khóa học của tôi", count: ownedCourses.length },
   ];
 

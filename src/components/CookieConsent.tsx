@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react";
+import Button from "./ui/Button";
 import "../styles/cookie-consent.css";
 
 const STORAGE_KEY = "linea-cookie-consent-v1";
@@ -32,12 +33,12 @@ export default function CookieConsent() {
         Chúng tôi không dùng cookie quảng cáo.
       </p>
       <div className="cookie-consent-actions">
-        <button className="button button-outline" type="button" onClick={() => choose("essential")}>
+        <Button variant="outline" onClick={() => choose("essential")}>
           Chỉ cookie cần thiết
-        </button>
-        <button className="button button-primary" type="button" onClick={() => choose("accepted")}>
+        </Button>
+        <Button variant="primary" onClick={() => choose("accepted")}>
           Chấp nhận
-        </button>
+        </Button>
       </div>
     </aside>
   );
