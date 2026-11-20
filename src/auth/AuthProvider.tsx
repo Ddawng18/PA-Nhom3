@@ -45,6 +45,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    const onSessionExpired = () => {
+      if (supabase) void supabase.auth.signOut();
+    };
+    window.addEventListener("linea:session-expired", onSessionExpired);
+    return () => window.removeEventListener("linea:session-expired", onSessionExpired);
+  }, []);
+
   const unavailable = (): AuthResult => ({ error: configurationError });
 
   const value: AuthContextValue = {

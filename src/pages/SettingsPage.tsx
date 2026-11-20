@@ -3,7 +3,6 @@ import {
   ArrowUpRight,
   Bell,
   BookOpen,
-  Check,
   ChevronRight,
   Clock3,
   CreditCard,
@@ -13,7 +12,7 @@ import {
   Sparkles,
   ShieldCheck,
 } from "lucide-react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
@@ -371,24 +370,10 @@ export default function SettingsPage() {
                 <div className="card-heading purchase-heading">
                   <span className="card-icon"><CreditCard aria-hidden="true" size={18} /></span>
                   <h2>Lịch sử mua hàng</h2>
-                  <p>Xem lại đơn hàng gần đây và trạng thái thanh toán.</p>
-                </div>
-                <div className="purchase-course">
-                  <span className="purchase-course-icon"><Check aria-hidden="true" size={17} /></span>
-                  <span>
-                    <strong>Vẽ nhân vật từ hình khối cơ bản</strong>
-                    <span>#LN-2026-1048 · 20/10/2026</span>
-                  </span>
-                  <span className="paid-badge">Đã thanh toán</span>
-                </div>
-                <div className="purchase-summary">
-                  <div><span>Giá gốc</span><span>599.000đ</span></div>
-                  <div><span>Ưu đãi khóa học</span><span>−200.000đ</span></div>
-                  <div className="purchase-total"><strong>Đã thanh toán</strong><strong>399.000đ</strong></div>
+                  <p>Đơn hàng và trạng thái thanh toán được quản lý tập trung tại trang Đơn hàng.</p>
                 </div>
                 <div className="purchase-actions">
-                  <button className="button button-primary" type="button">Vào khóa học</button>
-                  <button className="button button-outline" type="button">Xem biên nhận</button>
+                  <Link className="button button-primary" to="/orders">Xem lịch sử thanh toán</Link>
                 </div>
               </section>
             </div>
