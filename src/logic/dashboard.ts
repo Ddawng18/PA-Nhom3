@@ -37,6 +37,19 @@ export function formatCourseMeta(teacherName: string | null, lessonCount: number
   return teacherName?.trim() ? `${teacherName.trim()} · ${lessons}` : lessons;
 }
 
+export function getDeadlineLabel(deadline: string | null, now: Date): string {
+  if (!deadline) return "Chưa nộp";
+  const dueTime = Date.parse(deadline);
+  if (Number.isNaN(dueTime)) return "Chưa nộp";
+  if (dueTime < now.getTime()) return "Đã quá hạn";
+  const due = new Date(dueTime);
+  const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const days = Math.round((startOfDay(due) - startOfDay(now)) / 86_400_000);
+  if (days === 0) return "Hạn hôm nay";
+  if (days < 0) return "Đã quá hạn";
+  return `Còn ${days} ngày`;
+}
+
 export function pickCurrentEnrollment<T extends DashboardEnrollment>(items: T[]): T | null {
   return items
     .filter((item) => item.trang_thai === currentEnrollmentStatus)

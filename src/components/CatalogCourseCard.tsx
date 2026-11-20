@@ -40,7 +40,7 @@ export default function CatalogCourseCard({ course }: CatalogCourseCardProps) {
       <h3 className="cat-card-title">{course.tieu_de}</h3>
       <p className="cat-card-meta">{meta}</p>
       {students && <p className="cat-card-students">{students}</p>}
-      {price && <p className="cat-card-price">{price}</p>}
+          {price && <p className="cat-card-price">{price}</p>}
       <Link className="cat-card-action" to={`/courses/${course.ma_khoa_hoc}`}>
         Xem khóa học
       </Link>

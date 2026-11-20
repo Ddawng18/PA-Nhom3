@@ -64,7 +64,7 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
       <nav className="settings-tabs" aria-label="Khu vực khóa học">
         <button type="button" className="settings-tab active" aria-current="page">Của tôi ({courses.length})</button>
         <Link className="settings-tab" to="/courses">Khám phá</Link>
-      </nav>
+        </nav>
       {loading ? <p role="status">Đang tải khóa học...</p> : error ? <section className="settings-card"><p role="alert">{error}</p><button className="button button-outline" onClick={() => setAttempt(v => v + 1)}>Thử lại</button></section> : <>
         <nav className="settings-tabs" aria-label="Lọc tiến độ">{([['all', 'Tất cả'], ['in-progress', 'Đang học'], ['completed', 'Hoàn thành']] as const).map(([id, label]) => <button type="button" key={id} className={`settings-tab${activeTab === id ? " active" : ""}`} onClick={() => setActiveTab(id)}>{label} ({courses.filter(c => id === "all" || (id === "completed" ? c.status === "HOAN_THANH" : c.status !== "HOAN_THANH")).length})</button>)}</nav>
         {visible.length === 0 && <section className="settings-card"><p>Chưa có khóa học trong mục này.</p><Link className="button button-primary" to="/courses">Khám phá khóa học</Link></section>}
@@ -75,19 +75,19 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
               <h2 className="my-course-card-title">{c.title}</h2>
               {c.status && <span className="course-status-chip my-course-status">{c.status === "HOAN_THANH" ? "Hoàn thành" : "Đang học"}</span>}
             </div>
-            {level && <p className="my-course-level">{level}</p>}
+              {level && <p className="my-course-level">{level}</p>}
             {typeof c.percent === "number" && <>
               <p className="my-course-progress-label">Tiến độ bài học · {c.percent}%</p>
-              <div className="course-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.percent} aria-label="Tiến độ bài học">
-                <span style={{ width: `${Math.min(100, Math.max(0, c.percent))}%` }} />
-              </div>
+                <div className="course-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.percent} aria-label="Tiến độ bài học">
+                  <span style={{ width: `${Math.min(100, Math.max(0, c.percent))}%` }} />
+                </div>
               {c.requiredAssignments !== undefined && c.submittedAssignments !== undefined && c.requiredAssignments > 0 && <p className="my-course-progress-label">Bài tập bắt buộc đã nộp: {c.submittedAssignments}/{c.requiredAssignments}{c.submittedAssignments < c.requiredAssignments ? " · Nộp đủ bài để hoàn thành khóa" : ""}</p>}
             </>}
-            <div className="my-course-footer">
-              {c.available
-                ? <Link className="button button-primary" to={`/courses/${c.id}/learn`}>Xem tiến độ / tiếp tục học</Link>
-                : <p className="my-course-unavailable">Khóa học đang tạm ẩn. Liên hệ giáo viên để được hỗ trợ.</p>}
-            </div>
+              <div className="my-course-footer">
+                {c.available
+                  ? <Link className="button button-primary" to={`/courses/${c.id}/learn`}>Xem tiến độ / tiếp tục học</Link>
+                  : <p className="my-course-unavailable">Khóa học đang tạm ẩn. Liên hệ giáo viên để được hỗ trợ.</p>}
+              </div>
           </article>;
         })}</section>
       </>}
