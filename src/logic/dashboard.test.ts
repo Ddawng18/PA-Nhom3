@@ -5,6 +5,7 @@ import {
   formatLessonLabel,
   formatLessonProgress,
   getCurrentLessonNumber,
+  getDeadlineLabel,
   getGreeting,
   getPercent,
   pickCurrentEnrollment,
@@ -53,5 +54,22 @@ describe("dashboard formatting and calculations", () => {
 
     expect(pickCurrentEnrollment(items)?.ma_khoa_hoc).toBe(3);
     expect(pickCurrentEnrollment([])).toBeNull();
+  });
+
+  it("labels pending assignment deadlines by local calendar days", () => {
+    const now = new Date(2026, 0, 10, 10, 0);
+    expect(getDeadlineLabel(null, now)).toBe("Chưa nộp");
+    expect(getDeadlineLabel(new Date(2026, 0, 9, 18, 0).toISOString(), now)).toBe("Đã quá hạn");
+    expect(getDeadlineLabel(new Date(2026, 0, 10, 18, 0).toISOString(), now)).toBe("Hạn hôm nay");
+    expect(getDeadlineLabel(new Date(2026, 0, 11, 9, 0).toISOString(), now)).toBe("Còn 1 ngày");
+    expect(getDeadlineLabel(new Date(2026, 0, 15, 9, 0).toISOString(), now)).toBe("Còn 5 ngày");
+  });
+
+  it("counts deadline days across the local midnight boundary", () => {
+    const lateNight = new Date(2026, 0, 10, 23, 59, 59, 999);
+    expect(getDeadlineLabel(new Date(2026, 0, 11, 0, 0, 0).toISOString(), lateNight)).toBe("Còn 1 ngày");
+    const beforeMidnight = new Date(2026, 0, 10, 23, 59, 0);
+    expect(getDeadlineLabel(new Date(2026, 0, 10, 23, 59, 30).toISOString(), beforeMidnight)).toBe("Hạn hôm nay");
+    expect(getDeadlineLabel(new Date(2026, 0, 10, 23, 58, 0).toISOString(), beforeMidnight)).toBe("Đã quá hạn");
   });
 });
