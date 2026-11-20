@@ -29,9 +29,18 @@ export default function StudentLearningOverviewPage({ mode }: { mode: "progress"
       {loading ? <p role="status">Đang tải...</p> : error ? <p role="alert" className="settings-error">{error}</p> : mode === "progress" ? <>
         <p>Đã hoàn thành {courses.filter(c => c.status === "HOAN_THANH").length}/{courses.length} khóa · Đã chấm {assignments.filter(a => a.submission?.grade).length}/{assignments.length} bài tập.</p>
         {courses.length === 0 && <Link to="/my-courses">Khám phá khóa học để bắt đầu</Link>}
-        {courses.map(c => <section className="settings-card" key={c.id}><h2>{c.title}</h2><label>Tiến độ bài học: {c.percent}%<progress value={c.percent} max={100} /></label>
-          <p>{c.status === "HOAN_THANH" ? "Đã hoàn thành khóa học" : "Đang học"} · Bài tập đã chấm: {assignments.filter(a => a.courseId === c.id && a.submission?.grade).length}/{assignments.filter(a => a.courseId === c.id).length}</p>
-          {c.available ? <Link className="button button-primary" to={`/courses/${c.id}/learn`}>Xem khóa học</Link> : <p>Khóa học đang tạm ẩn. Vui lòng liên hệ giáo viên.</p>}</section>)}
+        <div className="progress-grid">
+          {courses.map(c => <section className="settings-card progress-card" key={c.id} aria-labelledby={`progress-${c.id}`}>
+            <p className="settings-eyebrow">{c.status === "HOAN_THANH" ? "ĐÃ HOÀN THÀNH" : "ĐANG HỌC"}</p>
+            <h2 id={`progress-${c.id}`}>{c.title}</h2>
+            <div className="progress-card-meter">
+              <span>{c.percent}%</span>
+              <progress value={c.percent} max={100} aria-label={`Tiến độ ${c.title}`} />
+            </div>
+            <p>Bài tập đã chấm: {assignments.filter(a => a.courseId === c.id && a.submission?.grade).length}/{assignments.filter(a => a.courseId === c.id).length}</p>
+            {c.available ? <Link className="button button-primary" to={`/courses/${c.id}/learn`}>Xem khóa học</Link> : <p>Khóa học đang tạm ẩn. Vui lòng liên hệ giáo viên.</p>}
+          </section>)}
+        </div>
       </> : <>
         <nav className="settings-tabs" aria-label="Lọc bài tập">{[["all", "Tất cả"], ["new", "Chưa nộp"], ["waiting", "Chờ chấm"], ["graded", "Đã chấm"]].map(([id, label]) => <button key={id} type="button" className={`settings-tab${filter === id ? " active" : ""}`} onClick={() => setFilter(id)}>{label}</button>)}</nav>
         {visible.length === 0 && <p>Chưa có bài tập trong mục này.</p>}

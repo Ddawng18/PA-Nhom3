@@ -69,6 +69,21 @@ export default function GuestHomePage() {
           </ul>
         </section>
 
+        <section className="guest-showcase" aria-labelledby="guest-showcase-title">
+          <p className="guest-section-label">KHÓA HỌC MẪU</p>
+          <h2 className="guest-section-title" id="guest-showcase-title">Một cách bắt đầu nhẹ nhàng</h2>
+          <article className="guest-showcase-card">
+            <div className="guest-showcase-art" aria-hidden="true">M</div>
+            <div className="guest-showcase-copy">
+              <p className="guest-eyebrow">MÀU SẮC · CƠ BẢN · 8 BÀI</p>
+              <h3>Màu kỹ thuật số cho minh họa</h3>
+              <p>Làm quen với vòng màu, sắc độ và cách phối màu cho nhân vật qua bài tập nhỏ mỗi ngày.</p>
+              <p className="guest-showcase-meta">Giảng viên minh họa: NmRAtist</p>
+              <Link className="button button-primary" to="/courses">Xem khóa học</Link>
+            </div>
+          </article>
+        </section>
+
         <section className="guest-steps" aria-labelledby="guest-steps-title">
           <p className="guest-section-label">CÁCH HỌC</p>
           <h2 className="guest-section-title" id="guest-steps-title">Ba bước để bắt đầu</h2>
