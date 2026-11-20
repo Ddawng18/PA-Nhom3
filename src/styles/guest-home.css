@@ -240,7 +240,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 720px) {
   .guest-main {
     padding-right: 24px;
     padding-left: 24px;

@@ -12,6 +12,28 @@
   --color-accent: #d8f0b0;
   --color-shadow: rgba(0, 0, 0, 0.502);
 
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 4px 16px rgba(30, 43, 34, 0.06);
+  --shadow-md: 0 16px 48px rgba(30, 43, 34, 0.14);
+  --color-danger: #b42318;
+  --color-warning: #8a5a00;
+  --color-success: #2f6b3c;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-display: "Inter", sans-serif;
+
   font-family: "Inter", sans-serif;
   color: var(--color-text);
   background: var(--color-page-bg);

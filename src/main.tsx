@@ -29,7 +29,10 @@ import CoursesPage from "./pages/CoursesPage";
 import StudioPage from "./pages/StudioPage";
 import CommunityPage from "./pages/CommunityPage";
 import DemoOrdersPage from "./pages/DemoOrdersPage";
+import ArtworksPage from "./pages/ArtworksPage";
 import AdminManagementPage from "./pages/AdminManagementPage";
+
+import "./styles/atelier.css";
 
 const router = createBrowserRouter(createRoutesFromElements(
   <>
@@ -73,6 +76,14 @@ const router = createBrowserRouter(createRoutesFromElements(
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/artworks"
+            element={
+              <ProtectedRoute>
+                <ArtworksPage />
               </ProtectedRoute>
             }
           />

@@ -82,8 +82,14 @@
   border: 0;
 }
 
+.cat-filter-list {
+  display: grid;
+  gap: 8px;
+}
+
 .cat-topics,
-.cat-levels {
+.cat-levels,
+.cat-check {
   display: flex;
   min-width: 0;
   align-items: center;
