@@ -139,6 +139,13 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
         if (course is null) return NotFound();
         if (course.PriceVnd > 0)
             return Conflict(new { code = "PAYMENT_REQUIRED", message = "Khóa học có phí chưa hỗ trợ ghi danh trực tiếp." });
+        var hasLesson = await (
+            from lesson in db.CourseLessons.AsNoTracking()
+            join chapter in db.CourseChapters.AsNoTracking() on lesson.ChapterId equals chapter.Id
+            where chapter.CourseId == id
+            select lesson.Id).AnyAsync(cancellationToken);
+        if (!hasLesson)
+            return Conflict(new { code = "COURSE_EMPTY", message = "Khóa học chưa có bài học nên chưa thể ghi danh." });
         var enrollment = await db.CourseEnrollments
             .SingleOrDefaultAsync(item => item.CourseId == id && item.UserId == userId, cancellationToken);
         if (enrollment is null)
@@ -260,6 +267,10 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
     [HttpPost("{id:long}/submit"), Authorize(Policy = AuthPolicies.TeacherAccess)]
     public Task<IActionResult> Submit(long id, CancellationToken cancellationToken) =>
         Transition(id, "NHAP", "CHO_DUYET", null, false, cancellationToken);
+
+    [HttpDelete("{id:long}"), Authorize(Policy = AuthPolicies.TeacherAccess)]
+    public Task<IActionResult> DeleteDraft(long id, CancellationToken cancellationToken) =>
+        Transition(id, "NHAP", "DA_GO", "Giáo viên xóa bản nháp", false, cancellationToken);
 
     [HttpPost("/api/admin/courses/{id:long}/approve"), Authorize(Policy = AuthPolicies.AdminOnly)]
     public Task<IActionResult> Approve(long id, CancellationToken cancellationToken) =>

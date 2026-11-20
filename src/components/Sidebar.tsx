@@ -23,17 +23,31 @@ type SidebarProps = {
   initials: string;
 };
 
-const navigationItems = [
+const studentNavigation = [
   { label: "Tổng quan", icon: LayoutDashboard, to: "/dashboard" },
   { label: "Khóa học", icon: BookOpen, to: "/my-courses" },
   { label: "Studio", icon: PenTool, to: "/studio" },
   { label: "Bài luyện tập", icon: Sparkles, to: "/assignments" },
   { label: "Tiến độ", icon: ChartNoAxesColumnIncreasing, to: "/progress" },
-  { label: "Đơn demo", icon: BookOpen, to: "/orders" },
-  { label: "Tác phẩm", icon: FolderHeart, to: null },
+  { label: "Đơn hàng", icon: BookOpen, to: "/orders" },
+  { label: "Tác phẩm", icon: FolderHeart, to: "/artworks" },
   { label: "Cộng đồng", icon: Users, to: "/community" },
   { label: "Cài đặt", icon: Settings, to: "/settings" },
   { label: "Hồ sơ giáo viên", icon: PenTool, to: "/teacher/onboarding" },
+];
+
+const teacherNavigation = [
+  { label: "Khóa học của tôi", icon: BookOpen, to: "/my-courses" },
+  { label: "Tạo khóa học", icon: Sparkles, to: "/teacher/courses/new" },
+  { label: "Hồ sơ giáo viên", icon: PenTool, to: "/teacher/onboarding" },
+  { label: "Cộng đồng", icon: Users, to: "/community" },
+  { label: "Cài đặt", icon: Settings, to: "/settings" },
+];
+
+const adminNavigation = [
+  { label: "Quản trị", icon: Users, to: "/admin/manage" },
+  { label: "Cộng đồng", icon: Users, to: "/community" },
+  { label: "Cài đặt", icon: Settings, to: "/settings" },
 ];
 
 export default function Sidebar({ user, displayName, initials }: SidebarProps) {
@@ -90,19 +104,22 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
   }, [user.id]);
   const sidebarName = profile?.display_name?.trim() || displayName;
   const sidebarInitials = sidebarName.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase();
-  const adminNavigationItem = role === "admin"
-    ? { label: "Quản trị viên", icon: Users, to: "/admin/manage" }
-    : null;
+  const navigationItems = role === "admin"
+    ? adminNavigation
+    : role === "teacher"
+      ? teacherNavigation
+      : studentNavigation;
+  const homePath = role === "admin" ? "/admin/manage" : role === "teacher" ? "/my-courses" : "/dashboard";
 
   return (
     <aside className="settings-sidebar">
-      <Link className="settings-brand" to="/dashboard" aria-label="LINEA - Tổng quan">
+      <Link className="settings-brand" to={homePath} aria-label="LINEA - Tổng quan">
         <span className="settings-brand-name">LINEA</span>
         <span className="settings-brand-caption">Không gian học sáng tạo</span>
       </Link>
 
       <nav className="settings-navigation" aria-label="Điều hướng chính">
-        {[...navigationItems, ...(adminNavigationItem ? [adminNavigationItem] : [])].map(({ label, icon: Icon, to }) => (
+        {navigationItems.map(({ label, icon: Icon, to }) => (
           to ? (
             <NavLink
               className={({ isActive }) => `settings-nav-item${isActive ? " active" : ""}`}

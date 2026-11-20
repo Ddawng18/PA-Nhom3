@@ -32,16 +32,19 @@ export const rejectionCodeLabels: Record<RejectionCode, string> = {
   OTHER: "Lý do khác",
 };
 
-export function getSettingsTabs(): SettingsTab[] {
+export function getSettingsTabs(role?: string | null): SettingsTab[] {
+  if (role === "admin") return ["ho-so", "bao-mat"];
   return [...settingsTabIds];
 }
 
 export function parseSettingsView(
-  search: string
+  search: string,
+  role?: string | null
 ): { tab: SettingsTab; muc: ApprovalSection } {
   const params = new URLSearchParams(search);
   const requestedTab = params.get("tab");
-  const tab = requestedTab && getSettingsTabs().includes(requestedTab as SettingsTab)
+  const tabs = getSettingsTabs(role);
+  const tab = requestedTab && tabs.includes(requestedTab as SettingsTab)
       ? requestedTab as SettingsTab
       : "ho-so";
   return { tab, muc: "khoa-hoc" };

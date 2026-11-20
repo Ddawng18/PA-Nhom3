@@ -3,6 +3,7 @@ using Linea.Api.Data;
 using Linea.Api.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Headers;
 using Linea.Api.Services;
@@ -56,6 +57,7 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
         return rows.Count == 0 ? NotFound() : Ok(rows[0]);
     }
 
+    [EnableRateLimiting("writes")]
     [HttpPost, Authorize]
     public async Task<IActionResult> Create(CreatePost request, CancellationToken ct)
         => await SavePost(request.Title, request.Body, null, ct);
@@ -76,6 +78,7 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
         return result;
     }
 
+    [EnableRateLimiting("writes")]
     [HttpPost("with-image"), Authorize]
     [RequestSizeLimit(6 * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
@@ -162,6 +165,7 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
     private async Task<bool> Exists(long id, CancellationToken ct) =>
         await db.Database.SqlQuery<int>($"select 1 AS \"Value\" from public.community_posts where id={id}").AnyAsync(ct);
 
+    [EnableRateLimiting("writes")]
     [HttpPost("{id:long}/comments"), Authorize]
     public async Task<IActionResult> Comment(long id, CreateComment request, CancellationToken ct)
         => await SaveComment(id, request.Body, null, ct);
@@ -183,6 +187,7 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
         return Ok(rows[0]);
     }
 
+    [EnableRateLimiting("writes")]
     [HttpPost("{id:long}/comments/with-image"), Authorize]
     [RequestSizeLimit(2 * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 2 * 1024 * 1024)]
@@ -195,6 +200,7 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
             : await UploadAndSave(image, userId, url => SaveComment(id, body, url, ct), 1024 * 1024, ct);
     }
 
+    [EnableRateLimiting("writes")]
     [HttpPut("{id:long}"), Authorize]
     [RequestSizeLimit(6 * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
@@ -223,6 +229,7 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
 
     public sealed class PostImage { public string? ImageUrl { get; set; } }
 
+    [EnableRateLimiting("writes")]
     [HttpDelete("{id:long}"), Authorize]
     public async Task<IActionResult> Delete(long id, CancellationToken ct)
     {
