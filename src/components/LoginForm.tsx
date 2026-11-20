@@ -1,8 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { loginSchema } from "../auth/schemas";
 import { getAuthErrorMessage } from "../auth/errors";
+import Button from "./ui/Button";
+import FormField from "./ui/FormField";
 import { useAuth } from "../auth/useAuth";
 
 type FieldErrors = Partial<Record<"email" | "password", string>>;
@@ -11,11 +13,23 @@ export default function LoginForm() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const { signInWithEmail, signInWithGoogle, configured } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    let expired = false;
+    try {
+      expired = sessionStorage.getItem("linea:session-expired") === "1";
+      if (expired) sessionStorage.removeItem("linea:session-expired");
+    } catch {
+      expired = false;
+    }
+    if (expired) setMessage("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+  }, []);
 
   const locationState = location.state;
   const redirectTo =
@@ -26,7 +40,7 @@ export default function LoginForm() {
     locationState.from.startsWith("/") &&
     !locationState.from.startsWith("//")
       ? locationState.from
-      : "/dashboard";
+      : "/";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,6 +73,10 @@ export default function LoginForm() {
       if (result.error) {
         setMessage(result.error);
       } else {
+        try {
+          sessionStorage.setItem("linea:tab-session", "1");
+          localStorage.setItem("linea:remember-login", remember ? "1" : "0");
+        } catch { void 0; }
         navigate(redirectTo, { replace: true });
       }
     } catch (error) {
@@ -73,6 +91,10 @@ export default function LoginForm() {
     setIsGoogleSubmitting(true);
     setMessage(null);
     try {
+      try {
+        sessionStorage.setItem("linea:tab-session", "1");
+        localStorage.setItem("linea:remember-login", "1");
+      } catch { void 0; }
       const result = await signInWithGoogle();
       if (result.error) {
         setMessage(result.error);
@@ -100,8 +122,7 @@ export default function LoginForm() {
       </div>
 
       <form className="register-form" noValidate onSubmit={handleSubmit}>
-        <div className="form-field">
-          <label htmlFor="login-email">Địa chỉ email *</label>
+        <FormField id="login-email" label="Địa chỉ email" required hint="Vui lòng nhập đúng email đã đăng ký." error={fieldErrors.email}>
           <input
             id="login-email"
             name="email"
@@ -110,15 +131,9 @@ export default function LoginForm() {
             aria-invalid={Boolean(fieldErrors.email)}
             aria-describedby={fieldErrors.email ? "login-email-error" : "login-email-hint"}
           />
-          {fieldErrors.email ? (
-            <p className="field-error" id="login-email-error">{fieldErrors.email}</p>
-          ) : (
-            <p className="field-hint" id="login-email-hint">Vui lòng nhập đúng email đã đăng ký.</p>
-          )}
-        </div>
+        </FormField>
 
-        <div className="form-field password-field">
-          <label htmlFor="login-password">Mật khẩu *</label>
+        <FormField id="login-password" label="Mật khẩu" required className="password-field" hint="Vui lòng nhập mật khẩu của bạn." error={fieldErrors.password}>
           <div className="password-input-wrap">
             <input
               id="login-password"
@@ -142,12 +157,12 @@ export default function LoginForm() {
               )}
             </button>
           </div>
-          {fieldErrors.password ? (
-            <p className="field-error" id="login-password-error">{fieldErrors.password}</p>
-          ) : (
-            <p className="field-hint" id="login-password-hint">Vui lòng nhập mật khẩu của bạn.</p>
-          )}
-        </div>
+        </FormField>
+
+        <label className="remember-login">
+          <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.currentTarget.checked)} />
+          <span>Ghi nhớ đăng nhập</span>
+        </label>
 
         {!configured && (
           <p className="form-message form-message-error" role="alert">
@@ -155,9 +170,9 @@ export default function LoginForm() {
           </p>
         )}
         {message && <p className="form-message form-message-error" role="alert">{message}</p>}
-        <button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
+        <Button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
           {isSubmitting ? "Đang xử lý..." : "Đăng nhập"}
-        </button>
+        </Button>
         <p className="next-step">Bước tiếp theo: quay lại ghi danh khóa học đã chọn.</p>
 
         <Link className="forgot-password-link" to="/forgot-password">Quên mật khẩu?</Link>
@@ -166,15 +181,15 @@ export default function LoginForm() {
           <span>hoặc</span>
         </div>
 
-        <button
+        <Button
           className="google-button"
-          type="button"
+          variant="outline"
           disabled={isGoogleSubmitting || !configured}
           onClick={handleGoogleSignIn}
         >
           <span className="google-mark" aria-hidden="true">G</span>
           {isGoogleSubmitting ? "Đang chuyển hướng..." : "Tiếp tục với Google"}
-        </button>
+        </Button>
 
         <p className="new-account-label">Chưa có tài khoản?</p>
         <Link className="create-account-button" to="/register">

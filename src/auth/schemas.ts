@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 const emailSchema = z.string().trim().email("Vui lòng nhập địa chỉ email hợp lệ.");
-const passwordSchema = z.string().min(8, "Mật khẩu cần có ít nhất 8 ký tự.");
+const passwordSchema = z.string()
+  .min(8, "Mật khẩu cần từ 8 đến 64 ký tự.")
+  .max(64, "Mật khẩu cần từ 8 đến 64 ký tự.")
+  .regex(/\p{L}/u, "Mật khẩu cần có ít nhất một chữ cái.")
+  .regex(/[0-9]/, "Mật khẩu cần có ít nhất một chữ số.");
 
 export const loginSchema = z.object({
   email: emailSchema,

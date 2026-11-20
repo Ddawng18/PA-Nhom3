@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider } from "react-router-dom";
 import AuthProvider from "./auth/AuthProvider";
+import CookieConsent from "./components/CookieConsent";
 import UserRoleProvider from "./auth/UserRoleProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoleGuard from "./components/AdminRoleGuard";
@@ -28,7 +29,10 @@ import CoursesPage from "./pages/CoursesPage";
 import StudioPage from "./pages/StudioPage";
 import CommunityPage from "./pages/CommunityPage";
 import DemoOrdersPage from "./pages/DemoOrdersPage";
+import ArtworksPage from "./pages/ArtworksPage";
 import AdminManagementPage from "./pages/AdminManagementPage";
+
+import "./styles/atelier.css";
 
 const router = createBrowserRouter(createRoutesFromElements(
   <>
@@ -72,6 +76,14 @@ const router = createBrowserRouter(createRoutesFromElements(
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/artworks"
+            element={
+              <ProtectedRoute>
+                <ArtworksPage />
               </ProtectedRoute>
             }
           />
@@ -138,7 +150,7 @@ const router = createBrowserRouter(createRoutesFromElements(
 ));
 
 function App() {
-  return <AuthProvider><UserRoleProvider><RouterProvider router={router} /></UserRoleProvider></AuthProvider>;
+  return <AuthProvider><UserRoleProvider><RouterProvider router={router} /><CookieConsent /></UserRoleProvider></AuthProvider>;
 }
 
 const root = document.getElementById("root");

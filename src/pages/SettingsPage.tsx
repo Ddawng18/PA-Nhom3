@@ -3,7 +3,6 @@ import {
   ArrowUpRight,
   Bell,
   BookOpen,
-  Check,
   ChevronRight,
   Clock3,
   CreditCard,
@@ -13,7 +12,7 @@ import {
   Sparkles,
   ShieldCheck,
 } from "lucide-react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
@@ -76,7 +75,7 @@ export default function SettingsPage() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const roleState = useUserRole();
-  const view = parseSettingsView(location.search);
+  const view = parseSettingsView(location.search, roleState.role);
   const [displayName, setDisplayName] = useState(user ? getDisplayName(user) : "");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
@@ -179,7 +178,7 @@ export default function SettingsPage() {
             <div>
               <p className="settings-eyebrow">TÀI KHOẢN CỦA BẠN</p>
               <h1>Hồ sơ &amp; Cài đặt</h1>
-              <p>Quản lý thông tin cá nhân, sở thích học tập và các thiết lập của tài khoản.</p>
+              <p>{roleState.role === "admin" ? "Quản lý thông tin cá nhân và thiết lập bảo mật của tài khoản." : "Quản lý thông tin cá nhân, sở thích học tập và các thiết lập của tài khoản."}</p>
               {verifiedRole && <p>Vai trò: {{ student: "Học viên", teacher: "Giáo viên", admin: "Quản trị viên" }[verifiedRole]}</p>}
             </div>
             <div className="settings-heading-actions">
@@ -200,7 +199,7 @@ export default function SettingsPage() {
           {profileError && <p className="settings-error" role="alert">{profileError}</p>}
 
           <nav className="settings-tabs" aria-label="Các mục cài đặt">
-            {getSettingsTabs().map((tab) => {
+            {getSettingsTabs(roleState.role).map((tab) => {
               const labels: Record<SettingsTab, string> = {
                 "ho-so": "Hồ sơ",
                 "ua-thich": "Ưa thích học tập",
@@ -310,7 +309,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="settings-column" hidden={view.tab === "bao-mat"}>
-              <section className="settings-card preferences-card" hidden={view.tab !== "ho-so" && view.tab !== "ua-thich"}>
+              <section className="settings-card preferences-card" hidden={roleState.role === "admin" || (view.tab !== "ho-so" && view.tab !== "ua-thich")}>
                 <div className="card-heading">
                   <span className="card-icon"><Sparkles aria-hidden="true" size={18} /></span>
                   <h2>Ưu thích học tập</h2>
@@ -367,28 +366,14 @@ export default function SettingsPage() {
                 </div>
               </section>
 
-              <section className="settings-card purchase-card" hidden={view.tab !== "ho-so" && view.tab !== "lich-su-mua-hang"}>
+              <section className="settings-card purchase-card" hidden={roleState.role === "admin" || (view.tab !== "ho-so" && view.tab !== "lich-su-mua-hang")}>
                 <div className="card-heading purchase-heading">
                   <span className="card-icon"><CreditCard aria-hidden="true" size={18} /></span>
                   <h2>Lịch sử mua hàng</h2>
-                  <p>Xem lại đơn hàng gần đây và trạng thái thanh toán.</p>
-                </div>
-                <div className="purchase-course">
-                  <span className="purchase-course-icon"><Check aria-hidden="true" size={17} /></span>
-                  <span>
-                    <strong>Vẽ nhân vật từ hình khối cơ bản</strong>
-                    <span>#LN-2026-1048 · 20/10/2026</span>
-                  </span>
-                  <span className="paid-badge">Đã thanh toán</span>
-                </div>
-                <div className="purchase-summary">
-                  <div><span>Giá gốc</span><span>599.000đ</span></div>
-                  <div><span>Ưu đãi khóa học</span><span>−200.000đ</span></div>
-                  <div className="purchase-total"><strong>Đã thanh toán</strong><strong>399.000đ</strong></div>
+                  <p>Đơn hàng và trạng thái thanh toán được quản lý tập trung tại trang Đơn hàng.</p>
                 </div>
                 <div className="purchase-actions">
-                  <button className="button button-primary" type="button">Vào khóa học</button>
-                  <button className="button button-outline" type="button">Xem biên nhận</button>
+                  <Link className="button button-primary" to="/orders">Xem lịch sử thanh toán</Link>
                 </div>
               </section>
             </div>

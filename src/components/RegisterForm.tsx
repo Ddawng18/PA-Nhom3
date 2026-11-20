@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { registerSchema } from "../auth/schemas";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
+import Button from "./ui/Button";
+import FormField from "./ui/FormField";
 
 type FieldErrors = Partial<Record<"displayName" | "email" | "password" | "confirmPassword", string>>;
 
@@ -124,8 +126,7 @@ export default function RegisterForm() {
       </div>
 
       <form className="register-form" noValidate onSubmit={handleSubmit}>
-        <div className="form-field">
-          <label htmlFor="display-name">Tên hiển thị *</label>
+        <FormField id="display-name" label="Tên hiển thị" required error={fieldErrors.displayName}>
           <input
             id="display-name"
             name="display-name"
@@ -134,28 +135,20 @@ export default function RegisterForm() {
             aria-invalid={Boolean(fieldErrors.displayName)}
             aria-describedby={fieldErrors.displayName ? "display-name-error" : undefined}
           />
-          {fieldErrors.displayName && (
-            <p className="field-error" id="display-name-error">{fieldErrors.displayName}</p>
-          )}
-        </div>
+        </FormField>
 
-        <div className="form-field">
-          <label htmlFor="email">Địa chỉ email *</label>
+        <FormField id="email" label="Địa chỉ email" required error={fieldErrors.email}>
           <input
             id="email"
             name="email"
             type="email"
             autoComplete="email"
             aria-invalid={Boolean(fieldErrors.email)}
-            aria-describedby={fieldErrors.email ? "register-email-error" : undefined}
+            aria-describedby={fieldErrors.email ? "email-error" : undefined}
           />
-          {fieldErrors.email && (
-            <p className="field-error" id="register-email-error">{fieldErrors.email}</p>
-          )}
-        </div>
+        </FormField>
 
-        <div className="form-field password-field">
-          <label htmlFor="password">Mật khẩu *</label>
+        <FormField id="password" label="Mật khẩu" required className="password-field" hint="Mật khẩu cần từ 8 đến 64 ký tự, gồm ít nhất một chữ cái và một chữ số." error={fieldErrors.password}>
           <div className="password-input-wrap">
             <input
               id="password"
@@ -163,7 +156,7 @@ export default function RegisterForm() {
               type={isPasswordVisible ? "text" : "password"}
               autoComplete="new-password"
               aria-invalid={Boolean(fieldErrors.password)}
-              aria-describedby={fieldErrors.password ? "register-password-error" : "password-hint"}
+              aria-describedby={fieldErrors.password ? "password-error" : "password-hint"}
             />
             <button
               className="password-toggle"
@@ -179,17 +172,9 @@ export default function RegisterForm() {
               )}
             </button>
           </div>
-          {fieldErrors.password ? (
-            <p className="field-error" id="register-password-error">{fieldErrors.password}</p>
-          ) : (
-            <p className="field-hint" id="password-hint">
-              Mật khẩu cần có ít nhất 8 ký tự.
-            </p>
-          )}
-        </div>
+        </FormField>
 
-        <div className="form-field password-field">
-          <label htmlFor="confirm-password">Xác nhận mật khẩu *</label>
+        <FormField id="confirm-password" label="Xác nhận mật khẩu" required className="password-field" error={fieldErrors.confirmPassword}>
           <div className="password-input-wrap">
             <input
               id="confirm-password"
@@ -213,10 +198,7 @@ export default function RegisterForm() {
               )}
             </button>
           </div>
-          {fieldErrors.confirmPassword && (
-            <p className="field-error" id="confirm-password-error">{fieldErrors.confirmPassword}</p>
-          )}
-        </div>
+        </FormField>
 
         {!configured && (
           <p className="form-message form-message-error" role="alert">
@@ -233,19 +215,19 @@ export default function RegisterForm() {
             {isResending ? "Đang xử lý..." : "Gửi lại email xác nhận"}
           </button>
         )}
-        <button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
+        <Button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
           {isSubmitting ? "Đang xử lý..." : "Tạo tài khoản & tiếp tục"}
-        </button>
+        </Button>
         <p className="next-step">Bước tiếp theo: quay lại ghi danh khóa học đã chọn.</p>
 
         <div className="form-divider" aria-label="hoặc">
           <span>hoặc</span>
         </div>
 
-        <button className="google-button" type="button" disabled={isGoogleSubmitting || !configured} onClick={handleGoogleSignIn}>
+        <Button className="google-button" variant="outline" disabled={isGoogleSubmitting || !configured} onClick={handleGoogleSignIn}>
           <span className="google-mark" aria-hidden="true">G</span>
           {isGoogleSubmitting ? "Đang chuyển hướng..." : "Tiếp tục với Google"}
-        </button>
+        </Button>
       </form>
 
       <p className="existing-account">

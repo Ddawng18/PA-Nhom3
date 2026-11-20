@@ -5,6 +5,7 @@ using Linea.Api.Security;
 using Linea.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace Linea.Api.Controllers;
@@ -41,6 +42,7 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
             submission = SubmissionView(submissions.SingleOrDefault(s => s.AssignmentId == a.id), grades) }));
     }
 
+    [EnableRateLimiting("writes")]
     [HttpPost("{id:long}/submission"), Authorize(Policy = AuthPolicies.LearnerAccess)]
     [RequestSizeLimit(11 * 1024 * 1024), RequestFormLimits(MultipartBodyLengthLimit = 11 * 1024 * 1024)]
     public async Task<IActionResult> Submit(long id, [FromForm] IFormFile file, CancellationToken ct)
@@ -109,6 +111,7 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
 
     public sealed record SaveAssignment(long LessonId, string Prompt, DateTimeOffset? Deadline, bool Required);
 
+    [EnableRateLimiting("writes")]
     [HttpPost("teacher"), Authorize(Policy = AuthPolicies.TeacherAccess)]
     public async Task<IActionResult> Create(SaveAssignment request, CancellationToken ct)
     {
@@ -128,6 +131,7 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
 
     public sealed record GradeRequest(decimal Score, string Feedback, DateTimeOffset ExpectedUpdatedAt, DateTimeOffset? ExpectedGradedAt);
 
+    [EnableRateLimiting("writes")]
     [HttpPut("submissions/{id:long}/grade"), Authorize(Policy = AuthPolicies.TeacherAccess)]
     public async Task<IActionResult> Grade(long id, GradeRequest request, CancellationToken ct)
     {

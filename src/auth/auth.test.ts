@@ -18,8 +18,8 @@ describe("registerSchema", () => {
       registerSchema.safeParse({
         displayName: "Linh",
         email: "linh@example.com",
-        password: "password",
-        confirmPassword: "password",
+        password: "password1",
+        confirmPassword: "password1",
       }).success
     ).toBe(true);
     expect(
@@ -32,12 +32,18 @@ describe("registerSchema", () => {
     ).toBe(false);
   });
 
+  it("requires letters, digits and the 64-character limit", () => {
+    expect(registerSchema.safeParse({ displayName: "Linh", email: "linh@example.com", password: "12345678", confirmPassword: "12345678" }).success).toBe(false);
+    expect(registerSchema.safeParse({ displayName: "Linh", email: "linh@example.com", password: "password", confirmPassword: "password" }).success).toBe(false);
+    expect(registerSchema.safeParse({ displayName: "Linh", email: "linh@example.com", password: "a".repeat(65) + "1", confirmPassword: "a".repeat(65) + "1" }).success).toBe(false);
+  });
+
   it("rejects a password confirmation that does not match", () => {
     expect(
       registerSchema.safeParse({
         displayName: "Linh",
         email: "linh@example.com",
-        password: "password",
+        password: "password1",
         confirmPassword: "different",
       }).success
     ).toBe(false);
