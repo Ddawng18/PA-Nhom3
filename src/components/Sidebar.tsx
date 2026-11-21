@@ -1,10 +1,13 @@
 import {
   BookOpen,
   ChartNoAxesColumnIncreasing,
+  ClipboardList,
   FolderHeart,
+  GraduationCap,
   LayoutDashboard,
   PenTool,
   Settings,
+  ShieldAlert,
   Sparkles,
   Users,
   LogOut,
@@ -37,7 +40,10 @@ const studentNavigation = [
 ];
 
 const teacherNavigation = [
+  { label: "Tổng quan", icon: LayoutDashboard, to: "/teacher" },
   { label: "Khóa học của tôi", icon: BookOpen, to: "/my-courses" },
+  { label: "Bài chờ chấm", icon: ClipboardList, to: "/teacher/submissions" },
+  { label: "Học viên", icon: GraduationCap, to: "/teacher/students" },
   { label: "Tạo khóa học", icon: Sparkles, to: "/teacher/courses/new" },
   { label: "Hồ sơ giáo viên", icon: PenTool, to: "/teacher/onboarding" },
   { label: "Cộng đồng", icon: Users, to: "/community" },
@@ -45,7 +51,9 @@ const teacherNavigation = [
 ];
 
 const adminNavigation = [
+  { label: "Tổng quan", icon: LayoutDashboard, to: "/admin" },
   { label: "Quản trị", icon: Users, to: "/admin/manage" },
+  { label: "Kiểm duyệt cộng đồng", icon: ShieldAlert, to: "/admin/community" },
   { label: "Cộng đồng", icon: Users, to: "/community" },
   { label: "Cài đặt", icon: Settings, to: "/settings" },
 ];
@@ -109,7 +117,7 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
     : role === "teacher"
       ? teacherNavigation
       : studentNavigation;
-  const homePath = role === "admin" ? "/admin/manage" : role === "teacher" ? "/my-courses" : "/dashboard";
+  const homePath = role === "admin" ? "/admin" : role === "teacher" ? "/teacher" : "/dashboard";
 
   return (
     <aside className="settings-sidebar">

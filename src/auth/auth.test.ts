@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getAuthErrorMessage } from "./errors";
 import { loginSchema, registerSchema } from "./schemas";
+import { readRememberState, shouldKeepStoredSession } from "./sessionPolicy";
 
 describe("loginSchema", () => {
   it("accepts a valid email and a non-empty password without registration complexity rules", () => {
@@ -47,6 +48,29 @@ describe("registerSchema", () => {
         confirmPassword: "different",
       }).success
     ).toBe(false);
+  });
+});
+
+describe("remember-me session policy", () => {
+  const storage = (value: string | null) => ({ getItem: () => value });
+
+  it("keeps a session when remember me is enabled", () => {
+    expect(shouldKeepStoredSession(true, { remember: true, tabMarker: false })).toBe(true);
+  });
+
+  it("keeps the tab session on reload when remember me is disabled", () => {
+    expect(shouldKeepStoredSession(true, { remember: false, tabMarker: true })).toBe(true);
+  });
+
+  it("drops a remembered Supabase session in a new tab when remember me is disabled", () => {
+    expect(shouldKeepStoredSession(true, { remember: false, tabMarker: false })).toBe(false);
+    expect(shouldKeepStoredSession(false, { remember: false, tabMarker: false })).toBe(true);
+  });
+
+  it("reads explicit opt-out and treats missing storage as remember-me enabled", () => {
+    expect(readRememberState(storage("0"), storage(null))).toEqual({ remember: false, tabMarker: false });
+    expect(readRememberState(storage("1"), storage("1"))).toEqual({ remember: true, tabMarker: true });
+    expect(readRememberState(storage(null), storage(null))).toEqual({ remember: true, tabMarker: false });
   });
 });
 

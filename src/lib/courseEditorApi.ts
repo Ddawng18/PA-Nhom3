@@ -63,7 +63,7 @@ export async function saveCourseEditor(
         order: rubric.thu_tu,
       })) ?? []),
       expectedVersion,
-      courseInfo,
+      courseInfo: courseInfo ? { ...courseInfo, ngay_khai_giang: courseInfo.ngay_khai_giang || null } : null,
     },
   });
   return z.object({

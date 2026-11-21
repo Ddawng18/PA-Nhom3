@@ -4,6 +4,7 @@ import type { CatalogCourse } from "../lib/catalogApi";
 import {
   formatLessonCount,
   formatPriceLabel,
+  formatStartDate,
   formatStudentCount,
 } from "../logic/catalog";
 import { getCourseLevelLabel } from "../logic/courseEditor";
@@ -18,10 +19,13 @@ export default function CatalogCourseCard({ course }: CatalogCourseCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const price = formatPriceLabel(course.gia_vnd);
   const students = formatStudentCount(course.so_hoc_vien);
+  const startDate = formatStartDate(course.ngay_khai_giang);
   const meta = [
     course.ten_giao_vien,
     getCourseLevelLabel(course.cap_do),
     course.so_bai_hoc > 0 ? formatLessonCount(course.so_bai_hoc) : null,
+    course.thoi_luong,
+    startDate ? `Khai giảng ${startDate}` : null,
   ].filter(Boolean).join(" · ");
 
   return (
