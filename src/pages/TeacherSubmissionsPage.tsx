@@ -6,6 +6,7 @@ import SubmissionImage from "../components/SubmissionImage";
 import { requestAdminApi } from "../lib/adminApi";
 import { getCourse } from "../lib/courseApi";
 import { loadTeacherWork, saveGrade, learningError, type TeacherWork } from "../lib/learningApi";
+import { loadSubmissionHistory } from "../lib/teacherApi";
 import "../styles/settings.css";
 import "../styles/learning.css";
 
@@ -14,6 +15,17 @@ function GradeCard({ row, token, prompt, onSaved }: { row: TeacherWork["submissi
   const [feedback, setFeedback] = useState(row.grade?.feedback ?? "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [history, setHistory] = useState<Awaited<ReturnType<typeof loadSubmissionHistory>>>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  async function toggleHistory() {
+    if (historyOpen) { setHistoryOpen(false); return; }
+    setHistoryOpen(true); setHistoryLoading(true); setHistoryError("");
+    try { setHistory(await loadSubmissionHistory(token, row.id)); }
+    catch { setHistoryError("Không thể tải lịch sử chấm."); }
+    finally { setHistoryLoading(false); }
+  }
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError("");
     try { await saveGrade(token, row, Number(score), feedback); onSaved(); }
@@ -22,7 +34,7 @@ function GradeCard({ row, token, prompt, onSaved }: { row: TeacherWork["submissi
   }
   return <article className="settings-card assignment-card">
     <h2>Bài nộp #{row.id} · {row.grade ? "Đã chấm" : "Chờ chấm"}</h2><p className="learning-text">{prompt}</p>
-    <p>Học viên: {row.studentId}</p><p>Cập nhật: {new Date(row.updatedAt).toLocaleString("vi-VN")}</p>
+    <p>Học viên: {row.studentName || row.studentId}</p><p>Cập nhật: {new Date(row.updatedAt).toLocaleString("vi-VN")}</p>
     <SubmissionImage token={token} id={row.id} />
     <form onSubmit={e => void submit(e)}>
       <label>Điểm / 10<input type="number" min={0} max={10} step="0.01" required disabled={busy} value={score} onChange={e => setScore(e.target.value)} /></label>
@@ -31,6 +43,16 @@ function GradeCard({ row, token, prompt, onSaved }: { row: TeacherWork["submissi
       {row.grade && <p>Mỗi lần thay đổi điểm/nhận xét đều được lưu vào lịch sử.</p>}
       {error && <p className="settings-error" role="alert">{error} Bạn có thể bấm tải lại danh sách để lấy bản mới nhất.</p>}
     </form>
+    <button className="button button-outline" type="button" aria-expanded={historyOpen} onClick={() => void toggleHistory()}>
+      {historyOpen ? "Ẩn lịch sử chấm" : "Lịch sử chấm"}
+    </button>
+    {historyOpen && <section aria-label="Lịch sử chấm bài">
+      {historyLoading ? <p role="status">Đang tải lịch sử...</p>
+        : historyError ? <p className="settings-error" role="alert">{historyError}</p>
+        : history.length === 0 ? <p>Chưa có lần chấm nào.</p>
+        : <ol>{history.map(entry =>
+          <li key={entry.id}>{new Date(entry.occurredAt).toLocaleString("vi-VN")} · {entry.status}{entry.reason ? ` · ${entry.reason}` : ""}</li>)}</ol>}
+    </section>}
   </article>;
 }
 

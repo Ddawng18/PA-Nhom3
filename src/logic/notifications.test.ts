@@ -28,9 +28,9 @@ describe("notification role filtering", () => {
     expect(filterForRole("teacher", items).map(item => item.loai_thong_bao)).toEqual(["he_thong", "he_thong"]);
   });
   it("returns the permitted types for each role", () => {
-    expect(getAllowedTypes("student")).toEqual(["bai_hoc", "quang_cao", "loi_nhan", "he_thong"]);
-    expect(getAllowedTypes("teacher")).toEqual(["bai_hoc", "he_thong", "loi_nhan"]);
-    expect(getAllowedTypes("admin")).toEqual(["duyet_ho_so", "he_thong"]);
+    expect(getAllowedTypes("student")).toEqual(["bai_hoc", "quang_cao", "loi_nhan", "he_thong", "cong_dong"]);
+    expect(getAllowedTypes("teacher")).toEqual(["bai_hoc", "he_thong", "loi_nhan", "cong_dong"]);
+    expect(getAllowedTypes("admin")).toEqual(["duyet_ho_so", "he_thong", "cong_dong"]);
     expect(getAllowedTypes("teacher")).not.toContain("quang_cao");
     expect(getAllowedTypes("teacher")).not.toContain("duyet_ho_so");
   });
@@ -42,15 +42,18 @@ describe("notification role filtering", () => {
       createItem("loi_nhan"),
       createItem("he_thong"),
       createItem("duyet_ho_so"),
+      createItem("community_like"),
+      createItem("community_comment"),
+      createItem("cong_dong"),
       createItem("loai_la"),
     ];
 
     expect(filterForRole("student", items).map((item) => item.loai_thong_bao))
-      .toEqual(["bai_hoc", "quang_cao", "loi_nhan", "he_thong"]);
+      .toEqual(["bai_hoc", "quang_cao", "loi_nhan", "he_thong", "cong_dong", "cong_dong", "cong_dong"]);
     expect(filterForRole("teacher", items).map((item) => item.loai_thong_bao))
-      .toEqual(["bai_hoc", "loi_nhan", "he_thong"]);
+      .toEqual(["bai_hoc", "loi_nhan", "he_thong", "cong_dong", "cong_dong", "cong_dong"]);
     expect(filterForRole("admin", items).map((item) => item.loai_thong_bao))
-      .toEqual(["he_thong", "duyet_ho_so"]);
+      .toEqual(["he_thong", "duyet_ho_so", "cong_dong", "cong_dong", "cong_dong"]);
   });
 });
 
@@ -70,6 +73,7 @@ describe("notification titles and time", () => {
   it("uses the role-specific message title", () => {
     expect(getNotificationTitle("loi_nhan", "student")).toBe("Lời nhắn từ giảng viên");
     expect(getNotificationTitle("loi_nhan", "teacher")).toBe("Lời nhắn từ học viên");
+    expect(getNotificationTitle("cong_dong", "student")).toBe("Hoạt động cộng đồng");
   });
 
   it("formats recent and calendar-relative timestamps", () => {

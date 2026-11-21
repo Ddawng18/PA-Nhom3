@@ -82,6 +82,11 @@ export function formatStudentCount(count: number): string | null {
   return count > 0 ? `${new Intl.NumberFormat("vi-VN").format(count)} học viên` : null;
 }
 
+export function formatStartDate(value: string | null | undefined): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? "");
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : null;
+}
+
 export function getInitials(value: string | null | undefined): string {
   const words = (value ?? "").trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return "?";

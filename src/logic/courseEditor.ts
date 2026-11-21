@@ -47,6 +47,10 @@ export const courseInfoSchema = z.object({
     .min(2, "Chủ đề cần có ít nhất 2 ký tự.")
     .max(100, "Chủ đề không được dài quá 100 ký tự."),
   anh_dai_dien: httpsUrlSchema.refine(value => value.length <= 500, "URL ảnh không được dài quá 500 ký tự."),
+  thoi_luong: z.string().trim().max(50, "Thời lượng tối đa 50 ký tự.").default(""),
+  ngay_khai_giang: z.string().trim()
+    .refine(value => !value || /^\d{4}-\d{2}-\d{2}$/.test(value), "Ngày khai giảng không hợp lệ.")
+    .default(""),
 });
 
 export type CourseInfo = z.infer<typeof courseInfoSchema>;

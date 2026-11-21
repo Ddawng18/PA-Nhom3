@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCatalogQuery,
   formatPriceLabel,
+  formatStartDate,
   formatVnd,
   getInitials,
   parseCatalogQuery,
@@ -46,6 +47,12 @@ describe("catalog formatting", () => {
     expect(formatPriceLabel(null)).toBeNull();
     expect(formatPriceLabel(0)).toBe("Miễn phí");
     expect(formatVnd(399000)).toMatch(/^₫399[.\s]000$/);
+  });
+
+  it("formats optional start dates without timezone drift", () => {
+    expect(formatStartDate("2026-12-01")).toBe("01/12/2026");
+    expect(formatStartDate(null)).toBeNull();
+    expect(formatStartDate("01/12/2026")).toBeNull();
   });
 
   it("builds initials", () => {

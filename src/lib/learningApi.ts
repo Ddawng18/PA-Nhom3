@@ -50,7 +50,7 @@ export async function submitAssignment(token: string, assignmentId: number, file
 export const teacherWorkSchema = z.object({
   lessons: z.array(z.object({ id, title: z.string() })),
   assignments: z.array(z.object({ id, lessonId: id, prompt: z.string(), deadline: z.string().nullable(), required: z.boolean() })),
-  submissions: z.array(submissionSchema.extend({ assignmentId: id, studentId: z.string() })),
+  submissions: z.array(submissionSchema.extend({ assignmentId: id, studentId: z.string(), studentName: z.string().optional() })),
 });
 export type TeacherWork = z.infer<typeof teacherWorkSchema>;
 export async function loadTeacherWork(token: string, courseId: string, signal?: AbortSignal) {
