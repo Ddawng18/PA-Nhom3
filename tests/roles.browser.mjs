@@ -61,7 +61,7 @@ async function fixtures(page, role) {
     else if (path === "/api/admin/audit") data = { items: overview.audit, total: 1, page: 1 };
     else if (path === "/api/admin/community/reports") data = [report];
     else if (path.startsWith("/api/admin/community/reports/")) data = { id: 1, action: "HIDE", postStatus: "HIDDEN" };
-    else data = {};
+    else data = [];
     await route.fulfill({ contentType: "application/json", body: JSON.stringify(data) });
   });
 }
@@ -78,8 +78,25 @@ try {
   await teacher.goto(`${origin}/teacher`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await verifyWorkspace(teacher, "Tổng quan giáo viên");
   await teacher.getByText("Bài chờ chấm gần đây").waitFor();
+  const navigation = teacher.locator(".settings-mobile-drawer .settings-navigation");
+  const menu = teacher.locator(".settings-nav-toggle");
+  assert.equal(await menu.isVisible(), false);
+  await teacher.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await navigation.isVisible(), false);
+  await menu.click();
+  assert.equal(await menu.getAttribute("aria-expanded"), "true");
+  assert.equal(await teacher.getByRole("dialog", { name: "Menu điều hướng" }).isVisible(), true);
+  await navigation.getByRole("link", { name: "Học viên", exact: true }).focus();
+  await teacher.keyboard.press("Escape");
+  assert.equal(await navigation.isVisible(), false);
+  assert.equal(await menu.evaluate(button => button === document.activeElement), true);
+  await menu.click();
+  await teacher.mouse.click(380, 400);
+  assert.equal(await navigation.isVisible(), false);
+  await menu.click();
   await teacher.getByRole("link", { name: "Bài chờ chấm", exact: true }).click();
   await teacher.waitForURL("**/teacher/submissions");
+  assert.equal(await navigation.isVisible(), false);
   await teacher.getByText("Pha màu").waitFor();
   await verifyWorkspace(teacher, "Bài nộp của học viên");
   await teacher.getByRole("link", { name: "Học viên", exact: true }).click();
@@ -103,8 +120,22 @@ try {
   await verifyWorkspace(admin, "Báo cáo bài viết");
   await admin.getByRole("button", { name: "Ẩn bài viết", exact: true }).click();
   await admin.getByText("Đã ẩn bài").first().waitFor();
+
+  const student = await browser.newPage();
+  await fixtures(student, "student");
+  for (const [page, destination, heading] of [
+    [student, "/dashboard", "Sổ học tập"],
+    [teacher, "/teacher", "Tổng quan giáo viên"],
+    [admin, "/admin", "Tổng quan quản trị"],
+  ]) {
+    for (const path of ["/", "/dashboard", "/teacher", "/admin"]) {
+      await page.goto(origin + path, { waitUntil: "domcontentloaded" });
+      await page.waitForURL(origin + destination);
+      await page.getByRole("heading", { name: heading, exact: true }).waitFor();
+    }
+  }
   assert.deepEqual(errors, []);
-  console.log("PASS teacher overview/queue/students and admin overview/audit/moderation");
+  console.log("PASS role-specific dashboards, teacher workspace and admin workspace");
 } finally {
   await browser?.close();
   if (process.platform === "win32") await new Promise(resolve => {

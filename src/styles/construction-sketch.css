@@ -1,0 +1,92 @@
+.construction-sketch {
+  position: absolute;
+  overflow: hidden;
+  color: #e5cf9b;
+  opacity: 0.32;
+  pointer-events: none;
+}
+
+.construction-sketch--login {
+  right: 16px;
+  bottom: 16px;
+  width: min(52%, 280px);
+  aspect-ratio: 5 / 4;
+}
+
+.construction-sketch--summary {
+  inset: 0 64px 0 auto;
+  width: 180px;
+  opacity: 0.26;
+}
+
+.construction-sketch-sphere {
+  position: absolute;
+  left: 12%;
+  top: 10%;
+  width: 58%;
+  aspect-ratio: 1;
+  border: 1px solid;
+  border-radius: 50%;
+  transform: rotate(-27deg);
+}
+
+.construction-sketch-sphere::before,
+.construction-sketch-sphere::after {
+  position: absolute;
+  border: 1px solid;
+  border-radius: 50%;
+  content: "";
+}
+
+.construction-sketch-sphere::before { inset: -1px 30%; }
+.construction-sketch-sphere::after { inset: 32% -1px; }
+
+.construction-sketch-axis {
+  position: absolute;
+  top: 42%;
+  left: 5%;
+  width: 75%;
+  border-top: 1px dashed;
+  transform: rotate(-27deg);
+}
+
+.construction-sketch-cube {
+  position: absolute;
+  left: 70%;
+  bottom: 12%;
+  width: 18%;
+  aspect-ratio: 1;
+  border: 1px solid;
+}
+
+.construction-sketch-cube::before,
+.construction-sketch-cube::after {
+  position: absolute;
+  border: 1px solid;
+  content: "";
+}
+
+.construction-sketch-cube::before {
+  inset: auto -1px 100%;
+  height: 40%;
+  border-bottom: 0;
+  transform: skewX(-45deg);
+  transform-origin: bottom;
+}
+
+.construction-sketch-cube::after {
+  inset: -1px auto -1px 100%;
+  width: 40%;
+  border-left: 0;
+  transform: skewY(-45deg);
+  transform-origin: left;
+}
+
+@media (max-width: 760px) {
+  .construction-sketch--login { inset: 0 0 0 auto; width: 100px; aspect-ratio: auto; }
+  .construction-sketch--summary { right: 48px; width: 96px; }
+}
+
+@media (max-width: 360px) {
+  .construction-sketch { opacity: 0.15; }
+}

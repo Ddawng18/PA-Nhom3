@@ -37,6 +37,7 @@ try {
         logoutCalls += 1;
         return route.fulfill({ status: 204 });
       }
+      if (pathname === "/rest/v1/nguoi_dung") return route.fulfill({ json: [{ role: "student" }] });
       return route.fulfill({ json: pathname.endsWith("/token") ? session : pathname.endsWith("/user") ? session.user : [] });
     });
     await context.route("**/api/**", route => route.fulfill({ json: {} }));

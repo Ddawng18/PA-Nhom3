@@ -225,3 +225,103 @@
     font-size: 28px;
   }
 }
+
+.register-page.register-page--login {
+  background: #f5f2e9;
+}
+
+.register-page--login .register-main {
+  max-width: 1120px;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 424px);
+  align-items: stretch;
+  gap: 16px;
+  padding: 48px 32px;
+}
+
+.login-intro {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: clamp(32px, 6vw, 88px);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #15382b, #456130);
+  color: #fffaf0;
+}
+
+.login-intro > :not(.construction-sketch) { position: relative; }
+
+.login-intro h2 {
+  margin: 0;
+  font: 600 clamp(44px, 5vw, 72px) / 1.02 var(--font-display);
+}
+
+.login-intro p {
+  max-width: 32ch;
+  margin: 20px 0 0;
+  color: #e9ead8;
+  line-height: 1.6;
+}
+
+.register-page--login .login-panel {
+  width: 100%;
+  padding: 32px;
+  border-radius: 16px;
+}
+
+.register-page--login .register-form {
+  gap: 16px;
+}
+
+.login-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 13px;
+}
+
+.login-options .forgot-password-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+}
+
+.login-signup {
+  margin: 0;
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.login-signup a {
+  display: inline-block;
+  padding-block: 8px;
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.login-panel .google-mark {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+
+@media (max-width: 760px) {
+  .register-page--login .register-main {
+    max-width: 480px;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    padding: 24px 16px 40px;
+  }
+
+  .register-page--login .register-main { gap: 16px; }
+  .login-intro { padding: 24px; }
+  .login-intro h2 { font-size: 32px; }
+  .login-intro h2 br, .login-intro p { display: none; }
+  .register-page--login .login-panel { padding: 24px; }
+}

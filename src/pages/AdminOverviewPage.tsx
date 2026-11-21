@@ -32,38 +32,55 @@ export default function AdminOverviewPage() {
   if (!user) return null;
   const name = displayName(user.email, user.user_metadata);
   const counts = data?.counts;
-  return <div className="settings-shell">
+  return <div className="settings-shell workspace-overview">
     <Sidebar user={user} displayName={name} initials={name.slice(0, 2).toUpperCase()} />
     <main className="settings-main"><div className="settings-content">
-      <header className="settings-page-heading">
-        <div><p className="settings-eyebrow">QUẢN TRỊ HỆ THỐNG</p><h1>Tổng quan quản trị</h1><p>Theo dõi người dùng, khóa học, cộng đồng và nhật ký kiểm toán.</p></div>
-        <Link className="button button-outline" to="/admin/audit">Nhật ký kiểm toán</Link>
-      </header>
+      <section className="workspace-summary" aria-labelledby="admin-overview-title">
+        <header className="workspace-summary-heading">
+          <h1 id="admin-overview-title">Tổng quan quản trị</h1>
+          <Link className="button button-outline" to="/admin/audit">Nhật ký kiểm toán</Link>
+        </header>
+        {!loading && !error && counts && (
+          <div className="workspace-summary-grid" role="group" aria-label="Việc cần xử lý">
+            {([
+              ["Khóa học chờ duyệt", counts.pendingCourses, "/admin/manage?tab=review&muc=khoa-hoc"],
+              ["Hồ sơ giáo viên chờ duyệt", counts.pendingTeachers, "/admin/manage?tab=review&muc=giao-vien"],
+              ["Báo cáo chờ xử lý", counts.openReports, "/admin/community"],
+            ] as const).map(([label, count, to]) => (
+              <Link key={label} className="workspace-summary-item workspace-summary-metric" to={to}>
+                <strong>{count}</strong> {label}
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
       {loading ? <p role="status">Đang tải tổng quan...</p>
         : error ? <section className="settings-card"><p className="settings-error" role="alert">{error}</p><button className="button button-outline" type="button" onClick={() => setAttempt(value => value + 1)}>Thử lại</button></section>
         : counts && data && <>
-          <section className="teacher-stat-grid" aria-label="Số liệu hệ thống">
-            {([["Người dùng", counts.users, "/admin/manage"], ["Giáo viên", counts.teachers, "/admin/manage"],
-              ["Chờ duyệt giáo viên", counts.pendingTeachers, "/admin/manage"], ["Khóa học", counts.courses, "/admin/manage"],
-              ["Chờ duyệt khóa học", counts.pendingCourses, "/admin/manage"], ["Khóa đang ẩn", counts.hiddenCourses, "/admin/manage"],
-              ["Bài cộng đồng", counts.posts, "/community"], ["Bài bị ẩn", counts.hiddenPosts, "/admin/community"],
-              ["Báo cáo chờ xử lý", counts.openReports, "/admin/community"], ["Đơn hàng demo", counts.orders, "/admin"],
-              ["Doanh thu demo (₫)", counts.revenueVnd, "/admin"]] as const).map(([label, value, to]) =>
-              <Link className={`settings-card teacher-stat${label === "Báo cáo chờ xử lý" && value > 0 ? " needs-attention" : ""}`} to={to} key={label}>
-                <span>{label}</span><strong>{label.startsWith("Doanh thu") ? new Intl.NumberFormat("vi-VN").format(value) : value}</strong>
-              </Link>)}
-          </section>
           <section className="settings-card">
             <div className="teacher-section-heading"><h2>Báo cáo cộng đồng mới</h2><Link to="/admin/community">Mở hàng đợi kiểm duyệt</Link></div>
             {data.reports.length === 0 ? <p>Không có báo cáo đang chờ.</p>
               : <ul className="teacher-simple-list">{data.reports.map(report =>
                 <li key={report.id}><span>Bài #{report.postId}</span><span>{report.reason}</span><time dateTime={report.createdAt}>{new Date(report.createdAt).toLocaleString("vi-VN")}</time></li>)}</ul>}
           </section>
+
           <section className="settings-card">
             <div className="teacher-section-heading"><h2>Hoạt động quản trị gần đây</h2><Link to="/admin/audit">Xem tất cả</Link></div>
             {data.audit.length === 0 ? <p>Chưa có hoạt động.</p>
               : <ul className="teacher-simple-list">{data.audit.map(entry =>
                 <li key={entry.id}><span>{entry.actor} · {entry.objectType} #{entry.objectId}</span><span>{entry.previousStatus ? `${entry.previousStatus} → ` : ""}{entry.status}</span><time dateTime={entry.occurredAt}>{new Date(entry.occurredAt).toLocaleString("vi-VN")}</time></li>)}</ul>}
+          </section>
+          <section className="settings-card" aria-labelledby="admin-system-metrics">
+            <div className="teacher-section-heading"><h2 id="admin-system-metrics">Số liệu hệ thống</h2></div>
+            <dl className="workspace-metrics">
+              {([
+                ["Người dùng", counts.users], ["Giáo viên", counts.teachers],
+                ["Khóa học", counts.courses], ["Khóa đang ẩn", counts.hiddenCourses],
+                ["Bài cộng đồng", counts.posts], ["Bài bị ẩn", counts.hiddenPosts],
+                ["Đơn hàng demo", counts.orders],
+                ["Doanh thu demo", `${new Intl.NumberFormat("vi-VN").format(counts.revenueVnd)} ₫`],
+              ] as const).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+            </dl>
           </section>
         </>}
     </div></main>
