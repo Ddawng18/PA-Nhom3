@@ -1,3 +1,5 @@
+import Button from "../components/ui/Button";
+import FormField from "../components/ui/FormField";
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -111,7 +113,7 @@ export default function AdminManagementPage() {
         }}><RefreshCw size={20} aria-hidden="true" className={loading || approvals.teacherLoading || approvals.courseLoading ? "is-spinning" : undefined} /></button>
       </nav>
       {tab === "review" ? <ApprovalsPanel section={section} data={approvals} /> : <section className="admin-manage-panel"><div className="admin-manage-panel-head"><div><h2>{tab === "users" ? "Danh sách người dùng" : "Danh sách khóa học"}</h2><p>{loading ? "Đang tải dữ liệu" : `${total} kết quả`}</p></div>
-      <form className="admin-manage-search" onSubmit={(e) => { e.preventDefault(); setPageNumber(1); setQuery(search.trim()); }}><label className="sr-only" htmlFor="admin-search">Tìm kiếm</label><input id="admin-search" placeholder={tab === "users" ? "Tìm theo tên hoặc email" : "Tìm theo tên khóa học"} value={search} onChange={(e) => setSearch(e.target.value)} /><button type="submit">Tìm kiếm</button></form></div>
+      <form className="admin-manage-search" onSubmit={(e) => { e.preventDefault(); setPageNumber(1); setQuery(search.trim()); }}><FormField className="admin-search-field" id="admin-search" label="Tìm kiếm"><input id="admin-search" placeholder={tab === "users" ? "Tìm theo tên hoặc email" : "Tìm theo tên khóa học"} value={search} onChange={(e) => setSearch(e.target.value)} /></FormField><Button type="submit">Tìm kiếm</Button></form></div>
       {notice && <p className="admin-manage-notice" role="status">{notice}</p>}
       {error && <p className="admin-manage-error" role="alert">{error} <button type="button" onClick={() => setRefresh((n) => n + 1)}>Tải lại</button></p>}
       {loading ? <p className="admin-manage-empty" role="status">Đang tải...</p> : <>

@@ -32,6 +32,15 @@ const students = { total: 1, page: 1, items: [{ studentId: "student-1", studentN
 const report = { id: 1, postId: 7, postTitle: "Tranh thử", postBody: "Nội dung", postStatus: "VISIBLE", author: "Minh Anh", reporter: "Lan", reason: "Nội dung đạo nhái", status: "OPEN", createdAt: now, reviewedAt: null, note: null };
 
 let browser;
+async function verifyWorkspace(page, heading) {
+  const main = page.getByRole("main");
+  await main.getByRole("heading", { name: heading }).waitFor();
+  assert.match(await main.ariaSnapshot(), new RegExp(heading));
+  for (const width of [390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, `${heading}, ${width}px`);
+  }
+}
 async function fixtures(page, role) {
   const user = { id: `${role}-1`, email: `${role}@example.test`, user_metadata: {} };
   await page.route(/\/src\/auth\/useAuth\.ts(?:\?|$)/, route => route.fulfill({ contentType: "application/javascript",
@@ -67,27 +76,31 @@ try {
   const errors = []; teacher.on("pageerror", error => errors.push(error.message));
   await fixtures(teacher, "teacher");
   await teacher.goto(`${origin}/teacher`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await teacher.getByRole("heading", { name: "Tổng quan giáo viên" }).waitFor();
+  await verifyWorkspace(teacher, "Tổng quan giáo viên");
   await teacher.getByText("Bài chờ chấm gần đây").waitFor();
   await teacher.getByRole("link", { name: "Bài chờ chấm", exact: true }).click();
   await teacher.waitForURL("**/teacher/submissions");
   await teacher.getByText("Pha màu").waitFor();
+  await verifyWorkspace(teacher, "Bài nộp của học viên");
   await teacher.getByRole("link", { name: "Học viên", exact: true }).click();
   await teacher.waitForURL("**/teacher/students");
   await teacher.getByText("Mai Anh").waitFor();
+  await verifyWorkspace(teacher, "Học viên theo khóa học");
 
   const admin = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   admin.setDefaultTimeout(30000);
   admin.on("pageerror", error => errors.push(error.message));
   await fixtures(admin, "admin");
   await admin.goto(`${origin}/admin`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await admin.getByRole("heading", { name: "Tổng quan quản trị" }).waitFor();
+  await verifyWorkspace(admin, "Tổng quan quản trị");
   await admin.getByRole("link", { name: "Nhật ký kiểm toán" }).click();
   await admin.waitForURL("**/admin/audit");
   await admin.getByText("CHO_DUYET → DA_DANG").waitFor();
+  await verifyWorkspace(admin, "Lịch sử thao tác quản trị");
   await admin.getByRole("link", { name: "Kiểm duyệt cộng đồng" }).click();
   await admin.waitForURL("**/admin/community");
   await admin.getByText("Tranh thử").waitFor();
+  await verifyWorkspace(admin, "Báo cáo bài viết");
   await admin.getByRole("button", { name: "Ẩn bài viết", exact: true }).click();
   await admin.getByText("Đã ẩn bài").first().waitFor();
   assert.deepEqual(errors, []);

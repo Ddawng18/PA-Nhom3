@@ -1,3 +1,5 @@
+import Button from "../components/ui/Button";
+import FormField from "../components/ui/FormField";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type MouseEvent } from "react";
 import {
   ArrowDown,
@@ -115,44 +117,29 @@ function newLesson(chapterId: string | number, order: number): LocalLesson {
 }
 
 function Dialog({ confirmation, close }: { confirmation: Confirmation; close: () => void }) {
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    dialogRef.current?.focus();
-    function onKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") close();
-      if (event.key !== "Tab" || !dialogRef.current) return;
-      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>("button:not([disabled])"));
-      if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
+    dialog.showModal();
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
+      dialog.close();
       previousFocus?.focus();
     };
-  }, [close]);
+  }, []);
 
   return (
-    <div className="course-dialog-backdrop">
-      <div className="course-dialog" role="dialog" aria-modal="true" aria-labelledby="course-dialog-title" tabIndex={-1} ref={dialogRef}>
+    <dialog className="course-dialog" aria-labelledby="course-dialog-title" aria-describedby="course-dialog-description"
+      ref={dialogRef} onCancel={event => { event.preventDefault(); close(); }}>
         <h2 id="course-dialog-title">{confirmation.title}</h2>
-        <p>{confirmation.message}</p>
+        <p id="course-dialog-description">{confirmation.message}</p>
         <div className="course-dialog-actions">
-          <button className="button button-outline" type="button" onClick={close}>Hủy</button>
-          <button className="button button-primary" type="button" onClick={confirmation.action}>Xác nhận</button>
+          <Button variant="outline" onClick={close}>Hủy</Button>
+          <Button type="button" onClick={confirmation.action}>Xác nhận</Button>
         </div>
-      </div>
-    </div>
+    </dialog>
   );
 }
 
@@ -627,7 +614,7 @@ export default function TeacherCourseFormPage() {
     return (
       <div className="teacher-access-message">
         <p role="alert">{editor.error}</p>
-        <button className="button button-outline" type="button" onClick={editor.reload}>Thử lại</button>
+        <Button variant="outline" type="button" onClick={editor.reload}>Thử lại</Button>
       </div>
     );
   }
@@ -647,18 +634,18 @@ export default function TeacherCourseFormPage() {
               <p>{isEditing ? "Cập nhật thông tin và nội dung khóa học." : "Điền thông tin để tạo khóa học mới. Khóa học được lưu ở trạng thái bản nháp."}</p>
             </div>
             <div className="teacher-editor-header-actions">
-              <button className="button button-outline" type="button" disabled={!editable || saving || uploading} onClick={() => void saveCourse()}>
+              <Button variant="outline" type="button" disabled={!editable || saving || uploading} onClick={() => void saveCourse()}>
                 {saving ? "Đang lưu..." : "Lưu toàn bộ"}
-              </button>
+              </Button>
               {isEditing && courseId && course.trang_thai === "NHAP" && (
-                <button className="button button-outline teacher-danger-action" type="button" disabled={saving || deleting || uploading} onClick={() => askConfirmation("Xóa bản nháp", "Khóa học nháp sẽ bị gỡ khỏi danh sách. Bạn có chắc muốn xóa?", () => void deleteDraft())}>
+                <Button variant="outline" className="teacher-danger-action" type="button" disabled={saving || deleting || uploading} onClick={() => askConfirmation("Xóa bản nháp", "Khóa học nháp sẽ bị gỡ khỏi danh sách. Bạn có chắc muốn xóa?", () => void deleteDraft())}>
                   <Trash2 aria-hidden="true" size={15} />
                   {deleting ? "Đang xóa..." : "Xóa bản nháp"}
-                </button>
+                </Button>
               )}
-              <button className="button button-primary" type="button" disabled={!editable || saving || uploading} onClick={() => askConfirmation("Gửi duyệt khóa học", "Thông tin hiện tại sẽ được lưu trước khi gửi xét duyệt. Bạn có muốn tiếp tục?", () => void sendForReview())}>
+              <Button type="button" disabled={!editable || saving || uploading} onClick={() => askConfirmation("Gửi duyệt khóa học", "Thông tin hiện tại sẽ được lưu trước khi gửi xét duyệt. Bạn có muốn tiếp tục?", () => void sendForReview())}>
                 Gửi duyệt
-              </button>
+              </Button>
             </div>
           </header>
           {course.trang_thai === "CHO_DUYET" && <div className="teacher-review-success" role="status" aria-live="polite"><Check size={22} aria-hidden="true" /><div><strong>Đã gửi khóa học để xét duyệt</strong><p>Khóa học đang chờ quản trị viên xét duyệt. Bạn có thể theo dõi trạng thái tại Khóa học của tôi.</p><Link to="/my-courses">Về khóa học của tôi</Link></div></div>}
@@ -728,7 +715,7 @@ export default function TeacherCourseFormPage() {
                     {course.anh_dai_dien ? <img src={course.anh_dai_dien} alt={`Ảnh bìa ${course.tieu_de || "khóa học"}`} /> : <ImagePlus aria-hidden="true" size={30} />}
                   </div>
                   <div className="teacher-cover-actions">
-                    <button className="button button-outline" type="button" disabled={!editable || !isCourseMediaConfigured || saving || uploading} onClick={() => coverInput.current?.click()}><ImagePlus aria-hidden="true" size={15} /> Chọn ảnh</button>
+                    <Button variant="outline" type="button" disabled={!editable || !isCourseMediaConfigured || saving || uploading} onClick={() => coverInput.current?.click()}><ImagePlus aria-hidden="true" size={15} /> Chọn ảnh</Button>
                     <button className="teacher-text-button" type="button" disabled={!editable || saving || uploading || !course.anh_dai_dien} onClick={() => { setCoverFile(null); setCourseField("anh_dai_dien", ""); }}>Gỡ ảnh</button>
                     <input ref={coverInput} type="file" accept=".jpg,.jpeg,.png,.webp" hidden disabled={!editable || !isCourseMediaConfigured || saving || uploading} onChange={(event) => void uploadCover(event)} />
                   </div>
@@ -800,7 +787,7 @@ export default function TeacherCourseFormPage() {
                     </section>
                   ))}
                 </div>
-                <button className="button button-outline teacher-add-chapter" type="button" disabled={!editable || saving || uploading} onClick={() => {
+                <Button variant="outline" className="teacher-add-chapter" type="button" disabled={!editable || saving || uploading} onClick={() => {
                   const chapter = { ...newChapter(course.ma_khoa_hoc), thu_tu: course.chuong.length + 1 };
                   setCourse((current) => ({ ...current, chuong: [...current.chuong, chapter] }));
                   setSelectedChapterId(chapter.localId);
@@ -808,7 +795,7 @@ export default function TeacherCourseFormPage() {
                   setExpanded(current => ({ ...current, [chapter.localId]: true }));
                   setHasUnsavedChanges(true);
                   setErrors((current) => ({ ...current, selectedChapter: "" }));
-                }}><Plus size={15} aria-hidden="true" /> Thêm chương</button>
+                }}><Plus size={15} aria-hidden="true" /> Thêm chương</Button>
                 <p className="teacher-field-help">Thêm chương và bài học ngay trong bản soạn, rồi bấm Lưu toàn bộ một lần.</p>
               </section>
               <section className="settings-card teacher-editor-card teacher-lesson-editor">
@@ -818,8 +805,8 @@ export default function TeacherCourseFormPage() {
                       <h2>Chỉnh sửa chương</h2>
                       <p>Chương {selectedChapter.thu_tu}</p>
                     </div>
-                    <label className="teacher-form-field" htmlFor="chapter-title"><span>Tiêu đề chương *</span><input id="chapter-title" value={selectedChapter.tieu_de} maxLength={200} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors[`chapter.${selectedChapter.localId}`])} onChange={(event) => updateChapter(selectedChapter.localId, (chapter) => ({ ...chapter, tieu_de: event.target.value }))} />{fieldError(`chapter.${selectedChapter.localId}`)}</label>
-                    <button className="button button-primary" type="button" disabled={!editable || saving || uploading} onClick={() => void saveCourse()}>{saving ? "Đang lưu..." : "Lưu toàn bộ"}</button>
+                    <FormField id="chapter-title" label="Tiêu đề chương" className="teacher-form-field" required><input id="chapter-title" value={selectedChapter.tieu_de} maxLength={200} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors[`chapter.${selectedChapter.localId}`])} onChange={(event) => updateChapter(selectedChapter.localId, (chapter) => ({ ...chapter, tieu_de: event.target.value }))} />{fieldError(`chapter.${selectedChapter.localId}`)}</FormField>
+                    <Button type="button" disabled={!editable || saving || uploading} onClick={() => void saveCourse()}>{saving ? "Đang lưu..." : "Lưu toàn bộ"}</Button>
                   </>
                 ) : selectedLesson && selectedChapter ? (
                   <>
@@ -832,18 +819,18 @@ export default function TeacherCourseFormPage() {
                       <span>Tiêu đề bài học *</span>
                       <span className="teacher-input-counter"><input id="lesson-title" value={selectedLesson.tieu_de} maxLength={200} disabled={!editable || saving || uploading} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, tieu_de: event.target.value }))} /><span>{selectedLesson.tieu_de.length}/200</span></span>
                     </label>
-                    <label className="teacher-form-field" htmlFor="lesson-text"><span>Nội dung văn bản</span><textarea id="lesson-text" rows={5} value={selectedLesson.noi_dung_van_ban} maxLength={5000} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.noi_dung_van_ban)} aria-describedby={errors.noi_dung_van_ban ? "noi_dung_van_ban-error" : undefined} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, noi_dung_van_ban: event.target.value }))} /><span className="teacher-character-count">{selectedLesson.noi_dung_van_ban.length}/5000</span>{fieldError("noi_dung_van_ban")}</label>
+                    <FormField id="lesson-text" label="Nội dung văn bản" className="teacher-form-field"><textarea id="lesson-text" rows={5} value={selectedLesson.noi_dung_van_ban} maxLength={5000} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.noi_dung_van_ban)} aria-describedby={errors.noi_dung_van_ban ? "noi_dung_van_ban-error" : undefined} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, noi_dung_van_ban: event.target.value }))} /><span className="teacher-character-count">{selectedLesson.noi_dung_van_ban.length}/5000</span>{fieldError("noi_dung_van_ban")}</FormField>
                     <div className="teacher-lesson-media">
                       <div className="teacher-field-label">Ảnh</div>
                       <div className="teacher-media-row">
-                        <button className="button button-outline" type="button" disabled={!editable || !isCourseMediaConfigured || saving || uploading} onClick={() => lessonImageInput.current?.click()}><ImagePlus size={15} aria-hidden="true" /> Chọn ảnh</button>
+                        <Button variant="outline" type="button" disabled={!editable || !isCourseMediaConfigured || saving || uploading} onClick={() => lessonImageInput.current?.click()}><ImagePlus size={15} aria-hidden="true" /> Chọn ảnh</Button>
                         <input ref={lessonImageInput} type="file" accept=".jpg,.jpeg,.png,.webp" hidden disabled={!editable || !isCourseMediaConfigured || saving || uploading} onChange={(event) => void uploadLessonImage(event)} />
                         <label className="teacher-form-field" htmlFor="lesson-image-url"><span className="sr-only">Hoặc dán đường dẫn ảnh</span><input id="lesson-image-url" type="url" placeholder="Hoặc dán đường dẫn ảnh" value={selectedLesson.imageFile ? "" : selectedLesson.duong_dan_anh} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.duong_dan_anh)} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, imageFile: undefined, duong_dan_anh: event.target.value }))} /></label>
                       </div>
                       {!isCourseMediaConfigured && <p className="teacher-field-help" role="status">Tải tệp chưa được cấu hình.</p>}
                       {selectedLesson.duong_dan_anh && <img className="teacher-lesson-image-preview" src={selectedLesson.duong_dan_anh} alt={`Ảnh bài học ${selectedLesson.tieu_de}`} />}
                     </div>
-                    <label className="teacher-form-field" htmlFor="lesson-video"><span>Liên kết video</span><input id="lesson-video" type="url" value={selectedLesson.lien_ket_video} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.lien_ket_video)} aria-describedby={errors.lien_ket_video ? "lien_ket_video-error" : "lesson-video-help"} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, lien_ket_video: event.target.value }))} />{fieldError("lien_ket_video")}<span className="teacher-field-help" id="lesson-video-help">Chỉ nhập liên kết https từ YouTube, Vimeo hoặc Supabase. Video không được lưu trữ trên LINEA.</span></label>
+                    <FormField id="lesson-video" label="Liên kết video" className="teacher-form-field"><input id="lesson-video" type="url" value={selectedLesson.lien_ket_video} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.lien_ket_video)} aria-describedby={errors.lien_ket_video ? "lien_ket_video-error" : "lesson-video-help"} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, lien_ket_video: event.target.value }))} />{fieldError("lien_ket_video")}<span className="teacher-field-help" id="lesson-video-help">Chỉ nhập liên kết https từ YouTube, Vimeo hoặc Supabase. Video không được lưu trữ trên LINEA.</span></FormField>
                     <label className="teacher-required-toggle"><input type="checkbox" checked={selectedLesson.bat_buoc} disabled={!editable || saving || uploading} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, bat_buoc: event.target.checked }))} /> Bắt buộc hoàn thành để mở bài tiếp theo</label>
                     <section className="teacher-attachments">
                       <h3>Tệp tham khảo</h3>
@@ -868,8 +855,8 @@ export default function TeacherCourseFormPage() {
                       <label className="teacher-required-toggle teacher-assignment-toggle"><input type="checkbox" checked={Boolean(selectedLesson.bai_tap)} disabled={!editable || saving || uploading} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, bai_tap: event.target.checked ? { ma_bai_tap: null, de_bai: "", han_nop: null, bat_buoc: true, tieu_chi: [] } : null }))} /> Bài tập</label>
                       {selectedLesson.bai_tap && (
                         <>
-                          <label className="teacher-form-field" htmlFor="assignment-description"><span>Đề bài *</span><textarea id="assignment-description" rows={4} value={selectedLesson.bai_tap.de_bai} maxLength={5000} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.de_bai)} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, bai_tap: lesson.bai_tap ? { ...lesson.bai_tap, de_bai: event.target.value } : null }))} />{fieldError("de_bai")}</label>
-                          <label className="teacher-form-field" htmlFor="assignment-deadline"><span>Hạn nộp</span><input id="assignment-deadline" type="datetime-local" value={selectedLesson.bai_tap.han_nop ? selectedLesson.bai_tap.han_nop.slice(0, 16) : ""} disabled={!editable || saving || uploading} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, bai_tap: lesson.bai_tap ? { ...lesson.bai_tap, han_nop: event.target.value ? new Date(event.target.value).toISOString() : null } : null }))} />{fieldError("han_nop")}</label>
+                          <FormField id="assignment-description" label="Đề bài" className="teacher-form-field" required><textarea id="assignment-description" rows={4} value={selectedLesson.bai_tap.de_bai} maxLength={5000} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.de_bai)} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, bai_tap: lesson.bai_tap ? { ...lesson.bai_tap, de_bai: event.target.value } : null }))} />{fieldError("de_bai")}</FormField>
+                          <FormField id="assignment-deadline" label="Hạn nộp" className="teacher-form-field"><input id="assignment-deadline" type="datetime-local" value={selectedLesson.bai_tap.han_nop ? selectedLesson.bai_tap.han_nop.slice(0, 16) : ""} disabled={!editable || saving || uploading} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, bai_tap: lesson.bai_tap ? { ...lesson.bai_tap, han_nop: event.target.value ? new Date(event.target.value).toISOString() : null } : null }))} />{fieldError("han_nop")}</FormField>
                           <label className="teacher-required-toggle"><input type="checkbox" checked={selectedLesson.bai_tap.bat_buoc} disabled={!editable || saving || uploading} onChange={(event) => updateLesson(selectedLesson.localId, (lesson) => ({ ...lesson, bai_tap: lesson.bai_tap ? { ...lesson.bai_tap, bat_buoc: event.target.checked } : null }))} /> Bài tập bắt buộc</label>
                           <div className="teacher-rubric-heading"><h3>Tiêu chí chấm điểm</h3><span className={`teacher-rubric-total${selectedLesson.bai_tap.tieu_chi.reduce((sum, item) => sum + item.ty_trong, 0) === 100 ? " valid" : ""}`}>Tổng {selectedLesson.bai_tap.tieu_chi.reduce((sum, item) => sum + item.ty_trong, 0)}%</span></div>
                           {selectedLesson.bai_tap.tieu_chi.map((criterion, index) => (
@@ -888,8 +875,8 @@ export default function TeacherCourseFormPage() {
                     </section>
                     {uploadMessage && <p className="teacher-field-error" role="alert">{uploadMessage}</p>}
                     <div className="teacher-form-actions">
-                      <button className="button button-primary" type="button" disabled={!editable || saving || uploading} onClick={() => void saveCourse()}>{saving ? "Đang lưu..." : "Lưu toàn bộ"}</button>
-                      <button className="button button-outline teacher-danger-action" type="button" disabled={!editable || saving} onClick={() => askConfirmation("Xóa bài học", "Bài học và các dữ liệu liên quan sẽ bị xóa.", () => void deleteLesson(selectedLesson))}>Xóa bài</button>
+                      <Button type="button" disabled={!editable || saving || uploading} onClick={() => void saveCourse()}>{saving ? "Đang lưu..." : "Lưu toàn bộ"}</Button>
+                      <Button variant="outline" className="teacher-danger-action" type="button" disabled={!editable || saving} onClick={() => askConfirmation("Xóa bài học", "Bài học và các dữ liệu liên quan sẽ bị xóa.", () => void deleteLesson(selectedLesson))}>Xóa bài</Button>
                     </div>
                   </>
                 ) : (
