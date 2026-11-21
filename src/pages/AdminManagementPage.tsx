@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
@@ -99,6 +99,7 @@ export default function AdminManagementPage() {
 
   return <div className="register-page cd-page"><PublicHeader authLink={{ to: "/dashboard", label: "Tổng quan" }} />
     <main className="cd-main admin-manage"><header className="admin-manage-header"><p className="admin-manage-eyebrow">KHÔNG GIAN QUẢN TRỊ</p><h1>Quản lý hệ thống</h1><p>Quản lý tài khoản, khóa học và xét duyệt hồ sơ giáo viên.</p></header>
+      <div className="admin-manage-links"><Link to="/admin">Tổng quan quản trị</Link><Link to="/admin/audit">Nhật ký kiểm toán</Link><Link to="/admin/community">Kiểm duyệt cộng đồng</Link></div>
       <nav aria-label="Quản trị" className="admin-manage-tabs">
         <button type="button" aria-pressed={tab === "users"} onClick={() => setTab("users")}>Người dùng</button>
         <button type="button" aria-pressed={tab === "courses"} onClick={() => setTab("courses")}>Khóa học</button>

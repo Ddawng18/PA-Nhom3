@@ -8,8 +8,12 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["tests/**/*.mjs"],
-    languageOptions: { globals: { process: "readonly", console: "readonly", fetch: "readonly", setTimeout: "readonly", Buffer: "readonly", URL: "readonly", localStorage: "readonly", document: "readonly", window: "readonly" } }
+    files: ["tests/**/*.mjs", "deploy/**/*.mjs"],
+    languageOptions: { globals: {
+      process: "readonly", console: "readonly", fetch: "readonly", setTimeout: "readonly", clearTimeout: "readonly",
+      AbortController: "readonly", Buffer: "readonly", URL: "readonly", localStorage: "readonly", document: "readonly",
+      window: "readonly", CSS: "readonly", HTMLButtonElement: "readonly"
+    } }
   },
   {
     files: ["**/*.{ts,tsx}"],

@@ -1,6 +1,7 @@
 using Linea.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Linea.Api.Controllers;
 
@@ -8,6 +9,7 @@ namespace Linea.Api.Controllers;
 public sealed class CourseCatalogController(CourseCatalogService catalog) : ControllerBase
 {
     [HttpGet]
+    [OutputCache(PolicyName = "catalog")]
     public async Task<IActionResult> List(
         string? search = null, string? chu_de = null, string? cap_do = null, string? sap_xep = null,
         int page = 1, int pageSize = 12, CancellationToken cancellationToken = default)
@@ -16,6 +18,7 @@ public sealed class CourseCatalogController(CourseCatalogService catalog) : Cont
     }
 
     [HttpGet("{id:long}")]
+    [OutputCache(PolicyName = "catalog")]
     public async Task<IActionResult> Get(long id, CancellationToken cancellationToken)
     {
         var detail = await catalog.GetAsync(id, cancellationToken);

@@ -17,6 +17,12 @@ DatabaseConfiguration.LoadDotEnvFile();
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddOutputCache(options =>
+{
+    options.AddPolicy("catalog", policy => policy
+        .Expire(TimeSpan.FromSeconds(30))
+        .SetVaryByQuery("search", "chu_de", "cap_do", "sap_xep", "page", "pageSize"));
+});
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpClient();
@@ -216,6 +222,7 @@ app.UseCors("client");
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
+app.UseOutputCache();
 
 app.MapControllers();
 app.MapOpenApi();
@@ -312,6 +319,8 @@ if (runMigrations)
             ReadEmbeddedSql("Linea.Api.Data.Sql.admin-management.sql"), app.Lifetime.ApplicationStopping);
         await db.Database.ExecuteSqlRawAsync(
             ReadEmbeddedSql("Linea.Api.Data.Sql.progress-completion-d05.sql"), app.Lifetime.ApplicationStopping);
+        await db.Database.ExecuteSqlRawAsync(
+            ReadEmbeddedSql("Linea.Api.Data.Sql.course-catalog-metadata.sql"), app.Lifetime.ApplicationStopping);
     }
     await DbSeeder.SeedAdminAsync(
         scope.ServiceProvider,

@@ -61,6 +61,8 @@ function getInitials(name: string): string {
 function asLocalCourse(course: CourseEditorModel): LocalCourse {
   return {
     ...course,
+    thoi_luong: course.thoi_luong ?? "",
+    ngay_khai_giang: course.ngay_khai_giang ?? "",
     chuong: course.chuong.map((chapter) => ({
       ...chapter,
       localId: String(chapter.ma_chuong),
@@ -78,6 +80,8 @@ function emptyCourse(userId: string): LocalCourse {
     chu_de: "",
     mo_ta: "",
     anh_dai_dien: "",
+    thoi_luong: "",
+    ngay_khai_giang: "",
     trang_thai: "NHAP",
     chuong: [],
   };
@@ -700,6 +704,16 @@ export default function TeacherCourseFormPage() {
                     <input id="course-topic" list="course-topic-options" value={course.chu_de} maxLength={100} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.chu_de)} aria-describedby={errors.chu_de ? "chu_de-error" : undefined} onChange={(event) => setCourseField("chu_de", event.target.value)} />
                     <datalist id="course-topic-options">{topicOptions.map((topic) => <option key={topic} value={topic} />)}</datalist>
                     {fieldError("chu_de")}
+                  </label>
+                  <label className="teacher-form-field" htmlFor="course-duration">
+                    <span>Thời lượng</span>
+                    <input id="course-duration" value={course.thoi_luong ?? ""} maxLength={50} placeholder="Ví dụ: 8 tuần, 12 buổi" disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.thoi_luong)} onChange={(event) => setCourseField("thoi_luong", event.target.value)} />
+                    {fieldError("thoi_luong")}
+                  </label>
+                  <label className="teacher-form-field" htmlFor="course-start">
+                    <span>Ngày khai giảng</span>
+                    <input id="course-start" type="date" value={course.ngay_khai_giang ?? ""} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.ngay_khai_giang)} onChange={(event) => setCourseField("ngay_khai_giang", event.target.value)} />
+                    {fieldError("ngay_khai_giang")}
                   </label>
                 </div>
                 {topicError && <p className="teacher-field-error" role="alert">{topicError}</p>}

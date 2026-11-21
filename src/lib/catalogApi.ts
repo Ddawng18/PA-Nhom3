@@ -17,6 +17,8 @@ export const catalogCourseSchema = z.object({
   so_chuong: z.number().int().nonnegative(),
   so_bai_hoc: z.number().int().nonnegative(),
   so_hoc_vien: z.number().int().nonnegative(),
+  thoi_luong: z.string().nullable().optional(),
+  ngay_khai_giang: z.string().nullable().optional(),
   ngay_tao: z.string(),
 });
 
