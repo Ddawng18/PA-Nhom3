@@ -83,6 +83,7 @@ try {
   await page.locator("#course-description").fill("Mô tả nội dung khóa học đầy đủ để kiểm tra lưu và gửi xét duyệt thành công.");
   await page.locator("#course-level").selectOption("CO_BAN");
   await page.locator("#course-topic").fill("Hội họa");
+  await page.getByLabel("Học phí (VNĐ)").fill("250000");
   await page.getByRole("button", { name: /Nội dung bài học/ }).click();
   await page.getByRole("button", { name: "Thêm chương", exact: true }).click();
   await page.getByRole("button", { name: "Lưu toàn bộ", exact: true }).first().click();
@@ -125,6 +126,8 @@ try {
   const writes = calls.filter(call => call.method === "POST" || call.method === "PUT");
   assert.equal(writes.at(-2).method, "PUT");
   assert.equal(writes.at(-2).body.lessons[0].title, "Bài học đầu tiên");
+  assert.equal(writes.find(call => call.method === "POST" && call.path === "/api/courses").body.gia_vnd, 250000);
+  assert.equal(writes.at(-2).body.courseInfo.gia_vnd, 250000);
   assert.equal(writes.at(-1).path, "/api/courses/101/submit");
   assert.equal(calls.filter(call => call.method === "POST" && call.path === "/api/courses").length, 1);
   assert.deepEqual(pageErrors, []);

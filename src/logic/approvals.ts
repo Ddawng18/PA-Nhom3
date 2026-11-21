@@ -1,6 +1,6 @@
 import { assertApiUrlAllowed } from "./apiUrlPolicy";
 
-export const settingsTabIds = ["ho-so", "ua-thich", "bao-mat", "lich-su-mua-hang"] as const;
+export const settingsTabIds = ["ho-so", "bao-mat", "lich-su-mua-hang"] as const;
 export type SettingsTab = typeof settingsTabIds[number];
 export type ApprovalSection = "khoa-hoc" | "giao-vien";
 export type RejectionCode =

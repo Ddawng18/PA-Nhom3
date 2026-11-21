@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { useUserRole } from "../hooks/useUserRole";
+import { dashboardByRole } from "../logic/homeRoute";
 
 export default function AdminRoleGuard({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -15,13 +16,13 @@ export default function AdminRoleGuard({ children }: { children: ReactNode }) {
     return (
       <div className="teacher-access-message">
         <p role="alert">{roleState.error}</p>
-        <Link className="button button-outline" to="/dashboard">Về tổng quan</Link>
+        <Link className="button button-outline" to="/">Về tổng quan</Link>
       </div>
     );
   }
 
   if (roleState.role !== "admin") {
-    return <Navigate to="/dashboard" replace state={{ from: "/admin/teachers" }} />;
+    return <Navigate to={roleState.role ? dashboardByRole[roleState.role] : "/"} replace />;
   }
 
   if (!user) return null;
