@@ -1,8 +1,8 @@
 # LINEA - Roadmap các phần còn lại
 
 - **Ngày cập nhật:** 21/11/2026
-- **Nhánh đề xuất:** `codex/roadmap-qa-hardening` → `develop`
-- **Commit develop đã kiểm tra:** `42e0c57`, merge PR #25 gồm Phase 4–7
+- **Nhánh đề xuất:** `codex/linea-role-ui-uat` → `develop`
+- **Commit develop làm nền:** `3e88b96`, merge PR #26
 - **Triển khai:** bản đã chạy trước PR này qua smoke production. GitHub ghi Vercel build thành công cho `42e0c57`. Các thay đổi của PR đã kiểm tra với QA và chờ phát hành.
 - **Frontend:** https://pa-nhom3.vercel.app
 - **Backend:** https://linea-api-6pw5.onrender.com
@@ -17,6 +17,15 @@ Tài liệu này dành cho các thành viên tiếp nhận dự án. Mục tiêu
 
 ---
 
+## Cập nhật giao diện và QA — 21/11/2026
+
+- Tách dashboard theo vai trò và đồng bộ giao diện đăng nhập, học viên, giáo viên, quản trị. Menu mobile của người đã đăng nhập dùng panel trượt trái.
+- Giáo viên có trường nhập học phí cho khóa nháp. Cài đặt chỉ hiển thị phần có hỗ trợ trong ứng dụng và đường dẫn tới Đơn hàng.
+- Luồng học đã qua API QA. Local đã mở được checkout ZaloPay Sandbox, nhưng thanh toán bị kẹt ở bước sinh trắc học. Chưa xác nhận giao dịch thành công hoặc cấp quyền học qua ZaloPay.
+- Xem [tệp bàn giao theo roadmap](ROADMAP-HANDOVER-2026-11-21.md) và [hướng dẫn chạy local](../CHAY_LOCAL.md).
+
+---
+
 ## Cập nhật kiểm tra sau pull — 21/11/2026
 
 - Code Phase 4–7 đã được merge vào develop qua PR #25.
@@ -25,7 +34,7 @@ Tài liệu này dành cho các thành viên tiếp nhận dự án. Mục tiêu
 - Đợt hoàn thiện tiếp theo đã sửa lưu phiên theo tab, chuyển các nhóm form còn lại sang shared primitives, nối nút đổi mật khẩu với luồng gửi email và chuyển xác nhận trong trình soạn khóa sang dialog gốc.
 - Kiểm tra đợt hoàn thiện: lint, 101 unit test, hai bản build, các bài kiểm tra Chromium cho auth, Studio, Community, learning, admin và giáo viên đều đạt. Sáu trang giáo viên/admin đã được kiểm tra tên heading trong cây accessibility và tràn ngang ở 390/768/1440 px.
 - Đã sửa lệch snapshot EF cho metadata catalog. EF xác nhận model khớp migration và API khởi động được với database test. Bộ tích hợp Sprint 5 vẫn cần chuyển từ tài khoản legacy sang Supabase Auth. UAT theo vai trò đã được kiểm tra riêng bằng ba tài khoản Supabase thật ở mục 8.2.
-- Còn nghiệm thu: OAuth Google và nhận email đổi mật khẩu, ghi danh mới → nộp bài → chấm bài với dữ liệu QA, Studio trên thiết bị thật, WCAG thủ công, deploy và đối chiếu commit, diễn tập rollback của bản phát hành trên staging.
+- Luồng ghi danh mới → nộp bài → chấm bài đã đạt trên QA. Còn nghiệm thu OAuth Google, nhận email đổi mật khẩu, Studio trên thiết bị thật và WCAG thủ công. Phát hành vẫn cần đối chiếu commit và diễn tập rollback trên staging.
 - Ghi nhận backup, migration và cleanup bên dưới là lịch sử từ tài liệu; chưa kiểm tra lại trực tiếp trong lượt này.
 
 ---
@@ -221,7 +230,7 @@ Community lõi đã có:
 | PERF-01 | Split bundle ~895 KB | P1 | Main ~318 KB; không còn warning >500 KB | Phase 6 |
 | PERF-02 | Index/caching/query tuning | P1 | Migration index + output cache catalog 30s | Phase 6 |
 | A11Y-01 | WCAG AA audit đầy đủ | P1 | `test:a11y` pass 6 trang public; WCAG thủ công còn lại | Phase 6 |
-| TEST-01 | Playwright regression toàn bộ role | P1 | Suite fixture đạt. Ba vai trò đăng nhập QA thật, quyền đọc và Community đạt. Bộ Sprint 5 dùng legacy và luồng ghi danh/nộp/chấm còn mở | Phase 7 |
+| TEST-01 | Playwright regression toàn bộ role | P1 | Ba vai trò đăng nhập thật, Community đạt và luồng ghi danh/nộp/chấm đạt qua API QA. Bộ Sprint 5 legacy vẫn cần chuyển sang Supabase Auth | Phase 7 |
 | DEPLOY-01 | Staging/production smoke + rollback | P0 | Smoke production 4/4; Vercel có trạng thái success cho `42e0c57`; còn đối chiếu alias/Render, diễn tập rollback và UAT | Phase 7 |
 
 ---
@@ -489,6 +498,9 @@ Chi tiết ID, kết quả và SQL rollback: `docs/operations/DATA-CLEANUP.md`.
 
 Kết quả với Supabase QA ngày 21/11/2026. Frontend và API chạy từ workspace, kết nối Auth và database QA.
 
+- Luồng học với khóa QA #39 đã qua tạo khóa, thêm bài học và bài tập, gửi duyệt, duyệt đăng, chặn đọc trước khi ghi danh (403), ghi danh miễn phí, mở bài, đánh dấu hoàn thành và đọc bài tập. Admin đã ẩn khóa thử sau kiểm tra.
+- Sau khi cấu hình Storage QA, khóa thử #40 đã qua từ tạo, duyệt, ghi danh đến nộp PNG và chấm 8,5/10. Học viên đọc được điểm, trạng thái `DA_CHAM` và bị chặn nộp lại (409). Giáo viên đọc được lịch sử chấm. Admin đã ẩn khóa thử #40.
+
 | Vai trò | Đã kiểm tra |
 |---|---|
 | Học viên | Đăng nhập từ giao diện, mở dashboard, đọc danh sách khóa đã ghi danh, mở khóa học và đọc tiến độ. API giáo viên/admin trả 403. |
@@ -722,7 +734,7 @@ Do not mark a task Done if it is only code-complete but not verified on staging/
 - Phase 4: Studio/Community browser suites pass. Studio đã qua kiểm tra fullscreen và cảm ứng mô phỏng; còn QA trên thiết bị thật.
 - Phase 5: đã qua QA thật cho workspace giáo viên, quản trị, kiểm duyệt và audit. Còn kiểm tra ghi danh mới, nộp bài và chấm bài trọn luồng.
 - Phase 6: PERF-01/02 và A11Y smoke hoàn thành; WCAG thủ công toàn bộ còn lại.
-- Phase 7: UAT QA đã qua phần đăng nhập, đọc theo vai trò, bản nháp khóa học và kiểm duyệt. Còn đồng bộ lịch sử migration QA, UAT luồng học, xác minh commit sau deploy và diễn tập rollback.
+- Phase 7: QA đã qua đăng nhập theo vai trò, bản nháp, kiểm duyệt và luồng ghi danh/nộp/chấm qua API. Còn chạy luồng học qua giao diện, thanh toán Sandbox thành công, đồng bộ lịch sử migration QA, xác minh commit sau deploy và diễn tập rollback.
 - 3 migration đã áp lên Supabase project `pscjbvjcprvzfkawflql` ngày 21/11/2026:
   - `20261121090000_community_likes_moderation.sql`
   - `20261121091000_workspace_query_indexes.sql`

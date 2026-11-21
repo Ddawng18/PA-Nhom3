@@ -24,6 +24,7 @@ try {
   await page.route("**/api/catalog/courses?*", r => r.fulfill({ contentType: "application/json", body: JSON.stringify({ items: [], page: 1, pageSize: 12, totalCount: 0, chu_de: [] }) }));
   await page.goto(base + "/courses");
   await page.locator('header.site-header input[type="search"]').fill("Gesture");
+  assert.equal(await page.locator(".public-menu-toggle").isVisible(), false);
   await page.locator('header.site-header input[type="search"]').press("Enter");
   await page.waitForURL("**/courses?search=Gesture");
   assert.equal(await page.locator('main input[type="search"]').inputValue(), "Gesture");
@@ -41,6 +42,13 @@ try {
   await page.getByRole("button", { name: "Mở menu", exact: true }).click();
   await nav.getByRole("link", { name: "Cộng đồng", exact: true }).click();
   await page.waitForURL("**/community");
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(base + "/login");
+  assert.equal(await page.getByRole("button", { name: "Yêu thích", exact: true }).count(), 0);
+  const authSearch = page.getByRole("searchbox", { name: "Tìm khóa học", exact: true });
+  await authSearch.fill("Gesture");
+  await authSearch.press("Enter");
+  await page.waitForURL("**/courses?search=Gesture");
   assert.deepEqual(errors, []);
   console.log("PASS header search, removed inactive favorite, 38px mobile search, mobile menu and navigation");
 } finally { await browser?.close(); server.kill(); }

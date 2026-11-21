@@ -49,6 +49,60 @@
   margin-top: 37px;
 }
 
+.settings-nav-toggle { display: none; }
+
+.settings-mobile-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  box-sizing: border-box;
+  width: min(82vw, 20rem);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--color-surface);
+  color: var(--color-text);
+  overscroll-behavior: contain;
+}
+
+.settings-mobile-drawer[open] { animation: settings-drawer-enter 180ms ease-out; }
+.settings-mobile-drawer::backdrop { background: #17261d80; }
+body:has(.settings-mobile-drawer[open]) { overflow: hidden; }
+
+@keyframes settings-drawer-enter {
+  from { transform: translateX(-100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-mobile-drawer[open] { animation: none; }
+}
+
+.settings-mobile-drawer-content {
+  min-height: 100%;
+  padding: 16px;
+}
+
+.settings-mobile-drawer-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-mobile-drawer-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
 .settings-nav-item {
   display: flex;
   min-height: 43px;
@@ -1839,22 +1893,22 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
 }
 
-.teacher-course-toolbar .settings-tabs {
-  flex: 1;
+.teacher-course-count {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 600;
 }
 
-.teacher-create-action {
-  display: grid;
-  flex: 0 0 auto;
-  justify-items: end;
-  gap: 5px;
-}
-
-.teacher-create-action > span {
-  color: #858e85;
-  font-size: 9px;
+.teacher-course-toolbar > .button {
+  flex: none;
+  white-space: nowrap;
 }
 
 .teacher-course-list {
@@ -1957,19 +2011,43 @@
     font-size: 20px;
   }
 
-  .settings-navigation {
+  .settings-sidebar-heading {
     display: flex;
-    gap: 5px;
-    overflow-x: auto;
-    margin-top: 12px;
-    padding-bottom: 2px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
 
-  .settings-nav-item {
-    flex: 0 0 auto;
-    min-height: 36px;
-    padding-inline: 10px;
-    font-size: 10px;
+  .settings-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    min-height: 44px;
+    gap: 8px;
+    padding-inline: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-primary);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .settings-navigation--desktop {
+    display: none;
+  }
+
+  .settings-mobile-drawer .settings-navigation {
+    gap: 4px;
+    margin-top: 16px;
+  }
+
+  .settings-navigation .settings-nav-item {
+    min-height: 44px;
+    padding-inline: 12px;
+    font-size: 14px;
   }
 
   .settings-nav-item svg {
@@ -2010,15 +2088,6 @@
   .my-courses-course-action {
     grid-column: 2;
     justify-self: start;
-  }
-
-  .teacher-course-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .teacher-create-action {
-    justify-items: start;
   }
 
   .course-detail-hero {
@@ -2147,10 +2216,6 @@
     padding-inline: 13px;
   }
 
-  .settings-nav-item span {
-    font-size: 9px;
-  }
-
   .settings-page-heading {
     gap: 9px;
   }
@@ -2187,4 +2252,7 @@
   .paid-badge {
     margin-left: 40px;
   }
+}
+.settings-account-panels {
+  width: min(100%, 820px);
 }

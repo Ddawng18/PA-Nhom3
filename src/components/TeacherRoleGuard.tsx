@@ -4,6 +4,7 @@ import { useAuth } from "../auth/useAuth";
 import { useTeacherApproval } from "../hooks/useTeacherApproval";
 import { useUserRole } from "../hooks/useUserRole";
 import { getTeacherRouteDecision } from "../logic/teacherCourse";
+import { dashboardByRole } from "../logic/homeRoute";
 
 export default function TeacherRoleGuard({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -23,7 +24,7 @@ export default function TeacherRoleGuard({ children }: { children: ReactNode }) 
     );
   }
   if (decision === "redirect") {
-    return <Navigate to="/my-courses" replace />;
+    return <Navigate to={roleState.role ? dashboardByRole[roleState.role] : "/"} replace />;
   }
   if (approval.loading) return <p className="auth-loading" role="status">Đang kiểm tra hồ sơ giáo viên...</p>;
   if (approval.error) {

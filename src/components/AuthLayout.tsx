@@ -1,7 +1,8 @@
-import { useEffect, type ReactNode } from "react";
-import { Heart, Search } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { useEffect, type FormEvent, type ReactNode } from "react";
+import { Search } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
+import ConstructionSketch from "./ConstructionSketch";
 import "../styles/global.css";
 import "../styles/layout.css";
 import "../styles/auth-form.css";
@@ -12,6 +13,12 @@ type AuthLayoutProps = {
 };
 
 function Header({ authLink }: { authLink: AuthLayoutProps["authLink"] }) {
+  const navigate = useNavigate();
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const query = String(new FormData(event.currentTarget).get("search") ?? "").trim();
+    navigate(query ? `/courses?search=${encodeURIComponent(query)}` : "/courses");
+  }
   return (
     <header className="site-header">
       <div className="header-brand-group">
@@ -23,15 +30,12 @@ function Header({ authLink }: { authLink: AuthLayoutProps["authLink"] }) {
         </nav>
       </div>
 
-      <label className="search-field">
+      <form className="search-field" role="search" aria-label="Tìm trên toàn bộ khóa học" onSubmit={submitSearch}>
         <Search aria-hidden="true" size={17} />
-        <input aria-label="Tìm khóa học" placeholder="Tìm khóa học" type="search" />
-      </label>
+        <input name="search" aria-label="Tìm khóa học" placeholder="Tìm khóa học" type="search" maxLength={100} />
+      </form>
 
       <div className="header-actions">
-        <button className="icon-button favorite-button" type="button" aria-label="Yêu thích">
-          <Heart aria-hidden="true" size={20} />
-        </button>
         <Link className="login-link" to={authLink.to}>
           {authLink.label}
         </Link>
@@ -70,6 +74,7 @@ function Footer() {
 
 export default function AuthLayout({ authLink, children }: AuthLayoutProps) {
   const { pathname } = useLocation();
+  const isLogin = pathname === "/login";
 
   useEffect(() => {
     const titles: Record<string, string> = {
@@ -83,10 +88,16 @@ export default function AuthLayout({ authLink, children }: AuthLayoutProps) {
   }, [pathname]);
 
   return (
-    <div className="register-page">
+    <div className={isLogin ? "register-page register-page--login" : "register-page"}>
       <Header authLink={authLink} />
       <main className="register-main">
-        <HeroText />
+        {isLogin ? (
+          <section className="login-intro" aria-labelledby="login-intro-title">
+            <ConstructionSketch variant="login" />
+            <h2 id="login-intro-title">Trở lại<br /> bàn vẽ</h2>
+            <p>Tiếp tục bài học digital art và luyện nét trong Studio LINEA.</p>
+          </section>
+        ) : <HeroText />}
         {children}
       </main>
       <Footer />

@@ -13,7 +13,6 @@ import "../styles/settings.css";
 import "../styles/teacher-course.css";
 
 type CourseTab = "all" | "in-progress" | "completed";
-type TeacherCourseTab = "all" | "owned";
 
 const teacherCourseSchema = z.object({
   ma_khoa_hoc: z.union([z.string(), z.number().int().safe()]).transform(String),
@@ -98,7 +97,6 @@ function StudentCourses({ user, displayName }: { user: User; displayName: string
 function TeacherCourses({ user, displayName }: { user: User; displayName: string }) {
   const { session } = useAuth();
   const token = session?.access_token;
-  const [activeTab, setActiveTab] = useState<TeacherCourseTab>("owned");
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -141,9 +139,6 @@ function TeacherCourses({ user, displayName }: { user: User; displayName: string
   const loading = loadedUserId !== user.id;
   const ownedCourses = courses.filter((course) => course.ma_giao_vien === user.id && course.trang_thai !== "DA_GO");
   const visibleCourses = ownedCourses;
-  const tabs: { id: TeacherCourseTab; label: string; count: number }[] = [
-    { id: "owned", label: "Khóa học của tôi", count: ownedCourses.length },
-  ];
 
   return (
     <div className="settings-shell">
@@ -163,25 +158,11 @@ function TeacherCourses({ user, displayName }: { user: User; displayName: string
             </div>
           </header>
           <div className="teacher-course-toolbar">
-            <nav className="settings-tabs" aria-label="Lọc khóa học">
-              {tabs.map((tab) => (
-                <button
-                  className={`settings-tab${activeTab === tab.id ? " active" : ""}`}
-                  type="button"
-                  aria-current={activeTab === tab.id ? "page" : undefined}
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                >
-                  {tab.label} ({tab.count})
-                </button>
-              ))}
-            </nav>
-            <div className="teacher-create-action">
-              <Link className="button button-primary" to="/teacher/courses/new">
-                <Plus aria-hidden="true" size={16} />
-                Tạo khóa học
-              </Link>
-            </div>
+            <p className="teacher-course-count">Khóa học của tôi{!loading && !loadError && ` (${ownedCourses.length})`}</p>
+            <Link className="button button-primary" to="/teacher/courses/new">
+              <Plus aria-hidden="true" size={16} />
+              Tạo khóa học
+            </Link>
           </div>
           {loadError && <p className="settings-error" role="alert">{loadError}</p>}
           {loading ? (

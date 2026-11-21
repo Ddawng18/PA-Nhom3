@@ -64,6 +64,7 @@ export default function PublicHeader({ authLink }: PublicHeaderProps) {
       <div className="header-actions">
         <button className="icon-button public-menu-toggle" type="button" aria-label={menuOpen ? "Đóng menu" : "Mở menu"} aria-controls="public-navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}>
           {menuOpen ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
+          <span aria-hidden="true">Menu</span>
         </button>
         {accountChip ? (
           <Link

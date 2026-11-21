@@ -69,7 +69,7 @@ export default function RegisterForm() {
           text: "Nếu tài khoản cần xác nhận, hãy kiểm tra hộp thư và mục thư rác. Nếu chưa nhận được, bạn có thể yêu cầu gửi lại.",
         });
       } else {
-        navigate("/dashboard", { replace: true });
+        navigate("/", { replace: true });
       }
     } catch (error) {
       setMessage({
