@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:browser": "node tests/sprint5.browser.mjs",
+    "test:auth": "node tests/auth.browser.mjs",
     "test:course-review": "node tests/course-review.browser.mjs",
     "test:admin-refresh": "node tests/admin-refresh.browser.mjs",
     "test:community": "node tests/community.browser.mjs",
