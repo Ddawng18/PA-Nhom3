@@ -7,6 +7,7 @@ import UserRoleProvider from "./auth/UserRoleProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoleGuard from "./components/AdminRoleGuard";
 import TeacherRoleGuard from "./components/TeacherRoleGuard";
+import StudentRoleGuard from "./components/StudentRoleGuard";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -78,7 +79,7 @@ const router = createBrowserRouter(createRoutesFromElements(
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <DashboardPage />
+                <StudentRoleGuard><DashboardPage /></StudentRoleGuard>
               </ProtectedRoute>
             }
           />

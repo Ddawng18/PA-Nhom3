@@ -702,6 +702,14 @@ export default function TeacherCourseFormPage() {
                     <input id="course-start" type="date" value={course.ngay_khai_giang ?? ""} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.ngay_khai_giang)} onChange={(event) => setCourseField("ngay_khai_giang", event.target.value)} />
                     {fieldError("ngay_khai_giang")}
                   </label>
+                  <FormField id="course-price" className="teacher-form-field" label="Học phí (VNĐ)"
+                    hint="Nhập 0 hoặc để trống nếu khóa học miễn phí." error={errors.gia_vnd}>
+                    <input id="course-price" type="number" min={0} max={1_000_000_000} step={1}
+                      inputMode="numeric" placeholder="0" value={course.gia_vnd ?? ""}
+                      disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.gia_vnd)}
+                      aria-describedby={errors.gia_vnd ? "course-price-error" : "course-price-hint"}
+                      onChange={(event) => setCourseField("gia_vnd", event.currentTarget.value ? event.currentTarget.valueAsNumber : undefined)} />
+                  </FormField>
                 </div>
                 {topicError && <p className="teacher-field-error" role="alert">{topicError}</p>}
               </section>

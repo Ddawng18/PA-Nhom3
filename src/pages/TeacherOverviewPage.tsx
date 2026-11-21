@@ -32,22 +32,33 @@ export default function TeacherOverviewPage() {
   }, [token, attempt]);
   if (!user) return null;
   const name = displayName(user.email, user.user_metadata);
-  return <div className="settings-shell">
+  return <div className="settings-shell workspace-overview">
     <Sidebar user={user} displayName={name} initials={name.slice(0, 2).toUpperCase()} />
     <main className="settings-main"><div className="settings-content">
-      <header className="settings-page-heading">
-        <div><p className="settings-eyebrow">KHÔNG GIAN GIẢNG DẠY</p><h1>Tổng quan giáo viên</h1><p>Theo dõi khóa học, bài chờ chấm và học viên của bạn.</p></div>
-        <Link className="button button-primary" to="/teacher/courses/new">Tạo khóa học</Link>
-      </header>
+      <section className="workspace-summary" aria-labelledby="teacher-overview-title">
+        <header className="workspace-summary-heading">
+          <h1 id="teacher-overview-title">Tổng quan giáo viên</h1>
+          <Link className="button button-outline" to="/teacher/courses/new">Tạo khóa học</Link>
+        </header>
+        {!loading && !error && data && (
+          <div className="workspace-summary-grid" role="group" aria-label="Số liệu giảng dạy">
+            <div className="workspace-summary-item">
+              <Link className="workspace-summary-metric" to="/my-courses"><strong>{data.totals.courses}</strong> Khóa học</Link>
+              <p>{data.totals.published} đã đăng · {data.totals.drafts} bản nháp</p>
+            </div>
+            <div className="workspace-summary-item">
+              <Link className="workspace-summary-metric" to="/teacher/submissions"><strong>{data.totals.pendingSubmissions}</strong> Bài chờ chấm</Link>
+              <Link className="workspace-summary-detail" to="/teacher/submissions?status=graded">{data.totals.gradedSubmissions} bài đã chấm</Link>
+            </div>
+            <div className="workspace-summary-item">
+              <Link className="workspace-summary-metric" to="/teacher/students"><strong>{data.totals.students}</strong> Học viên</Link>
+            </div>
+          </div>
+        )}
+      </section>
       {loading ? <p role="status">Đang tải tổng quan...</p>
         : error ? <section className="settings-card"><p className="settings-error" role="alert">{error}</p><button className="button button-outline" type="button" onClick={() => setAttempt(value => value + 1)}>Thử lại</button></section>
         : data && <>
-          <section className="teacher-stat-grid" aria-label="Số liệu giảng dạy">
-            {([["Khóa học", data.totals.courses, "/my-courses"], ["Đã đăng", data.totals.published, "/my-courses"], ["Bản nháp", data.totals.drafts, "/my-courses"],
-              ["Chờ chấm", data.totals.pendingSubmissions, "/teacher/submissions"], ["Đã chấm", data.totals.gradedSubmissions, "/teacher/submissions?status=graded"],
-              ["Học viên", data.totals.students, "/teacher/students"]] as const).map(([label, value, to]) =>
-              <Link className="settings-card teacher-stat" to={to} key={label}><span>{label}</span><strong>{value}</strong></Link>)}
-          </section>
           <section className="settings-card">
             <div className="teacher-section-heading"><h2>Bài chờ chấm gần đây</h2><Link to="/teacher/submissions">Xem hàng đợi</Link></div>
             {data.recentSubmissions.length === 0 ? <p>Chưa có bài nộp nào.</p>
