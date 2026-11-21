@@ -1,3 +1,5 @@
+import Button from "../components/ui/Button";
+import FormField from "../components/ui/FormField";
 import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
@@ -10,7 +12,6 @@ import {
   LogOut,
   MoreHorizontal,
   Sparkles,
-  ShieldCheck,
 } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
@@ -70,7 +71,7 @@ const roleLabels = {
 } as const;
 
 export default function SettingsPage() {
-  const { user, session, signOut } = useAuth();
+  const { user, session, signOut, resetPassword } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -83,12 +84,28 @@ export default function SettingsPage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [passwordRequest, setPasswordRequest] = useState<{ message: string; failed: boolean } | null>(null);
+  const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
   const [verifiedAccount, setVerifiedAccount] = useState<VerifiedAccount | null>(null);
   const [notifications, setNotifications] = useState({
     daily: true,
     weekly: false,
     streak: true,
   });
+
+  async function requestPasswordReset() {
+    if (!user?.email || sendingPasswordReset) return;
+    setSendingPasswordReset(true);
+    setPasswordRequest(null);
+    try {
+      const { error } = await resetPassword(user.email);
+      setPasswordRequest({ message: error ?? "Đã gửi liên kết đổi mật khẩu đến email của bạn.", failed: Boolean(error) });
+    } catch {
+      setPasswordRequest({ message: "Không gửi được liên kết đổi mật khẩu. Vui lòng thử lại.", failed: true });
+    } finally {
+      setSendingPasswordReset(false);
+    }
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -233,50 +250,45 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="profile-fields">
-                  <label className="settings-field">
-                    <span>Tên hiển thị</span>
-                    <input
+                  <FormField id="settings-display-name" label="Tên hiển thị" className="settings-field">
+                    <input id="settings-display-name"
                       type="text"
                       value={displayName}
                       onChange={(event) => setDisplayName(event.target.value)}
                     />
-                  </label>
-                  <label className="settings-field">
-                    <span>Địa chỉ email</span>
-                    <input type="email" value={user.email ?? ""} readOnly />
-                  </label>
-                  <label className="settings-field">
-                    <span>Ảnh đại diện (URL)</span>
-                    <input
+                  </FormField>
+                  <FormField id="settings-email" label="Địa chỉ email" className="settings-field">
+                    <input id="settings-email" type="email" value={user.email ?? ""} readOnly />
+                  </FormField>
+                  <FormField id="settings-avatar-url" label="Ảnh đại diện (URL)" className="settings-field">
+                    <input id="settings-avatar-url"
                       type="url"
                       value={avatarUrl}
                       placeholder="https://..."
                       onChange={(event) => setAvatarUrl(event.target.value)}
                     />
-                  </label>
-                  <label className="settings-field">
-                    <span>Vai trò tài khoản</span>
-                    <input
+                  </FormField>
+                  <FormField id="settings-role" label="Vai trò tài khoản" className="settings-field">
+                    <input id="settings-role"
                       type="text"
                       value={roleState.role ? roleLabels[roleState.role] : roleState.loading ? "Đang tải..." : "Chưa xác định"}
                       readOnly
                       aria-busy={roleState.loading}
                     />
-                  </label>
-                  <label className="settings-field">
-                    <span>Mục tiêu hàng ngày</span>
+                  </FormField>
+                  <FormField id="settings-daily-goal" label="Mục tiêu hàng ngày" className="settings-field">
                     <span className="field-with-icon">
                       <Clock3 aria-hidden="true" size={16} />
-                      <input type="text" value="20 phút" readOnly />
+                      <input id="settings-daily-goal" type="text" value="20 phút" readOnly />
                       <ChevronRight aria-hidden="true" size={16} />
                     </span>
-                  </label>
+                  </FormField>
                 </div>
                 <div className="profile-actions">
-                  <button className="button button-primary" type="button" disabled={isSavingProfile} onClick={() => void handleSaveProfile()}>
+                  <Button type="button" disabled={isSavingProfile} onClick={() => void handleSaveProfile()}>
                     {isSavingProfile ? "Đang lưu..." : "Lưu thay đổi"}
-                  </button>
-                  <button className="button button-outline" type="button" onClick={() => { setDisplayName(userDisplayName); setAvatarUrl(""); setProfileMessage(null); }}>Bỏ qua</button>
+                  </Button>
+                  <Button variant="outline" type="button" onClick={() => { setDisplayName(userDisplayName); setAvatarUrl(""); setProfileMessage(null); }}>Bỏ qua</Button>
                 </div>
                 {profileMessage && <p role="status">{profileMessage}</p>}
               </section>
@@ -288,23 +300,11 @@ export default function SettingsPage() {
                   <p>Quản lý mật khẩu và trạng thái đăng nhập của tài khoản.</p>
                 </div>
                 <div className="security-password">
-                  <label className="settings-field">
-                    <span>Mật khẩu</span>
-                    <input type="password" value="lineasecurepassword" disabled readOnly />
-                  </label>
-                  <button className="button button-outline" type="button">Đổi mật khẩu</button>
+                  <Button variant="outline" disabled={!user.email || sendingPasswordReset} onClick={() => void requestPasswordReset()}>
+                    {sendingPasswordReset ? "Đang gửi..." : "Gửi email đổi mật khẩu"}
+                  </Button>
                 </div>
-                <div className="device-section">
-                  <h3>Thiết bị đang đăng nhập</h3>
-                  <div className="device-row">
-                    <span className="device-icon"><ShieldCheck aria-hidden="true" size={18} /></span>
-                    <span className="device-copy">
-                      <span>Chrome trên macOS</span>
-                      <span>Hà Nội · Đang hoạt động</span>
-                    </span>
-                    <span className="device-current">Chính</span>
-                  </div>
-                </div>
+                {passwordRequest && <p role={passwordRequest.failed ? "alert" : "status"}>{passwordRequest.message}</p>}
               </section>
             </div>
 

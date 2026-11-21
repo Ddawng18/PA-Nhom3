@@ -71,12 +71,29 @@ try {
   await page.waitForFunction(() => (document.querySelector('select[aria-label="Nền canvas"]')?.value ?? "") === "grid");
   assert.equal(await page.getByLabel("Kiểu bút").inputValue(), "marker");
 
+  await page.getByRole("button", { name: "Toàn màn hình", exact: true }).click();
+  await page.waitForFunction(() => Boolean(document.fullscreenElement));
+  await page.getByRole("button", { name: "Thoát toàn màn hình", exact: true }).click();
+  await page.waitForFunction(() => !document.fullscreenElement);
+
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
   const heights = await page.locator(".studio-toolbar button").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
   assert.ok(heights.every(height => height >= 44), JSON.stringify(heights));
+  const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await mobile.goto(`${origin}/studio`);
+  const mobileCanvas = mobile.locator("canvas");
+  await mobileCanvas.scrollIntoViewIfNeeded();
+  const box = await mobileCanvas.boundingBox();
+  assert.ok(box);
+  const cdp = await mobile.context().newCDPSession(mobile);
+  const point = { x: box.x + 30, y: box.y + 30 };
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ ...point, x: point.x + 40 }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  assert.equal(await mobile.getByRole("button", { name: "Hoàn tác", exact: true }).isEnabled(), true);
   assert.deepEqual(errors, []);
-  console.log("PASS studio background, brush preset, undo/redo, autosave reload, export and 390px layout");
+  console.log("PASS studio background, brush, history, autosave, export, fullscreen and touch at 390px");
 } finally {
   await browser?.close();
   if (process.platform === "win32") await new Promise(resolve => {

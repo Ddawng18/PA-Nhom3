@@ -78,7 +78,7 @@ try {
   });
   const pageErrors = [];
   page.on("pageerror", error => { pageErrors.push(error.message); console.error(error.message); });
-  await page.goto(`${origin}/__editor-test.html`);
+  await page.goto(`${origin}/__editor-test.html`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.locator("#course-title").fill("Khóa học thử nghiệm");
   await page.locator("#course-description").fill("Mô tả nội dung khóa học đầy đủ để kiểm tra lưu và gửi xét duyệt thành công.");
   await page.locator("#course-level").selectOption("CO_BAN");
@@ -96,6 +96,18 @@ try {
   await page.locator("#lesson-text").fill("Nội dung bài học để gửi xét duyệt.");
   assert.equal(await page.getByRole("alert").count(), 0);
   console.log("PASS chapter errors clear on edit; lesson validation points to the lesson");
+
+  const opener = page.getByRole("button", { name: "Gửi duyệt", exact: true });
+  await opener.click();
+  const confirmation = page.getByRole("dialog");
+  await confirmation.waitFor();
+  assert.equal(await confirmation.getByRole("button", { name: "Hủy", exact: true }).evaluate(button => button === document.activeElement), true);
+  await page.keyboard.press("Tab");
+  assert.equal(await confirmation.getByRole("button", { name: "Xác nhận", exact: true }).evaluate(button => button === document.activeElement), true);
+  await page.keyboard.press("Escape");
+  await confirmation.waitFor({ state: "hidden" });
+  assert.equal(await opener.evaluate(button => button === document.activeElement), true);
+  console.log("PASS course confirmation keyboard focus, Escape and focus return");
 
   async function submit() {
     await page.getByRole("button", { name: "Gửi duyệt", exact: true }).click();
