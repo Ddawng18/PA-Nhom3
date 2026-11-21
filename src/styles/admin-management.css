@@ -8,3 +8,17 @@
 .admin-manage-list{list-style:none;padding:0;margin:20px 0 0;border-top:1px solid var(--color-border)}.admin-manage-list li{display:flex;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--color-border)}.admin-manage-item{flex:1;min-width:0;display:grid;gap:5px}.admin-manage-name{padding:0;border:0;background:none;text-align:left;color:var(--color-text);font-weight:700;overflow-wrap:anywhere;cursor:pointer}.admin-manage-name:hover{text-decoration:underline}.admin-manage-meta{overflow-wrap:anywhere}.admin-manage-badge{padding:6px 10px;border-radius:999px;background:#e6f4ce;color:#365c37;font-size:12px;font-weight:700;white-space:nowrap}.admin-manage-badge.is-muted{background:var(--color-soft-bg);color:var(--color-muted)}
 .admin-manage-pagination{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:20px}.admin-manage-pagination span{font-size:14px;color:var(--color-muted)}.admin-manage-empty{padding:28px 0;color:var(--color-muted)}.admin-manage-notice,.admin-manage-error{margin:18px 0 0;padding:12px;border-radius:10px;background:#eef7e8;color:#285a31}.admin-manage-error{background:#fff2ee;color:#9c3026}.admin-manage button:disabled{opacity:.5;cursor:not-allowed}.admin-manage button:focus-visible,.admin-manage a:focus-visible,.admin-manage input:focus-visible{outline:3px solid #6a8d3d;outline-offset:3px}
 @media(max-width:640px){.admin-manage{padding-top:28px}.admin-manage-panel,.admin-manage-detail{padding:18px}.admin-manage-panel-head{align-items:stretch;flex-direction:column}.admin-manage-search input{flex:1;min-width:0;width:auto}.admin-manage-list li{flex-wrap:wrap}.admin-manage-item{flex-basis:100%}.admin-manage-action{margin-left:auto}.admin-manage-tabs a,.admin-manage-tabs button{flex:1;justify-content:center}}
+
+.admin-report-list{display:grid;gap:16px}
+.admin-report-card{padding:18px;border:1px solid var(--color-border);border-radius:16px;background:var(--color-surface)}
+.admin-report-card>header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.admin-report-card h2{margin:0 0 6px;font-size:20px}
+.admin-report-reason{margin:12px 0;line-height:1.6}
+.admin-report-body{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--color-muted);line-height:1.6}
+.admin-report-card summary{cursor:pointer;color:var(--color-primary);font-weight:650}
+.admin-report-card textarea{display:block;width:100%;margin:8px 0;padding:10px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-page-bg);color:var(--color-text)}
+.admin-report-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.admin-report-actions button{min-height:44px}
+
+.admin-manage-links{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 14px}
+.admin-manage-links a{color:var(--color-primary);font-weight:650}

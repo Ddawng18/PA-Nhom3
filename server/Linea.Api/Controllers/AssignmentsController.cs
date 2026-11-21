@@ -104,8 +104,15 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
         var grades = await db.Grades.AsNoTracking().Where(g => db.Submissions.Any(s => s.Id == g.SubmissionId && contexts.Any(c => c.Id == s.AssignmentId))).ToListAsync(ct);
         var lessons = await (from l in db.CourseLessons.AsNoTracking() join c in db.CourseChapters on l.ChapterId equals c.Id
                             where c.CourseId == courseId orderby c.Order, l.Order select new { id = l.Id, title = l.Title }).ToListAsync(ct);
+        var studentIds = submissions.Select(s => s.UserId).Distinct().ToArray();
+        var names = studentIds.Length == 0 ? [] : await db.Database.SqlQuery<PersonName>($"""
+            select id AS "Id", coalesce(nullif(btrim(display_name), ''), 'Học viên LINEA') AS "Name"
+            from public.nguoi_dung where id = any({studentIds})
+            """).ToListAsync(ct);
+        var nameById = names.ToDictionary(item => item.Id, item => item.Name);
         return Ok(new { assignments, lessons, submissions = submissions.Select(s => new { id = s.Id, assignmentId = s.AssignmentId,
-            studentId = s.UserId, status = s.Status, submittedAt = s.SubmittedAt, updatedAt = s.UpdatedAt,
+            studentId = s.UserId, studentName = nameById.GetValueOrDefault(s.UserId, "Học viên LINEA"),
+            status = s.Status, submittedAt = s.SubmittedAt, updatedAt = s.UpdatedAt,
             grade = grades.SingleOrDefault(g => g.SubmissionId == s.Id) is { } g ? GradeView(g) : null }) });
     }
 
@@ -163,6 +170,25 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
         return Ok(GradeView(grade));
     }
 
+    [HttpGet("submissions/{id:long}/history"), Authorize(Policy = AuthPolicies.TeacherAccess)]
+    public async Task<IActionResult> History(long id, CancellationToken ct)
+    {
+        if (!User.TryGetUserId(out var userId)) return Unauthorized();
+        var owned = await (from submission in db.Submissions.AsNoTracking()
+                           join context in Contexts on submission.AssignmentId equals context.Id
+                           where submission.Id == id && context.TeacherId == userId
+                           select submission.Id).AnyAsync(ct);
+        if (!owned) return NotFound();
+        var rows = await db.StatusHistory.AsNoTracking()
+            .Where(entry => entry.ObjectType == "BAI_NOP" && entry.ObjectId == id.ToString())
+            .OrderByDescending(entry => entry.OccurredAt).ThenByDescending(entry => entry.Id).Take(50)
+            .Select(entry => new
+            {
+                entry.Id, entry.PreviousStatus, entry.Status, entry.Reason, entry.OccurredAt
+            }).ToListAsync(ct);
+        return Ok(rows);
+    }
+
     [HttpGet("submissions/{id:long}/image")]
     public async Task<IActionResult> Image(long id, CancellationToken ct)
     {
@@ -195,6 +221,12 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
     private static object? SubmissionView(AssignmentSubmission? s, List<SubmissionGrade> grades) => s is null ? null : new {
         id = s.Id, status = s.Status, submittedAt = s.SubmittedAt, updatedAt = s.UpdatedAt,
         grade = grades.SingleOrDefault(g => g.SubmissionId == s.Id) is { } g ? GradeView(g) : null };
+    private sealed class PersonName
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = "";
+    }
+
     private sealed class AssignmentCourse
     {
         public long Id { get; init; }

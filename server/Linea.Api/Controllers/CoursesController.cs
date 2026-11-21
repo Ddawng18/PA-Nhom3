@@ -259,7 +259,9 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
                 .SetProperty(item => item.Description, request.Description.Trim())
                 .SetProperty(item => item.Level, request.Level).SetProperty(item => item.Topic, request.Topic.Trim())
                 .SetProperty(item => item.PriceVnd, item => request.PriceVnd ?? item.PriceVnd)
-                .SetProperty(item => item.CoverImage, string.IsNullOrWhiteSpace(request.CoverImage) ? null : request.CoverImage), cancellationToken);
+                .SetProperty(item => item.CoverImage, string.IsNullOrWhiteSpace(request.CoverImage) ? null : request.CoverImage)
+                .SetProperty(item => item.DurationText, string.IsNullOrWhiteSpace(request.DurationText) ? null : request.DurationText.Trim())
+                .SetProperty(item => item.StartDate, request.StartDate), cancellationToken);
         if (changed == 0) return Conflict(new { detail = "Chỉ được sửa khóa học ở trạng thái nháp." });
         Apply(course, request); return Ok(LearningCourseResponse.From(course));
     }
@@ -312,6 +314,8 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
         if (!string.IsNullOrWhiteSpace(request.CoverImage) &&
             (!Uri.TryCreate(request.CoverImage, UriKind.Absolute, out var uri) || uri.Scheme != "https"))
             return BadRequest(new { detail = "Ảnh đại diện phải dùng URL HTTPS." });
+        if (request.DurationText is { Length: > 50 })
+            return BadRequest(new { detail = "Thời lượng tối đa 50 ký tự." });
         return null;
     }
     private static void Apply(LearningCourse course, SaveLearningCourseRequest request)
@@ -320,5 +324,7 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
         course.Level = request.Level; course.Topic = request.Topic.Trim();
         course.PriceVnd = request.PriceVnd ?? course.PriceVnd;
         course.CoverImage = string.IsNullOrWhiteSpace(request.CoverImage) ? null : request.CoverImage;
+        course.DurationText = string.IsNullOrWhiteSpace(request.DurationText) ? null : request.DurationText.Trim();
+        course.StartDate = request.StartDate;
     }
 }

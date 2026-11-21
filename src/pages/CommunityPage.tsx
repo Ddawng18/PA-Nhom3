@@ -7,9 +7,76 @@ import { AdminApiError, requestAdminApi } from "../lib/adminApi";
 import { prepareCommunityImage } from "../lib/communityImages";
 import "../styles/studio.css";
 
-const postSchema = z.object({ id: z.number().int().positive(), authorId: z.string().optional(), title: z.string(), body: z.string(), author: z.string(), createdAt: z.string(), imageUrl: z.string().nullable().optional(), commentCount: z.number().default(0) });
+const postSchema = z.object({ id: z.number().int().positive(), authorId: z.string().optional(), title: z.string(), body: z.string(), author: z.string(), createdAt: z.string(), imageUrl: z.string().nullable().optional(), commentCount: z.number().default(0), likeCount: z.number().default(0), liked: z.boolean().default(false) });
 type Post = z.infer<typeof postSchema>;
 const commentSchema = z.object({ id: z.number(), body: z.string(), author: z.string(), createdAt: z.string(), imageUrl: z.string().nullable().optional() });
+const likeStateSchema = z.object({ liked: z.boolean(), likeCount: z.number().int().nonnegative() });
+
+function LikeButton({ post }: { post: Post }) {
+  const { session } = useAuth();
+  const [liked, setLiked] = useState(post.liked);
+  const [count, setCount] = useState(post.likeCount);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => { setLiked(post.liked); setCount(post.likeCount); }, [post.id, post.liked, post.likeCount]);
+  async function toggle() {
+    if (!session || busy) return;
+    const next = !liked;
+    setLiked(next); setCount(value => Math.max(0, value + (next ? 1 : -1))); setBusy(true); setError("");
+    try {
+      const result = likeStateSchema.parse(await requestAdminApi(`/api/community/posts/${post.id}/like`, {
+        token: session.access_token, method: next ? "POST" : "DELETE",
+      }));
+      setLiked(result.liked); setCount(result.likeCount);
+    } catch {
+      setLiked(!next); setCount(value => Math.max(0, value + (next ? -1 : 1)));
+      setError("Chưa cập nhật được lượt thích. Vui lòng thử lại.");
+    } finally { setBusy(false); }
+  }
+  return <span className="community-like">
+    <button type="button" className={liked ? "selected" : ""} aria-pressed={liked} disabled={!session || busy}
+      title={!session ? "Đăng nhập để thích bài viết" : undefined} onClick={() => void toggle()}>
+      {liked ? "Đã thích" : "Thích"} ({count})
+    </button>
+    {error && <span role="alert" className="community-inline-error">{error}</span>}
+  </span>;
+}
+
+function ReportForm({ id }: { id: number }) {
+  const { session } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  if (!session) return null;
+  if (!open) return <span className="community-report-toggle">
+    <button type="button" onClick={() => { setOpen(true); setNotice(""); }}>Báo cáo bài viết</button>
+    {notice && <span role="status" className="community-inline-note">{notice}</span>}
+  </span>;
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!session || busy || reason.trim().length < 5) return;
+    setBusy(true); setNotice("");
+    try {
+      await requestAdminApi(`/api/community/posts/${id}/report`, {
+        token: session.access_token, method: "POST", body: { reason: reason.trim() },
+      });
+      setReason(""); setOpen(false); setNotice("Đã gửi báo cáo tới quản trị viên.");
+    } catch (error) {
+      setNotice(`${error instanceof Error ? error.message : "Chưa gửi được báo cáo."} Vui lòng thử lại.`);
+    } finally { setBusy(false); }
+  }
+  return <form className="community-report" onSubmit={submit}>
+    <label htmlFor={`report-${id}`}>Lý do báo cáo</label>
+    <textarea id={`report-${id}`} minLength={5} maxLength={500} required disabled={busy} value={reason}
+      onChange={event => setReason(event.target.value)} placeholder="Mô tả nội dung vi phạm (5-500 ký tự)" />
+    <div className="community-post-actions">
+      <button type="submit" disabled={busy || reason.trim().length < 5}>{busy ? "Đang gửi..." : "Gửi báo cáo"}</button>
+      <button type="button" disabled={busy} onClick={() => { setOpen(false); setReason(""); setNotice(""); }}>Hủy</button>
+    </div>
+    {notice && <p role="status">{notice}</p>}
+  </form>;
+}
 
 function ImagePicker({ id, file, setFile, disabled }: { id: string; file: File | null; setFile: (file: File | null) => void; disabled: boolean }) {
   const [preview, setPreview] = useState("");
@@ -126,6 +193,7 @@ function CommunityPost({ post, detail, onUpdated, onDeleted, onComment }: {
       {post.imageUrl && <a href={post.imageUrl} target="_blank" rel="noopener noreferrer"><img className="community-post-image" src={post.imageUrl} alt={`Ảnh đính kèm: ${post.title}`} loading="lazy" /></a>}
     </>}
     {notice && <p role="status">{notice}</p>}
+    <div className="community-actions"><LikeButton post={post} />{session && !own && <ReportForm id={post.id} />}</div>
     <Comments id={post.id} count={post.commentCount} initiallyOpen={detail} onAdded={onComment} />
   </div></article>;
 }

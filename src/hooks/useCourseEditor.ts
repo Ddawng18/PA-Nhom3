@@ -16,6 +16,8 @@ const courseSchema = z.object({
   chu_de: z.string(),
   mo_ta: z.string(),
   anh_dai_dien: z.string().nullable(),
+  thoi_luong: z.string().nullable().optional(),
+  ngay_khai_giang: z.string().nullable().optional(),
   trang_thai: z.string(),
 });
 const chapterSchema = z.object({
@@ -93,6 +95,8 @@ export type CourseEditorModel = {
   chu_de: string;
   mo_ta: string;
   anh_dai_dien: string;
+  thoi_luong?: string | null;
+  ngay_khai_giang?: string | null;
   trang_thai: string;
   chuong: CourseEditorChapter[];
 };

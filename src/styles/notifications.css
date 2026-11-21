@@ -90,7 +90,7 @@
 .notif-header-icon,
 .notif-cart-button {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   padding: 0;

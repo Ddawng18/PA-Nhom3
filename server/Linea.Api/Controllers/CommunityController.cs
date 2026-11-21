@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Headers;
+using Linea.Api.Models;
 using Linea.Api.Services;
 
 namespace Linea.Api.Controllers;
@@ -25,6 +26,8 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
         public DateTimeOffset CreatedAt { get; set; }
         public string? ImageUrl { get; set; }
         public int CommentCount { get; set; }
+        public int LikeCount { get; set; }
+        public bool Liked { get; set; }
     }
 
     [HttpGet, AllowAnonymous]
@@ -32,12 +35,16 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
     {
         page = Math.Clamp(page, 1, 10000);
         var offset = (page - 1) * 20;
+        User.TryGetUserId(out var userId);
         var rows = await db.Database.SqlQuery<PostRow>($"""
             SELECT p.id AS "Id", p.author_id AS "AuthorId", p.title AS "Title", p.body AS "Body",
                    coalesce(nullif(btrim(n.display_name), ''), 'Thành viên LINEA') AS "Author",
                    p.created_at AS "CreatedAt", p.image_url AS "ImageUrl",
-                   (select count(*)::int from public.community_comments c where c.post_id=p.id) AS "CommentCount"
+                   (select count(*)::int from public.community_comments c where c.post_id=p.id) AS "CommentCount",
+                   (select count(*)::int from public.community_post_likes l where l.post_id=p.id) AS "LikeCount",
+                   exists(select 1 from public.community_post_likes l where l.post_id=p.id and l.user_id={userId}) AS "Liked"
             FROM public.community_posts p JOIN public.nguoi_dung n ON n.id = p.author_id
+            WHERE p.status = 'VISIBLE'
             ORDER BY p.created_at DESC, p.id DESC LIMIT 20 OFFSET {offset}
             """).ToListAsync(ct);
         return Ok(rows);
@@ -46,15 +53,98 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
     [HttpGet("{id:long}"), AllowAnonymous]
     public async Task<IActionResult> Get(long id, CancellationToken ct)
     {
+        User.TryGetUserId(out var userId);
         var rows = await db.Database.SqlQuery<PostRow>($"""
             SELECT p.id AS "Id", p.author_id AS "AuthorId", p.title AS "Title", p.body AS "Body",
                    coalesce(nullif(btrim(n.display_name), ''), 'Thành viên LINEA') AS "Author",
                    p.created_at AS "CreatedAt", p.image_url AS "ImageUrl",
-                   (select count(*)::int from public.community_comments c where c.post_id=p.id) AS "CommentCount"
+                   (select count(*)::int from public.community_comments c where c.post_id=p.id) AS "CommentCount",
+                   (select count(*)::int from public.community_post_likes l where l.post_id=p.id) AS "LikeCount",
+                   exists(select 1 from public.community_post_likes l where l.post_id=p.id and l.user_id={userId}) AS "Liked"
             FROM public.community_posts p JOIN public.nguoi_dung n ON n.id = p.author_id
-            WHERE p.id = {id}
+            WHERE p.id = {id} AND (p.status = 'VISIBLE' OR p.author_id = {userId})
             """).ToListAsync(ct);
         return rows.Count == 0 ? NotFound() : Ok(rows[0]);
+    }
+
+    [EnableRateLimiting("writes")]
+    [HttpPost("{id:long}/like"), Authorize]
+    public async Task<IActionResult> Like(long id, CancellationToken ct)
+    {
+        if (!User.TryGetUserId(out var userId)) return Unauthorized();
+        if (!await Exists(id, userId, ct)) return NotFound();
+        var inserted = await db.Database.ExecuteSqlInterpolatedAsync($"""
+            insert into public.community_post_likes(post_id,user_id) values({id},{userId})
+            on conflict (post_id,user_id) do nothing
+            """, ct);
+        if (inserted > 0)
+            await NotifyPostAuthor(id, userId, "community_like", "Có người vừa thích bài viết của bạn.",
+                $"/community/{id}", ct);
+        return Ok(await LikeState(id, userId, ct));
+    }
+
+    [EnableRateLimiting("writes")]
+    [HttpDelete("{id:long}/like"), Authorize]
+    public async Task<IActionResult> Unlike(long id, CancellationToken ct)
+    {
+        if (!User.TryGetUserId(out var userId)) return Unauthorized();
+        if (!await Exists(id, userId, ct)) return NotFound();
+        await db.Database.ExecuteSqlInterpolatedAsync($"""
+            delete from public.community_post_likes where post_id={id} and user_id={userId}
+            """, ct);
+        return Ok(await LikeState(id, userId, ct));
+    }
+
+    private async Task<object> LikeState(long postId, Guid userId, CancellationToken ct)
+    {
+        var likeCount = await db.Database.SqlQuery<int>($"""
+            select count(*)::int AS "Value" from public.community_post_likes where post_id={postId}
+            """).SingleAsync(ct);
+        var liked = await db.Database.SqlQuery<bool>($"""
+            select exists(select 1 from public.community_post_likes where post_id={postId} and user_id={userId}) AS "Value"
+            """).SingleAsync(ct);
+        return new { liked, likeCount };
+    }
+
+    public sealed record ReportPost([Required, StringLength(500)] string Reason);
+
+    [EnableRateLimiting("writes")]
+    [HttpPost("{id:long}/report"), Authorize]
+    public async Task<IActionResult> Report(long id, ReportPost request, CancellationToken ct)
+    {
+        if (!User.TryGetUserId(out var userId)) return Unauthorized();
+        var reason = request.Reason?.Trim() ?? "";
+        if (reason.Length is < 5 or > 500)
+            return BadRequest(new { detail = "Lý do báo cáo phải từ 5 đến 500 ký tự." });
+        if (!await Exists(id, userId, ct)) return NotFound();
+        await db.Database.ExecuteSqlInterpolatedAsync($"""
+            insert into public.community_post_reports(post_id,reporter_id,reason)
+            values({id},{userId},{reason})
+            on conflict (post_id,reporter_id) do update
+              set reason=excluded.reason, status='OPEN', created_at=now(), reviewed_at=null, reviewer_id=null, note=null
+            """, ct);
+        return Ok(new { reported = true });
+    }
+
+    private async Task NotifyPostAuthor(long postId, Guid actorId, string type, string content, string link,
+        CancellationToken ct)
+    {
+        try
+        {
+            var author = await db.Database.SqlQuery<Guid>($"""
+                select author_id AS "Value" from public.community_posts where id={postId}
+                """).SingleOrDefaultAsync(ct);
+            if (author == Guid.Empty || author == actorId) return;
+            db.Notifications.Add(new NotificationMessage
+            {
+                UserId = author, Type = type, Content = content, Link = link, CreatedAt = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync(ct);
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning("Community notification deferred: {FailureType}", e.GetType().Name);
+        }
     }
 
     [EnableRateLimiting("writes")]
@@ -152,7 +242,8 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
     [HttpGet("{id:long}/comments"), AllowAnonymous]
     public async Task<IActionResult> Comments(long id, [FromQuery] int page = 1, CancellationToken ct = default)
     {
-        if (!await Exists(id, ct)) return NotFound();
+        User.TryGetUserId(out var viewerId);
+        if (!await Exists(id, viewerId, ct)) return NotFound();
         var offset = (Math.Clamp(page, 1, 10000) - 1) * 20;
         return Ok(await db.Database.SqlQuery<CommentRow>($"""
             select c.id AS "Id", c.body AS "Body", c.created_at AS "CreatedAt", c.image_url AS "ImageUrl",
@@ -162,8 +253,10 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
             """).ToListAsync(ct));
     }
 
-    private async Task<bool> Exists(long id, CancellationToken ct) =>
-        await db.Database.SqlQuery<int>($"select 1 AS \"Value\" from public.community_posts where id={id}").AnyAsync(ct);
+    private async Task<bool> Exists(long id, Guid viewerId, CancellationToken ct) =>
+        await db.Database.SqlQuery<int>(
+            $"select 1 AS \"Value\" from public.community_posts where id={id} and (status='VISIBLE' or author_id={viewerId})")
+            .AnyAsync(ct);
 
     [EnableRateLimiting("writes")]
     [HttpPost("{id:long}/comments"), Authorize]
@@ -176,7 +269,7 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
         var body = text?.Trim() ?? "";
         if ((body.Length == 0 && imageUrl is null) || body.Length > 2000)
             return BadRequest(new { detail = "Bình luận cần có chữ hoặc ảnh, tối đa 2.000 ký tự." });
-        if (!await Exists(id, ct)) return NotFound();
+        if (!await Exists(id, userId, ct)) return NotFound();
         var rows = await db.Database.SqlQuery<CommentRow>($"""
             with inserted as (
               insert into public.community_comments(post_id,author_id,body,image_url) values ({id},{userId},{body},{imageUrl}) returning *
@@ -184,6 +277,8 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
               coalesce(nullif(btrim(n.display_name), ''), 'Thành viên LINEA') AS "Author"
             from inserted c join public.nguoi_dung n on n.id=c.author_id
             """).ToListAsync(ct);
+        await NotifyPostAuthor(id, userId, "community_comment", "Có bình luận mới cho bài viết của bạn.",
+            $"/community/{id}", ct);
         return Ok(rows[0]);
     }
 
@@ -195,7 +290,7 @@ public sealed class CommunityController(AppDbContext db, IConfiguration config, 
     {
         if (!User.TryGetUserId(out var userId)) return Unauthorized();
         if ((body?.Trim().Length ?? 0) > 2000) return BadRequest(new { detail = "Bình luận tối đa 2.000 ký tự." });
-        if (!await Exists(id, ct)) return NotFound();
+        if (!await Exists(id, userId, ct)) return NotFound();
         return image is null ? await SaveComment(id, body, null, ct)
             : await UploadAndSave(image, userId, url => SaveComment(id, body, url, ct), 1024 * 1024, ct);
     }

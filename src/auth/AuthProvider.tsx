@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getAuthErrorMessage } from "./errors";
 import { AuthContext, type AuthContextValue, type AuthResult } from "./authContext";
+import { readRememberState, shouldKeepStoredSession } from "./sessionPolicy";
 import {
   getGoogleProviderStatus,
   isSupabaseConfigured,
@@ -24,15 +25,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      let remember = true;
-      let tabMarker = true;
+      let state = { remember: true, tabMarker: true };
       try {
-        remember = localStorage.getItem("linea:remember-login") !== "0";
-        tabMarker = sessionStorage.getItem("linea:tab-session") === "1";
+        state = readRememberState(localStorage, sessionStorage);
       } catch {
-        remember = true;
+        state = { remember: true, tabMarker: true };
       }
-      if (data.session && !remember && !tabMarker) {
+      if (!shouldKeepStoredSession(Boolean(data.session), state)) {
         void supabase?.auth.signOut();
         setSession(null);
       } else {
