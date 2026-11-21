@@ -100,7 +100,7 @@ public sealed class AdminWorkspaceController(AppDbContext db) : ControllerBase
             from public.lich_su_trang_thai h
             left join public.nguoi_dung n on n.id = h.ma_nguoi_thuc_hien
             where ({type}::text = '' or h.loai_doi_tuong = {type}::text)
-            order by h.ngay_thuc_hien desc, h.id desc limit {pageSize} offset {offset}
+            order by h.ngay_thuc_hien desc, h.ma_lich_su desc limit {pageSize} offset {offset}
             """).ToListAsync(ct);
     }
 }

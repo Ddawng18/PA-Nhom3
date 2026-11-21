@@ -69,14 +69,11 @@ export default function LoginForm() {
       const result = await signInWithEmail({
         email: values.email.trim(),
         password: values.password,
+        remember,
       });
       if (result.error) {
         setMessage(result.error);
       } else {
-        try {
-          sessionStorage.setItem("linea:tab-session", "1");
-          localStorage.setItem("linea:remember-login", remember ? "1" : "0");
-        } catch { void 0; }
         navigate(redirectTo, { replace: true });
       }
     } catch (error) {
@@ -91,11 +88,7 @@ export default function LoginForm() {
     setIsGoogleSubmitting(true);
     setMessage(null);
     try {
-      try {
-        sessionStorage.setItem("linea:tab-session", "1");
-        localStorage.setItem("linea:remember-login", "1");
-      } catch { void 0; }
-      const result = await signInWithGoogle();
+      const result = await signInWithGoogle(remember);
       if (result.error) {
         setMessage(result.error);
       }
