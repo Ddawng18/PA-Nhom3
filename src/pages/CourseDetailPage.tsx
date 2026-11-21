@@ -178,21 +178,6 @@ export default function CourseDetailPage() {
         const startDate = formatStartDate(course.ngay_khai_giang);
         return (
           <>
-            <section className="cd-hero">
-              <div className="cd-hero-inner">
-                <p className="cd-hero-eyebrow">{course.chu_de.toUpperCase()} · LINEA</p>
-                <h1>{course.tieu_de}</h1>
-                <div className="cd-hero-meta">
-                  <span className="cd-pill">{level}</span>
-                  {course.so_bai_hoc > 0 && <span>{formatLessonCount(course.so_bai_hoc)}</span>}
-                  {course.so_chuong > 0 && <span>{course.so_chuong} chương</span>}
-                  {course.thoi_luong && <span>{course.thoi_luong}</span>}
-                  {startDate && <span>Khai giảng {startDate}</span>}
-                  {students && <span>{students}</span>}
-                </div>
-              </div>
-            </section>
-
             <main className="cd-main">
               <nav className="cd-breadcrumb" aria-label="Đường dẫn">
                 <Link to="/courses">Khám phá</Link>
@@ -201,34 +186,38 @@ export default function CourseDetailPage() {
               </nav>
 
               <section className="cd-summary">
-                <div className="cd-cover">
-                  {coverUrl && !coverFailed ? (
-                    <img src={coverUrl} alt="" onError={() => setCoverFailed(true)} />
-                  ) : (
-                    <span aria-hidden="true">{course.tieu_de.slice(0, 1).toUpperCase()}</span>
-                  )}
-                </div>
-                <div className="cd-info">
+                <div className="cd-lead">
+                  <div className="cd-cover">
+                    {coverUrl && !coverFailed ? (
+                      <img src={coverUrl} alt="" onError={() => setCoverFailed(true)} />
+                    ) : (
+                      <span aria-hidden="true">{course.tieu_de.slice(0, 1).toUpperCase()}</span>
+                    )}
+                  </div>
                   <p className="cd-topic">{course.chu_de.toUpperCase()}</p>
-                  <h2>{course.tieu_de}</h2>
-                  <p className="cd-description">{course.mo_ta}</p>
-                  <p className="cd-facts">
+                  <h1>{course.tieu_de}</h1>
+                  <div className="cd-meta">
                     <span className="cd-pill">{level}</span>
-                    <span>{teacherName}</span>
-                  </p>
+                    {course.so_bai_hoc > 0 && <span>{formatLessonCount(course.so_bai_hoc)}</span>}
+                    {course.so_chuong > 0 && <span>{course.so_chuong} chương</span>}
+                    {students && <span>{students}</span>}
+                  </div>
+                  <p className="cd-description">{course.mo_ta}</p>
+                  <div className="cd-teacher-row">
+                    <span className="cd-avatar" aria-hidden="true">{getInitials(course.ten_giao_vien)}</span>
+                    <div>
+                      <strong>{teacherName}</strong>
+                      <small>Giảng viên khóa học</small>
+                    </div>
+                  </div>
+                </div>
 
-                  <div className="cd-buy">
+                <aside className="cd-buy">
                     {price && <p className="cd-price">{price}</p>}
                     {course.gia_vnd !== null && course.gia_vnd > 0 && <div className="cd-payment-note">
                       <span className="cd-payment-note-icon" aria-hidden="true">✓</span>
                       <span><strong>Thanh toán thử nghiệm</strong><small>Chưa có thông tin ngân hàng để nhận tiền thật.</small></span>
                     </div>}
-                    {enrolled && learning && (
-                      <label className="cd-progress">
-                        Tiến độ bài học: {learning.phan_tram}%
-                        <progress value={learning.phan_tram} max={100} />
-                      </label>
-                    )}
                     {actionError && <p className="cd-error" role="alert">{actionError}</p>}
                     {order?.status === "PENDING" && <p className="cd-order-pending-note" role="status">Đơn #{order.id} đang chờ thanh toán.</p>}
                     {enrolled ? (
@@ -246,7 +235,12 @@ export default function CourseDetailPage() {
                     ) : (
                       <Link className="cd-button cd-button-primary" to="/login">Đăng nhập để ghi danh</Link>
                     )}
-                  </div>
+                    <dl className="cd-facts-list">
+                      {course.so_bai_hoc > 0 && <div><dt>Số bài học</dt><dd>{formatLessonCount(course.so_bai_hoc)}</dd></div>}
+                      {course.so_chuong > 0 && <div><dt>Số chương</dt><dd>{course.so_chuong} chương</dd></div>}
+                      {course.thoi_luong && <div><dt>Thời lượng</dt><dd>{course.thoi_luong}</dd></div>}
+                      {startDate && <div><dt>Khai giảng</dt><dd>{startDate}</dd></div>}
+                    </dl>
                   <dialog className="cd-payment-dialog" ref={paymentDialogRef} aria-labelledby="cd-payment-title" aria-describedby="cd-payment-warning" onClose={() => setPaymentDialogOpen(false)}>
                     {order?.status === "PENDING" && <div className="cd-payment-dialog-content">
                       <button className="cd-payment-close" type="button" aria-label="Đóng thông tin thanh toán" onClick={() => paymentDialogRef.current?.close()}>×</button>
@@ -265,49 +259,36 @@ export default function CourseDetailPage() {
                       <button className="cd-button cd-button-primary" type="button" onClick={() => paymentDialogRef.current?.close()}>Đã hiểu</button>
                     </div>}
                   </dialog>
-                </div>
+                </aside>
               </section>
 
-              <section className="cd-columns">
-                <article className="cd-card">
-                  <h3>NỘI DUNG KHÓA HỌC</h3>
-                  {chapters.length === 0 ? (
-                    <p className="cd-muted">Khóa học chưa có nội dung bài học.</p>
-                  ) : (
-                    <ol className="cd-chapters">
-                      {chapters.map((chapter, index) => (
-                        <li key={chapter.ma_chuong}>
+              <section className="cd-content">
+                <h2>NỘI DUNG KHÓA HỌC</h2>
+                {chapters.length === 0 ? (
+                  <p className="cd-muted">Khóa học chưa có nội dung bài học.</p>
+                ) : (
+                  <div className="cd-chapters">
+                    {chapters.map((chapter, index) => (
+                      <details className="cd-chapter" key={chapter.ma_chuong} open={index === 0}>
+                        <summary>
                           <span className="cd-chapter-index">{String(index + 1).padStart(2, "0")}</span>
-                          <div>
-                            <strong>{chapter.tieu_de}</strong>
-                            <small>{formatLessonCount(chapter.bai_hoc.length)}</small>
-                            {chapter.bai_hoc.length > 0 && (
-                              <ul>
-                                {chapter.bai_hoc.map((lesson) => <li key={lesson.ma_bai_hoc}>{lesson.tieu_de}</li>)}
-                              </ul>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                </article>
-
-                <article className="cd-card cd-teacher">
-                  <h3>GIẢNG VIÊN</h3>
-                  <div className="cd-teacher-row">
-                    <span className="cd-avatar" aria-hidden="true">{getInitials(course.ten_giao_vien)}</span>
-                    <div>
-                      <strong>{teacherName}</strong>
-                      <small>Giảng viên khóa học</small>
-                    </div>
+                          <span className="cd-chapter-title">{chapter.tieu_de}</span>
+                          <span className="cd-chapter-count">{formatLessonCount(chapter.bai_hoc.length)}</span>
+                        </summary>
+                        {chapter.bai_hoc.length > 0 && (
+                          <ul>
+                            {chapter.bai_hoc.map((lesson) => <li key={lesson.ma_bai_hoc}>{lesson.tieu_de}</li>)}
+                          </ul>
+                        )}
+                      </details>
+                    ))}
                   </div>
-                </article>
+                )}
               </section>
 
               {related.length > 0 && (
                 <section className="cd-related" aria-label="Khóa học cùng chủ đề">
-                  <h3>Khóa học cùng chủ đề</h3>
+                  <h2>Khóa học cùng chủ đề</h2>
                   <div className="cd-related-grid" role="list">
                     {related.map((item) => <CatalogCourseCard key={item.ma_khoa_hoc} course={item} />)}
                   </div>
