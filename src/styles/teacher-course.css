@@ -734,19 +734,14 @@
   margin: 0;
 }
 
-.course-dialog-backdrop {
-  position: fixed;
-  z-index: 20;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 20px;
+.course-dialog::backdrop {
   background: rgb(25 34 27 / 42%);
 }
 
 .course-dialog {
-  width: min(100%, 440px);
+  width: min(calc(100% - 40px), 440px);
   padding: 24px;
+  border: 0;
   border-radius: 18px;
   outline: none;
   background: #fff;
