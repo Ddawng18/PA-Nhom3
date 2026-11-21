@@ -4,6 +4,8 @@ import {
   parseStudioDraft,
   serializeStudioDraft,
   studioCanvasClass,
+  getStudioPixelBrush,
+  getStudioStampVariant,
 } from "./studio";
 
 const png = "data:image/png;base64,AAAA";
@@ -58,5 +60,35 @@ describe("studio canvas class", () => {
     expect(studioCanvasClass("paper")).toBe("is-paper");
     expect(studioCanvasClass("grid")).toBe("is-grid");
     expect(studioCanvasClass("transparent")).toBe("is-transparent");
+  });
+});
+
+
+describe("studio motion", () => {
+  it("uses sparse stamps for stipple and solid stamps for the blob brush", () => {
+    const stipple = getStudioPixelBrush("stipple", 14);
+    const blob = getStudioPixelBrush("blob", 14);
+    const ink = (stamp: typeof stipple.stamps[number]) => stamp.reduce((sum, run) => sum + run[2], 0);
+    expect(stipple.pixel).toBe(2);
+    expect(ink(stipple.stamps[0])).toBeLessThan(ink(blob.stamps[0]) / 2);
+    expect(new Set(blob.stamps.map(stamp => JSON.stringify(stamp))).size).toBe(3);
+  });
+
+  it("keeps animated stamps on a coarse grid while using compact masks for thin pens", () => {
+    const thin = getStudioPixelBrush("soft", 6, true);
+    const thick = getStudioPixelBrush("soft", 30, true);
+    expect(thin.pixel).toBe(3);
+    expect(Math.max(...thin.stamps.flat().map(run => run[2]))).toBe(2);
+    expect(thick.pixel).toBe(6);
+    expect(getStudioPixelBrush("stipple", 7, true).pixel).toBe(3);
+  });
+
+  it("varies the stamp between frames while keeping the original frame centered", () => {
+    const frames = Array.from({ length: 3 }, (_, frame) => getStudioStampVariant(1729, 9, frame, 1.7));
+    expect(new Set(frames.map(stamp => stamp.variant)).size).toBe(3);
+    expect(frames[0]).toMatchObject({ x: 0, y: 0 });
+    expect(frames[1].x + frames[2].x).toBe(0);
+    expect(frames[1].y + frames[2].y).toBe(0);
+    expect(getStudioStampVariant(1729, 9, 1, 0.55)).toMatchObject({ x: 0, y: 0 });
   });
 });
