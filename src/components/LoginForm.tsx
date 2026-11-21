@@ -69,14 +69,11 @@ export default function LoginForm() {
       const result = await signInWithEmail({
         email: values.email.trim(),
         password: values.password,
+        remember,
       });
       if (result.error) {
         setMessage(result.error);
       } else {
-        try {
-          sessionStorage.setItem("linea:tab-session", "1");
-          localStorage.setItem("linea:remember-login", remember ? "1" : "0");
-        } catch { void 0; }
         navigate(redirectTo, { replace: true });
       }
     } catch (error) {
@@ -91,11 +88,7 @@ export default function LoginForm() {
     setIsGoogleSubmitting(true);
     setMessage(null);
     try {
-      try {
-        sessionStorage.setItem("linea:tab-session", "1");
-        localStorage.setItem("linea:remember-login", "1");
-      } catch { void 0; }
-      const result = await signInWithGoogle();
+      const result = await signInWithGoogle(remember);
       if (result.error) {
         setMessage(result.error);
       }
@@ -114,26 +107,25 @@ export default function LoginForm() {
       </Link>
 
       <div className="form-heading">
-        <p className="eyebrow">TRỞ LẠI VỚI LINEA</p>
-        <h1 id="login-title">Đăng nhập vào tài khoản</h1>
+        <h1 id="login-title">Đăng nhập</h1>
         <p className="form-description">
-          Tiếp tục hành trình học tập của bạn. Đăng nhập để mở khóa bài học mới và theo dõi tiến độ.
+          Dùng tài khoản LINEA để tiếp tục học.
         </p>
       </div>
 
       <form className="register-form" noValidate onSubmit={handleSubmit}>
-        <FormField id="login-email" label="Địa chỉ email" required hint="Vui lòng nhập đúng email đã đăng ký." error={fieldErrors.email}>
+        <FormField id="login-email" label="Địa chỉ email" required error={fieldErrors.email}>
           <input
             id="login-email"
             name="email"
             type="email"
             autoComplete="email"
             aria-invalid={Boolean(fieldErrors.email)}
-            aria-describedby={fieldErrors.email ? "login-email-error" : "login-email-hint"}
+            aria-describedby={fieldErrors.email ? "login-email-error" : undefined}
           />
         </FormField>
 
-        <FormField id="login-password" label="Mật khẩu" required className="password-field" hint="Vui lòng nhập mật khẩu của bạn." error={fieldErrors.password}>
+        <FormField id="login-password" label="Mật khẩu" required className="password-field" error={fieldErrors.password}>
           <div className="password-input-wrap">
             <input
               id="login-password"
@@ -141,7 +133,7 @@ export default function LoginForm() {
               type={isPasswordVisible ? "text" : "password"}
               autoComplete="current-password"
               aria-invalid={Boolean(fieldErrors.password)}
-              aria-describedby={fieldErrors.password ? "login-password-error" : "login-password-hint"}
+              aria-describedby={fieldErrors.password ? "login-password-error" : undefined}
             />
             <button
               className="password-toggle"
@@ -159,10 +151,10 @@ export default function LoginForm() {
           </div>
         </FormField>
 
-        <label className="remember-login">
+        <div className="login-options"><label className="remember-login">
           <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.currentTarget.checked)} />
           <span>Ghi nhớ đăng nhập</span>
-        </label>
+        </label><Link className="forgot-password-link" to="/forgot-password">Quên mật khẩu?</Link></div>
 
         {!configured && (
           <p className="form-message form-message-error" role="alert">
@@ -173,9 +165,6 @@ export default function LoginForm() {
         <Button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
           {isSubmitting ? "Đang xử lý..." : "Đăng nhập"}
         </Button>
-        <p className="next-step">Bước tiếp theo: quay lại ghi danh khóa học đã chọn.</p>
-
-        <Link className="forgot-password-link" to="/forgot-password">Quên mật khẩu?</Link>
 
         <div className="form-divider" aria-label="hoặc">
           <span>hoặc</span>
@@ -191,10 +180,7 @@ export default function LoginForm() {
           {isGoogleSubmitting ? "Đang chuyển hướng..." : "Tiếp tục với Google"}
         </Button>
 
-        <p className="new-account-label">Chưa có tài khoản?</p>
-        <Link className="create-account-button" to="/register">
-          Tạo tài khoản mới
-        </Link>
+        <p className="login-signup">Chưa có tài khoản? <Link to="/register">Tạo tài khoản mới</Link></p>
       </form>
     </section>
   );

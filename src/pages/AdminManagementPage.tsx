@@ -1,6 +1,8 @@
+import Button from "../components/ui/Button";
+import FormField from "../components/ui/FormField";
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
@@ -99,6 +101,7 @@ export default function AdminManagementPage() {
 
   return <div className="register-page cd-page"><PublicHeader authLink={{ to: "/dashboard", label: "Tổng quan" }} />
     <main className="cd-main admin-manage"><header className="admin-manage-header"><p className="admin-manage-eyebrow">KHÔNG GIAN QUẢN TRỊ</p><h1>Quản lý hệ thống</h1><p>Quản lý tài khoản, khóa học và xét duyệt hồ sơ giáo viên.</p></header>
+      <div className="admin-manage-links"><Link to="/admin">Tổng quan quản trị</Link><Link to="/admin/audit">Nhật ký kiểm toán</Link><Link to="/admin/community">Kiểm duyệt cộng đồng</Link></div>
       <nav aria-label="Quản trị" className="admin-manage-tabs">
         <button type="button" aria-pressed={tab === "users"} onClick={() => setTab("users")}>Người dùng</button>
         <button type="button" aria-pressed={tab === "courses"} onClick={() => setTab("courses")}>Khóa học</button>
@@ -110,7 +113,7 @@ export default function AdminManagementPage() {
         }}><RefreshCw size={20} aria-hidden="true" className={loading || approvals.teacherLoading || approvals.courseLoading ? "is-spinning" : undefined} /></button>
       </nav>
       {tab === "review" ? <ApprovalsPanel section={section} data={approvals} /> : <section className="admin-manage-panel"><div className="admin-manage-panel-head"><div><h2>{tab === "users" ? "Danh sách người dùng" : "Danh sách khóa học"}</h2><p>{loading ? "Đang tải dữ liệu" : `${total} kết quả`}</p></div>
-      <form className="admin-manage-search" onSubmit={(e) => { e.preventDefault(); setPageNumber(1); setQuery(search.trim()); }}><label className="sr-only" htmlFor="admin-search">Tìm kiếm</label><input id="admin-search" placeholder={tab === "users" ? "Tìm theo tên hoặc email" : "Tìm theo tên khóa học"} value={search} onChange={(e) => setSearch(e.target.value)} /><button type="submit">Tìm kiếm</button></form></div>
+      <form className="admin-manage-search" onSubmit={(e) => { e.preventDefault(); setPageNumber(1); setQuery(search.trim()); }}><FormField className="admin-search-field" id="admin-search" label="Tìm kiếm"><input id="admin-search" placeholder={tab === "users" ? "Tìm theo tên hoặc email" : "Tìm theo tên khóa học"} value={search} onChange={(e) => setSearch(e.target.value)} /></FormField><Button type="submit">Tìm kiếm</Button></form></div>
       {notice && <p className="admin-manage-notice" role="status">{notice}</p>}
       {error && <p className="admin-manage-error" role="alert">{error} <button type="button" onClick={() => setRefresh((n) => n + 1)}>Tải lại</button></p>}
       {loading ? <p className="admin-manage-empty" role="status">Đang tải...</p> : <>

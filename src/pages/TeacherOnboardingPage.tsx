@@ -1,3 +1,5 @@
+import Button from "../components/ui/Button";
+import FormField from "../components/ui/FormField";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
@@ -96,31 +98,31 @@ export default function TeacherOnboardingPage() {
           {profile.fields.length > 0 && <p>Trường cần sửa: {profile.fields.join(", ")}</p>}
           {profile.status === "DA_DUYET" && <Link to="/teacher/courses/new">Tạo khóa học</Link>}
           {profile.portfolioFiles.map(file => <div className="onboarding-file" key={file.id}>
-            <button className="button button-outline" type="button" onClick={() => void preview(file.id)}>Xem ảnh tác phẩm #{file.id}</button>
+            <Button variant="outline" type="button" onClick={() => void preview(file.id)}>Xem ảnh tác phẩm #{file.id}</Button>
             {canEdit && retained.includes(file.filePath) && <button type="button" disabled={busy} onClick={() => setRetained(values => values.filter(path => path !== file.filePath))}>Gỡ khỏi lần gửi lại</button>}
           </div>)}
         </section>}
         {error && <div role="alert"><p>{error}</p><button type="button" disabled={busy} onClick={() => setAttempt(value => value + 1)}>Tải lại hồ sơ</button></div>}
         {!loading && !role.loading && <form onSubmit={event => void submit(event)} className="settings-card onboarding-form">
           <fieldset disabled={!canEdit || busy}>
-            <label className="settings-field"><span>Giới thiệu bản thân</span>
-              <textarea required minLength={50} maxLength={1000} rows={6} value={introduction} onChange={event => setIntroduction(event.target.value)} />
-              <small>{introduction.length}/1.000 ký tự · ít nhất 50 ký tự</small>
-            </label>
-            <label className="settings-field"><span>Kinh nghiệm giảng dạy và sáng tác</span>
-              <textarea required minLength={10} maxLength={2000} rows={6} value={experience} onChange={event => setExperience(event.target.value)} />
-              <small>{experience.length}/2.000 ký tự · ít nhất 10 ký tự</small>
-            </label>
-            <label className="settings-field"><span>Ảnh tác phẩm</span>
-              <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={event => {
+            <FormField id="onboarding-introduction" label="Giới thiệu bản thân" className="settings-field" required>
+              <textarea id="onboarding-introduction" aria-describedby="onboarding-introduction-help" required minLength={50} maxLength={1000} rows={6} value={introduction} onChange={event => setIntroduction(event.target.value)} />
+              <small id="onboarding-introduction-help">{introduction.length}/1.000 ký tự · ít nhất 50 ký tự</small>
+            </FormField>
+            <FormField id="onboarding-experience" label="Kinh nghiệm giảng dạy và sáng tác" className="settings-field" required>
+              <textarea id="onboarding-experience" aria-describedby="onboarding-experience-help" required minLength={10} maxLength={2000} rows={6} value={experience} onChange={event => setExperience(event.target.value)} />
+              <small id="onboarding-experience-help">{experience.length}/2.000 ký tự · ít nhất 10 ký tự</small>
+            </FormField>
+            <FormField id="onboarding-portfolio" label="Ảnh tác phẩm" className="settings-field">
+              <input id="onboarding-portfolio" aria-describedby="onboarding-portfolio-help" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={event => {
                 const selected = Array.from(event.target.files ?? []);
                 const message = validatePortfolioFiles(selected, retained.length);
                 setError(message); if (!message) setFiles(selected);
               }} />
-              <small>1–5 ảnh JPG/PNG/WEBP; tối đa 10 MB/ảnh và 30 MB tổng.</small>
-            </label>
+              <small id="onboarding-portfolio-help">1–5 ảnh JPG/PNG/WEBP; tối đa 10 MB/ảnh và 30 MB tổng.</small>
+            </FormField>
             <ul>{files.map((file, index) => <li key={`${file.name}-${index}`}>{file.name} ({Math.ceil(file.size / 1024)} KB)</li>)}</ul>
-            <button className="button button-primary" type="submit">{busy ? "Đang gửi hồ sơ..." : profile ? "Gửi lại hồ sơ" : "Gửi hồ sơ xét duyệt"}</button>
+            <Button type="submit">{busy ? "Đang gửi hồ sơ..." : profile ? "Gửi lại hồ sơ" : "Gửi hồ sơ xét duyệt"}</Button>
           </fieldset>
         </form>}
         {profile && profile.history.length > 0 && <section className="settings-card"><h2>Lịch sử hồ sơ</h2>
