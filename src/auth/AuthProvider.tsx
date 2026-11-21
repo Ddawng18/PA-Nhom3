@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getAuthErrorMessage } from "./errors";
 import { AuthContext, type AuthContextValue, type AuthResult } from "./authContext";
-import { readRememberState, shouldKeepStoredSession } from "./sessionPolicy";
+import * as authClient from "../lib/supabase";
 import {
   getGoogleProviderStatus,
   isSupabaseConfigured,
@@ -25,18 +25,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      let state = { remember: true, tabMarker: true };
-      try {
-        state = readRememberState(localStorage, sessionStorage);
-      } catch {
-        state = { remember: true, tabMarker: true };
-      }
-      if (!shouldKeepStoredSession(Boolean(data.session), state)) {
-        void supabase?.auth.signOut();
-        setSession(null);
-      } else {
-        setSession(data.session);
-      }
+      setSession(data.session);
       setLoading(false);
     }).catch(() => {
       if (!active) return;
@@ -47,6 +36,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!authClient.isCurrentAuthSession(nextSession?.access_token)) return;
       setSession(nextSession);
       setLoading(false);
     });
@@ -60,7 +50,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onSessionExpired = () => {
       try { sessionStorage.setItem("linea:session-expired", "1"); } catch { void 0; }
-      if (supabase) void supabase?.auth.signOut();
+      setSession(null);
+      if (supabase) void supabase.auth.signOut({ scope: "local" });
     };
     window.addEventListener("linea:session-expired", onSessionExpired);
     return () => window.removeEventListener("linea:session-expired", onSessionExpired);
@@ -73,12 +64,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     user: session?.user ?? null,
     loading,
     configured: isSupabaseConfigured,
-    signInWithEmail: async ({ email, password }) => {
+    signInWithEmail: async ({ email, password, remember }) => {
       if (!supabase) return unavailable();
+      authClient.setRememberSession(remember);
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       return { error: error ? getAuthErrorMessage(error.message) : null };
     },
-    signInWithGoogle: async () => {
+    signInWithGoogle: async (remember = false) => {
       if (!supabase) return unavailable();
 
       const googleEnabled = await getGoogleProviderStatus();
@@ -89,6 +81,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
+      authClient.setRememberSession(remember);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -137,11 +130,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     },
     signOut: async () => {
       if (!supabase) return unavailable();
-      const { error } = await supabase.auth.signOut();
-      try {
-        sessionStorage.removeItem("linea:tab-session");
-        localStorage.removeItem("linea:remember-login");
-      } catch { void 0; }
+      const { error } = await supabase.auth.signOut({ scope: "local" });
       return { error: error ? getAuthErrorMessage(error.message) : null };
     },
   };
