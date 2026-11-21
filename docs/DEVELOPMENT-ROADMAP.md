@@ -1,10 +1,9 @@
 # LINEA - Roadmap các phần còn lại
 
 - **Ngày cập nhật:** 21/11/2026
-- **Nhánh hiện tại:** `develop`
-- **Commit mới nhất:** `8f31302 fix: normalize catalog filter legend typography`
-- **Trạng thái working tree:** có thay đổi Phase 4-7 chưa commit
-- **Trạng thái remote:** code mới chưa push; production vẫn là bản `8f31302`
+- **Nhánh đề xuất:** `codex/roadmap-qa-hardening` → `develop`
+- **Commit develop đã kiểm tra:** `42e0c57`, merge PR #25 gồm Phase 4–7
+- **Triển khai:** bản đã chạy trước PR này qua smoke production. GitHub ghi Vercel build thành công cho `42e0c57`. Các thay đổi của PR đã kiểm tra với QA và chờ phát hành.
 - **Frontend:** https://pa-nhom3.vercel.app
 - **Backend:** https://linea-api-6pw5.onrender.com
 - **Supabase project ref:** `pscjbvjcprvzfkawflql`
@@ -18,6 +17,19 @@ Tài liệu này dành cho các thành viên tiếp nhận dự án. Mục tiêu
 
 ---
 
+## Cập nhật kiểm tra sau pull — 21/11/2026
+
+- Code Phase 4–7 đã được merge vào develop qua PR #25.
+- Người dùng xác nhận đã deploy. Smoke chỉ đọc trên URL trong tài liệu đạt frontend, health, catalog và community (0 bài); chưa xác minh commit đang chạy.
+- Sau pull: lint đạt, 101/101 Vitest đạt, frontend build và backend build đạt. Năm bộ browser test Studio, Community likes, roles, learning và accessibility smoke đạt với fixture. Kết quả này không thay thế UAT production.
+- Đợt hoàn thiện tiếp theo đã sửa lưu phiên theo tab, chuyển các nhóm form còn lại sang shared primitives, nối nút đổi mật khẩu với luồng gửi email và chuyển xác nhận trong trình soạn khóa sang dialog gốc.
+- Kiểm tra đợt hoàn thiện: lint, 101 unit test, hai bản build, các bài kiểm tra Chromium cho auth, Studio, Community, learning, admin và giáo viên đều đạt. Sáu trang giáo viên/admin đã được kiểm tra tên heading trong cây accessibility và tràn ngang ở 390/768/1440 px.
+- Đã sửa lệch snapshot EF cho metadata catalog. EF xác nhận model khớp migration và API khởi động được với database test. Bộ tích hợp Sprint 5 vẫn cần chuyển từ tài khoản legacy sang Supabase Auth. UAT theo vai trò đã được kiểm tra riêng bằng ba tài khoản Supabase thật ở mục 8.2.
+- Còn nghiệm thu: OAuth Google và nhận email đổi mật khẩu, ghi danh mới → nộp bài → chấm bài với dữ liệu QA, Studio trên thiết bị thật, WCAG thủ công, deploy và đối chiếu commit, diễn tập rollback của bản phát hành trên staging.
+- Ghi nhận backup, migration và cleanup bên dưới là lịch sử từ tài liệu; chưa kiểm tra lại trực tiếp trong lượt này.
+
+---
+
 ## 1. Tóm tắt trạng thái
 
 | Phase | Trạng thái | Ghi chú |
@@ -25,15 +37,15 @@ Tài liệu này dành cho các thành viên tiếp nhận dự án. Mục tiêu
 | Phase 0 - Baseline | Hoàn thành | Đã inventory, xóa temp file, phân loại UAT |
 | Phase 1 - Trust/security | Hoàn thành phần code | Đã deploy; cần regression production đầy đủ |
 | Phase 2 - IA/design system | Hoàn thành nền tảng | Role nav, tokens, primitives, atelier layer |
-| Phase 3 - Public/auth/learning | Phần lớn hoàn thành | Còn catalog metadata decision và regression |
+| Phase 3 - Public/auth/learning | Phần lớn hoàn thành | Catalog metadata đã chốt và kiểm tra trên QA. Còn luồng ghi danh, nộp và chấm bài. |
 | Phase 4 - Studio/Community | Hoàn thành phần code | Studio background/brush/history; Community like, report, moderation, notification |
 | Phase 5 - Teacher/Admin | Hoàn thành phần code | Teacher overview/queue/students/history; Admin overview/audit/moderation |
 | Phase 6 - Performance/A11y | Hoàn thành phần code | Bundle ~318 KB; index/cache; WCAG smoke audit |
-| Phase 7 - UAT/Rollout | Một phần | Browser suites + runbook + smoke production; chờ deploy và duyệt dọn data |
+| Phase 7 - UAT/Rollout | Một phần | Đã QA ba vai trò và kiểm duyệt. Còn UAT luồng học, phát hành bản sửa, xác minh commit và rollback. |
 
 ### Cập nhật 21/11/2026
 
-Đã hoàn thành trong working tree (chưa commit, chưa deploy). 3 migration mới đã
+Code Phase 4–7 đã được merge; người dùng xác nhận đã deploy. Theo ghi nhận trước đó, 3 migration mới đã
 được áp lên Supabase production ngày 21/11/2026 sau khi backup.
 
 - **Studio**: nền paper/grid/transparent, brush mềm/chì/marker, tẩy
@@ -58,11 +70,8 @@ Việc chưa thể hoàn tất trong repo:
 
 - **DATA-01**: đã chạy 21/11/2026 sau phê duyệt, có backup trước khi chạy. Chi tiết
   ID, kết quả và rollback trong `docs/operations/DATA-CLEANUP.md`.
-- **DEPLOY-01**: 3 migration đã áp lên Supabase ngày 21/11/2026 (backup trước khi
-  áp tại `%TEMP%\kilo\linea-backup-20261121-0755.json`). Code mới chưa deploy;
-  cần quyền Vercel/Render. Runbook: `docs/operations/RELEASE-ROLLBACK.md`.
-  Smoke production hiện tại chỉ đọc và pass trên bản deploy cũ.
-- **COMP-01**: còn form Settings/Community compose chưa migrate hết primitive.
+- **DEPLOY-01**: Theo ghi nhận trước đó, 3 migration đã áp lên Supabase ngày 21/11/2026 sau backup. Người dùng xác nhận code đã deploy; cần xác minh commit đang chạy và hoàn tất UAT. Smoke production chỉ đọc đã pass. Runbook: `docs/operations/RELEASE-ROLLBACK.md`.
+- **COMP-01**: đã chuyển form hồ sơ Settings, Community compose/edit/comment/report, hồ sơ giáo viên, trường soạn khóa, tìm kiếm admin và nộp bài sang shared primitives trong working tree.
 - **A11Y-01**: chưa có audit axe/WCAG thủ công toàn bộ luồng có đăng nhập.
 
 ---
@@ -188,20 +197,20 @@ Community lõi đã có:
 
 | ID | Việc | Ưu tiên | Trạng thái | Phụ thuộc |
 |---|---|---|---|---|
-| DATA-01 | Dọn khóa/post/order test khỏi dữ liệu public | P0 | Đã chạy 21/11/2026: 14 khóa → AN, 2 post → HIDDEN (chờ deploy API để ẩn feed) | BA/PO + DB |
-| AUTH-01 | Regression Remember me đa tab và session expiry | P1 | Policy tách riêng + unit test; còn test trình duyệt thật | Auth |
+| DATA-01 | Dọn khóa/post/order test khỏi dữ liệu public | P0 | Tài liệu ghi đã chạy; smoke API trả 0 bài, chưa kiểm tra lại database | BA/PO + DB |
+| AUTH-01 | Regression Remember me đa tab và session expiry | P1 | Chromium kiểm tra bật/tắt, tab mới, reload và API 401 với phản hồi Auth fixture; còn OAuth trên môi trường QA | Auth |
 | CAT-01 | Quyết định thời lượng/ngày khai giảng | P1 | Đã chốt optional, giáo viên nhập; migration đã áp 21/11/2026 | PO + schema |
 | CAT-02 | Hiển thị metadata catalog hiện có | P2 | Hiển thị thời lượng/ngày khai giảng; test format | API |
 | LEARN-01 | Regression learning responsive + empty/error | P1 | Pass `test:learning` (390px, error state) | QA |
 | STUDIO-01 | Background white/grid/transparent | P2 | Hoàn thành; `test:studio` pass | Studio |
 | STUDIO-02 | Brush types/presets | P2 | Hoàn thành; `test:studio` pass | Studio |
-| STUDIO-03 | Mobile/touch/fullscreen QA | P1 | 390px, touch target 44px pass; fullscreen cần QA thủ công | QA |
+| STUDIO-03 | Mobile/touch/fullscreen QA | P1 | Chromium pass fullscreen và thao tác chạm mô phỏng ở 390px; còn thử trên thiết bị thật | QA |
 | STUDIO-04 | Giảm bộ nhớ history canvas | P2 | Snapshot PNG thay ImageData; giới hạn 30 bước | FE |
-| COMM-01 | Like/reaction | P2 | Code + migration đã áp 21/11/2026; chưa deploy API/FE | DB/BE |
+| COMM-01 | Like/reaction | P2 | Đã deploy theo người dùng; còn UAT | DB/BE |
 | COMM-02 | Thông báo comment/like | P2 | Code + migration đã áp; notification mapping sẵn sàng | BE/Notification |
-| COMM-03 | Moderation/report | P2 | Migration đã áp; API + `/admin/community` chưa deploy | DB/BE/Admin |
+| COMM-03 | Moderation/report | P2 | Đã deploy theo người dùng; còn UAT | DB/BE/Admin |
 | COMM-04 | Community Playwright tests | P1 | Pass `test:community-likes` | QA |
-| COMP-01 | Migrate form/button còn lại | P2 | Một phần; chưa migrate Settings/Community compose | FE |
+| COMP-01 | Migrate form/button còn lại | P2 | Đã triển khai các nhóm form mục 9.1 trong working tree | FE |
 | TEACH-01 | Teacher teaching overview | P1 | `/teacher` + `/api/teacher/overview` | Phase 5 |
 | TEACH-02 | Submission queue toàn bộ khóa | P1 | `/teacher/submissions` + filter/pagination | Phase 5 |
 | TEACH-03 | Grading screen + history | P1 | Chấm theo khóa + lịch sử `StatusHistory` | Phase 5 |
@@ -212,8 +221,8 @@ Community lõi đã có:
 | PERF-01 | Split bundle ~895 KB | P1 | Main ~318 KB; không còn warning >500 KB | Phase 6 |
 | PERF-02 | Index/caching/query tuning | P1 | Migration index + output cache catalog 30s | Phase 6 |
 | A11Y-01 | WCAG AA audit đầy đủ | P1 | `test:a11y` pass 6 trang public; WCAG thủ công còn lại | Phase 6 |
-| TEST-01 | Playwright regression toàn bộ role | P1 | 5 suite fixture pass; UAT dữ liệu thật chưa chạy | Phase 7 |
-| DEPLOY-01 | Staging/production smoke + rollback | P0 | Migration đã áp + backup; chưa deploy code mới | Phase 7 |
+| TEST-01 | Playwright regression toàn bộ role | P1 | Suite fixture đạt. Ba vai trò đăng nhập QA thật, quyền đọc và Community đạt. Bộ Sprint 5 dùng legacy và luồng ghi danh/nộp/chấm còn mở | Phase 7 |
+| DEPLOY-01 | Staging/production smoke + rollback | P0 | Smoke production 4/4; Vercel có trạng thái success cho `42e0c57`; còn đối chiếu alias/Render, diễn tập rollback và UAT | Phase 7 |
 
 ---
 
@@ -471,6 +480,24 @@ Chi tiết ID, kết quả và SQL rollback: `docs/operations/DATA-CLEANUP.md`.
 - Guest: public pages, login redirect.
 - Mobile 390, tablet 768, desktop 1440.
 
+| Vai trò | Bằng chứng hiện có | Còn nghiệm thu trên môi trường QA |
+|---|---|---|
+| Guest | Smoke HTTP production, kiểm tra accessibility 6 trang public | Kiểm tra với trình đọc màn hình và điều hướng trên thiết bị thật |
+| Học viên | Chromium với fixture cho đăng nhập đa tab, 401 và learning. QA thật kiểm tra đăng nhập, khóa đã ghi danh và tiến độ. | Đăng nhập Google, nhận email đổi mật khẩu, ghi danh mới và nộp bài |
+| Giáo viên | Dialog xác nhận đã kiểm tra Tab, Escape và trả focus. QA thật kiểm tra workspace và vòng đời bản nháp. | Quyền sở hữu giữa hai tài khoản, chấm và lịch sử chấm trên dữ liệu QA |
+| Admin | QA thật kiểm tra quyền admin, hàng đợi kiểm duyệt, ẩn bài và dấu vết audit. | Nghiệm thu duyệt hồ sơ và khóa học với dữ liệu QA |
+
+Kết quả với Supabase QA ngày 21/11/2026. Frontend và API chạy từ workspace, kết nối Auth và database QA.
+
+| Vai trò | Đã kiểm tra |
+|---|---|
+| Học viên | Đăng nhập từ giao diện, mở dashboard, đọc danh sách khóa đã ghi danh, mở khóa học và đọc tiến độ. API giáo viên/admin trả 403. |
+| Giáo viên | Đăng nhập từ giao diện, đọc tổng quan, hàng đợi bài nộp và danh sách học viên. API admin trả 403. Tạo, sửa thời lượng và xóa mềm bản nháp, xác nhận trạng thái `DA_GO` qua audit. |
+| Admin | Đăng nhập từ giao diện. Tổng quan, audit và hàng đợi kiểm duyệt trả 200 sau khi sửa truy vấn audit và áp migration Community. Guest gọi API admin trả 401. |
+| Community | Học viên tạo bài QA, giáo viên thích hai lần chỉ tính một lượt, bỏ thích và gửi báo cáo. Admin ẩn bài, guest nhận 404, audit ghi `HIDDEN`. Bài thử đã được xóa. |
+
+QA thiếu schema Community. Đã diễn tập `20261121090000_community_likes_moderation.sql` trong transaction có rollback, sau đó áp trực tiếp trên QA và xác nhận RLS, quyền SELECT của `anon` và `authenticated`. Cần đồng bộ lịch sử migration Supabase QA trước lần `db push` tiếp theo vì lần áp này chạy qua SQL trực tiếp. Commit production và rollback bản phát hành vẫn cần kiểm tra riêng.
+
 ### 8.3 Release
 
 Runbook đầy đủ: `docs/operations/RELEASE-ROLLBACK.md`; smoke script:
@@ -506,7 +533,7 @@ Runbook đầy đủ: `docs/operations/RELEASE-ROLLBACK.md`; smoke script:
 - CookieConsent.
 - ArtworksPage.
 
-Còn:
+Đã chuyển trong đợt hoàn thiện roadmap:
 - Settings form.
 - Community compose/comment.
 - Teacher onboarding.
@@ -542,21 +569,16 @@ Return files changed, behavior preserved, test results and any UI differences.
 - Form giáo viên có ô "Thời lượng" và "Ngày khai giảng".
 - Catalog/card/detail chỉ hiển thị khi có dữ liệu; `formatStartDate` có unit test.
 - Migration: `supabase/migrations/20261121092000_course_catalog_metadata.sql`
-  và embedded SQL `Data/Sql/course-catalog-metadata.sql`.
+  và EF `20261121085623_CatalogMetadataSnapshot`. EF cập nhật model snapshot
+  và thêm hai cột nếu còn thiếu. Khi rollback ứng dụng, giữ các cột và dữ liệu.
 
 ### 9.3 Remember me
 
-Đã có behavior:
-- Tắt: sessionStorage tab marker; đóng browser/mở tab mới sẽ đăng xuất.
-- Bật: session Supabase mặc định.
-
-Đã tách policy tại `src/auth/sessionPolicy.ts` và thêm unit test:
-- Reload tab khi tắt vẫn giữ đăng nhập (tab marker).
-- Tab mới khi tắt: policy trả `false` và AuthProvider đăng xuất.
-- Đăng xuất xóa marker.
-- Google login đặt marker/remember giống đăng nhập thường.
-
-Còn cần QA thủ công đa tab thật trên trình duyệt và kiểm tra session expiry 401.
+- Tắt: phiên lưu trong `sessionStorage`, vẫn giữ khi reload. Tab mới mở độc lập không nhận phiên và không gọi đăng xuất tab gốc.
+- Bật: phiên lưu trong `localStorage` để dùng lại trên cùng trình duyệt.
+- Google dùng lựa chọn trên form đăng nhập. Mã PKCE được lưu theo tab để hoàn tất callback.
+- API quản trị trả 401 sẽ xóa trạng thái đăng nhập hiện tại và hiển thị thông báo hết phiên.
+- `npm run test:auth` kiểm tra hai chế độ, reload, tab mới, yêu cầu gửi email đổi mật khẩu và API 401 qua Supabase SDK với HTTP fixture. Còn xác nhận OAuth và nhận email thật trên môi trường QA.
 
 ---
 
@@ -674,7 +696,7 @@ Do not mark a task Done if it is only code-complete but not verified on staging/
    vào sidebar admin (giữ quyết định trước).
 4. Remember me tắt nghĩa là session chỉ sống trong tab hiện tại; tab mới đăng xuất.
 5. DATA-01 chỉ chạy sau khi BA/PO duyệt và có backup; runbook đã tạo.
-6. Tiếp tục migrate form/button dần theo từng nhóm; COMP-01 vẫn còn Settings/Community.
+6. COMP-01 đã chuyển các nhóm form được liệt kê ở mục 9.1 trong working tree.
 7. Giữ demo payment đến hết đồ án; không triển khai thanh toán thật.
 8. Studio chỉ dùng background/brush preset, không làm infinite canvas.
 
@@ -694,15 +716,13 @@ Do not mark a task Done if it is only code-complete but not verified on staging/
 
 ## 15. Trạng thái bàn giao
 
-- Code đã push gần nhất: commit `8f31302` trên `origin/develop`.
-- Working tree hiện có thay đổi Phase 4-7 **chưa commit**; production vẫn là bản cũ.
-- `docs/docs2/` và các PDF UAT vẫn untracked, không commit nếu chưa được yêu cầu.
-- Phase 4: code hoàn thành; Studio/Community browser suites pass; migration đã áp.
-  Còn QA fullscreen thật.
-- Phase 5: code hoàn thành; cần đăng nhập tài khoản giáo viên/admin thật để UAT dữ liệu.
+- Bản nền của PR là commit `42e0c57` trên `origin/develop`, gồm Phase 4–7 qua PR #25.
+- PR gồm migration đồng bộ snapshot PostgreSQL và migration metadata catalog. Database đã có cột metadata vẫn áp được và giữ dữ liệu khi rollback ứng dụng.
+- Các thay đổi của PR chờ deploy. Smoke 4/4 được ghi nhận cho bản production trước PR.
+- Phase 4: Studio/Community browser suites pass. Studio đã qua kiểm tra fullscreen và cảm ứng mô phỏng; còn QA trên thiết bị thật.
+- Phase 5: đã qua QA thật cho workspace giáo viên, quản trị, kiểm duyệt và audit. Còn kiểm tra ghi danh mới, nộp bài và chấm bài trọn luồng.
 - Phase 6: PERF-01/02 và A11Y smoke hoàn thành; WCAG thủ công toàn bộ còn lại.
-- Phase 7: TEST-01 fixture pass, runbook/smoke có sẵn; DATA-01 đã chạy 21/11/2026,
-  DEPLOY-01 chờ quyền deploy code mới.
+- Phase 7: UAT QA đã qua phần đăng nhập, đọc theo vai trò, bản nháp khóa học và kiểm duyệt. Còn đồng bộ lịch sử migration QA, UAT luồng học, xác minh commit sau deploy và diễn tập rollback.
 - 3 migration đã áp lên Supabase project `pscjbvjcprvzfkawflql` ngày 21/11/2026:
   - `20261121090000_community_likes_moderation.sql`
   - `20261121091000_workspace_query_indexes.sql`
