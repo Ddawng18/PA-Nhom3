@@ -319,8 +319,6 @@ if (runMigrations)
             ReadEmbeddedSql("Linea.Api.Data.Sql.admin-management.sql"), app.Lifetime.ApplicationStopping);
         await db.Database.ExecuteSqlRawAsync(
             ReadEmbeddedSql("Linea.Api.Data.Sql.progress-completion-d05.sql"), app.Lifetime.ApplicationStopping);
-        await db.Database.ExecuteSqlRawAsync(
-            ReadEmbeddedSql("Linea.Api.Data.Sql.course-catalog-metadata.sql"), app.Lifetime.ApplicationStopping);
     }
     await DbSeeder.SeedAdminAsync(
         scope.ServiceProvider,
