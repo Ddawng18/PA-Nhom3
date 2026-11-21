@@ -8,6 +8,7 @@ export const NOTIFICATION_TYPES = {
   message: "loi_nhan",
   system: "he_thong",
   teacherApproval: "duyet_ho_so",
+  community: "cong_dong",
 } as const;
 
 export type NotificationType = typeof NOTIFICATION_TYPES[keyof typeof NOTIFICATION_TYPES];
@@ -27,15 +28,18 @@ const allowedTypes: Record<UserRole, NotificationType[]> = {
     NOTIFICATION_TYPES.advertisement,
     NOTIFICATION_TYPES.message,
     NOTIFICATION_TYPES.system,
+    NOTIFICATION_TYPES.community,
   ],
   teacher: [
     NOTIFICATION_TYPES.lesson,
     NOTIFICATION_TYPES.system,
     NOTIFICATION_TYPES.message,
+    NOTIFICATION_TYPES.community,
   ],
   admin: [
     NOTIFICATION_TYPES.teacherApproval,
     NOTIFICATION_TYPES.system,
+    NOTIFICATION_TYPES.community,
   ],
 };
 
@@ -49,8 +53,10 @@ export function filterForRole(
 ): NotificationItem[] {
   const permitted = new Set(getAllowedTypes(role));
   return items.map(item => ({ ...item,
-    loai_thong_bao: ["KHOA_HOC", "HO_SO_GIAO_VIEN", "DUYET_HO_SO"].includes(item.loai_thong_bao)
-      ? NOTIFICATION_TYPES.system : item.loai_thong_bao,
+    loai_thong_bao: ["community_like", "community_comment", "cong_dong"].includes(item.loai_thong_bao)
+      ? NOTIFICATION_TYPES.community
+      : ["KHOA_HOC", "HO_SO_GIAO_VIEN", "DUYET_HO_SO"].includes(item.loai_thong_bao)
+        ? NOTIFICATION_TYPES.system : item.loai_thong_bao,
   })).filter((item) => permitted.has(item.loai_thong_bao as NotificationType));
 }
 
@@ -75,6 +81,7 @@ export function getNotificationTitle(type: string, role: UserRole): string | nul
   if (type === NOTIFICATION_TYPES.message) {
     return role === "student" ? "Lời nhắn từ giảng viên" : "Lời nhắn từ học viên";
   }
+  if (type === NOTIFICATION_TYPES.community) return "Hoạt động cộng đồng";
   return null;
 }
 

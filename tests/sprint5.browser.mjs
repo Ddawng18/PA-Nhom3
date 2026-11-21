@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { createServer } from "node:net";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 
 if (!process.env.TEST_DATABASE_URL?.trim()) {
   throw new Error("TEST_DATABASE_URL must point to a dedicated PostgreSQL test database. Tests write data.");
@@ -45,6 +46,9 @@ async function request(path, method = "GET", body, token) {
   assert.ok(response.ok, `${method} ${path}: ${response.status} ${JSON.stringify(data)}`); return data;
 }
 const password = "TestPass123!";
+const runId = randomUUID().slice(0, 8);
+const studentEmail = `browser-student-${runId}@linea.local`;
+const studentName = `Browser Student ${runId}`;
 async function contextFor(login, role) {
   const context = await browser.newContext({ viewport: { width: 1365, height: 950 } });
   const user = { ...login.user, id: login.user.id, email: login.user.email, aud: "authenticated", role: "authenticated", user_metadata: { display_name: login.user.displayName }, app_metadata: { provider: "email", providers: ["email"] }, created_at: new Date().toISOString() };
@@ -69,11 +73,12 @@ try {
     SIGNED_URL_KEY: "browser-test-only-signed-url-key-at-least-32-bytes",
   });
   const appLog = start(process.execPath, ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", new URL(app).port], {
-    VITE_API_URL: api, VITE_SUPABASE_URL: "https://linea-e2e.supabase.co", VITE_SUPABASE_ANON_KEY: "local-test-public-key",
+    VITE_API_URL: api, LOCAL_API_PROXY_TARGET: api,
+    VITE_SUPABASE_URL: "https://linea-e2e.supabase.co", VITE_SUPABASE_ANON_KEY: "local-test-public-key",
   });
   await Promise.all([ready(api + "/api/health", apiLog), ready(app, appLog)]);
-  await request("/api/auth/register", "POST", { email: "browser-student@linea.local", password, displayName: "Browser Student" });
-  const student = await request("/api/auth/login", "POST", { email: "browser-student@linea.local", password });
+  await request("/api/auth/register", "POST", { email: studentEmail, password, displayName: studentName });
+  const student = await request("/api/auth/login", "POST", { email: studentEmail, password });
   const admin = await request("/api/auth/login", "POST", { email: "browser-admin@linea.local", password });
   browser = await chromium.launch({ headless: true });
   const studentContext = await contextFor(student, "student");
@@ -92,19 +97,18 @@ try {
   const adminContext = await contextFor(admin, "admin"); const adminPage = await adminContext.newPage();
   adminPage.on("pageerror", error => errors.push(error.message));
   await adminPage.goto(app + "/admin/teachers");
-  await adminPage.waitForURL("**/settings?tab=phe-duyet&muc=giao-vien");
-  await adminPage.getByText("Browser Student", { exact: true }).first().waitFor();
-  // Confirm through the same UI used by the Settings entry point.
-  const approveButton = adminPage.getByRole("button", { name: /^Duyệt$/ }).first();
+  await adminPage.waitForURL("**/admin/manage?tab=review&muc=giao-vien");
+  const row = adminPage.getByRole("article").filter({ has: adminPage.getByText(studentName, { exact: true }) });
+  const approveButton = row.getByRole("button", { name: /^Duyệt$/ });
   await approveButton.click();
   const dialog = adminPage.getByRole("dialog");
   await dialog.waitFor();
   await dialog.getByRole("button", { name: "Xác nhận", exact: true }).click();
   await dialog.waitFor({ state: "hidden" });
   const profile = await request("/api/admin/teacher-profiles?status=DA_DUYET", "GET", undefined, admin.accessToken);
-  assert.equal(profile.items.length, 1);
+  assert.ok(profile.items.some(item => item.userId === student.user.id));
   record("PASS browser: admin entry redirects to unified approval UI; approval updates backend");
-  const teacher = await request("/api/auth/login", "POST", { email: "browser-student@linea.local", password });
+  const teacher = await request("/api/auth/login", "POST", { email: studentEmail, password });
   assert.equal(teacher.user.role, "teacher");
   const teacherContext = await contextFor(teacher, "teacher"); const teacherPage = await teacherContext.newPage();
   await teacherPage.goto(app + "/teacher/onboarding");
@@ -122,7 +126,7 @@ try {
   await teacherPage.locator("#course-title").waitFor();
   await teacherPage.waitForFunction(() => document.querySelector("#course-title")?.value === "Browser digital art course");
   await teacherPage.locator("#course-title").fill("Updated browser digital art course");
-  const updated = teacherPage.waitForResponse(response => response.url().startsWith(api + "/api/courses/") && response.request().method() === "PUT" && response.status() === 200);
+  const updated = teacherPage.waitForResponse(response => new URL(response.url()).pathname.startsWith("/api/courses/") && response.request().method() === "PUT" && response.status() === 200);
   await teacherPage.getByRole("button", { name: "Lưu nháp", exact: true }).click();
   assert.equal((await (await updated).json()).tieu_de, "Updated browser digital art course");
   await teacherPage.goto(app + "/my-courses");
@@ -136,7 +140,7 @@ try {
   assert.deepEqual(errors, []);
   record("PASS browser: mobile layout has no horizontal overflow; no page errors");
   const unavailable = await studentContext.newPage();
-  await unavailable.route(api + "/api/teacher/profile/me", route => route.fulfill({ status: 404, contentType: "application/json", body: "{}" }));
+  await unavailable.route("**/api/teacher/profile/me", route => route.fulfill({ status: 404, contentType: "application/json", body: "{}" }));
   await unavailable.goto(app + "/teacher/onboarding");
   await unavailable.getByRole("button", { name: "Tải lại hồ sơ", exact: true }).waitFor();
   assert.ok(await unavailable.getByRole("button", { name: "Gửi hồ sơ xét duyệt", exact: true }).isDisabled());

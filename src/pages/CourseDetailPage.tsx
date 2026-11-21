@@ -9,7 +9,7 @@ import { getCatalogCourse, type CatalogDetail } from "../lib/catalogApi";
 import { enrollInCourse } from "../lib/courseApi";
 import { createDemoOrder, listDemoOrders, refreshZaloPayOrder, type DemoOrder } from "../lib/demoOrders";
 import { learningError, loadLearningCourse, type LearningCourse } from "../lib/learningApi";
-import { formatLessonCount, formatPriceLabel, formatStudentCount, getInitials } from "../logic/catalog";
+import { formatLessonCount, formatPriceLabel, formatStartDate, formatStudentCount, getInitials } from "../logic/catalog";
 import { mapApiError } from "../logic/approvals";
 import { getCourseLevelLabel } from "../logic/courseEditor";
 import { sanitizeCoverUrl } from "../logic/publicCourses";
@@ -175,6 +175,7 @@ export default function CourseDetailPage() {
         const enrolled = Boolean(learning?.da_ghi_danh);
         const completed = learning?.trang_thai_ghi_danh === "HOAN_THANH";
         const teacherName = course.ten_giao_vien ?? "Giảng viên LINEA";
+        const startDate = formatStartDate(course.ngay_khai_giang);
         return (
           <>
             <section className="cd-hero">
@@ -185,6 +186,8 @@ export default function CourseDetailPage() {
                   <span className="cd-pill">{level}</span>
                   {course.so_bai_hoc > 0 && <span>{formatLessonCount(course.so_bai_hoc)}</span>}
                   {course.so_chuong > 0 && <span>{course.so_chuong} chương</span>}
+                  {course.thoi_luong && <span>{course.thoi_luong}</span>}
+                  {startDate && <span>Khai giảng {startDate}</span>}
                   {students && <span>{students}</span>}
                 </div>
               </div>

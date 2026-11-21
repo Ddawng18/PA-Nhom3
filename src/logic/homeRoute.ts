@@ -1,3 +1,5 @@
+import type { UserRole } from "../auth/userRoleContext";
+
 export type HomeRouteDecisionInput = {
   loading: boolean;
   hasUser: boolean;
@@ -12,3 +14,8 @@ export function getHomeRouteDecision({
   if (loading) return "loading";
   return hasUser ? "dashboard" : "guest";
 }
+export const dashboardByRole = {
+  student: "/dashboard",
+  teacher: "/teacher",
+  admin: "/admin",
+} as const satisfies Record<UserRole, string>;

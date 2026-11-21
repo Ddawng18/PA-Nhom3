@@ -17,6 +17,12 @@ DatabaseConfiguration.LoadDotEnvFile();
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddOutputCache(options =>
+{
+    options.AddPolicy("catalog", policy => policy
+        .Expire(TimeSpan.FromSeconds(30))
+        .SetVaryByQuery("search", "chu_de", "cap_do", "sap_xep", "page", "pageSize"));
+});
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpClient();
@@ -216,6 +222,7 @@ app.UseCors("client");
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
+app.UseOutputCache();
 
 app.MapControllers();
 app.MapOpenApi();

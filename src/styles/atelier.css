@@ -668,3 +668,5 @@ tr:last-child td {
   outline: 3px solid var(--color-accent);
   outline-offset: 2px;
 }
+
+.route-fallback{display:grid;place-items:center;min-height:40vh;padding:24px;color:var(--color-muted);font-weight:600}

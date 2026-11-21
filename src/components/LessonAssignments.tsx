@@ -1,3 +1,5 @@
+import Button from "./ui/Button";
+import FormField from "./ui/FormField";
 import { useEffect, useState } from "react";
 import { learningError, loadAssignments, submitAssignment, type LearnerAssignment } from "../lib/learningApi";
 import SubmissionImage from "./SubmissionImage";
@@ -36,9 +38,9 @@ export function AssignmentCard({ assignment, token, onSaved }: { assignment: Lea
       <SubmissionImage key={`${assignment.submission.id}:${assignment.submission.updatedAt}`} token={token} id={assignment.submission.id} /></>}
     {graded ? <section aria-label="Kết quả chấm"><h4>Điểm: {graded.score}/10</h4><p className="learning-text">{graded.feedback}</p><p>Chấm lúc {new Date(graded.gradedAt).toLocaleString("vi-VN")}</p></section>
       : deadlinePassed ? <p>Đã hết hạn nộp bài.</p> : <form onSubmit={e => void submit(e)}>
-        <label>Ảnh bài tập (JPG/PNG/WEBP, tối đa 10 MB)<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} required onChange={e => { setFile(e.target.files?.[0] ?? null); setError(""); setMessage(""); }} /></label>
+        <FormField id={`lesson-file-${assignment.id}`} label="Ảnh bài tập (JPG/PNG/WEBP, tối đa 10 MB)" required><input id={`lesson-file-${assignment.id}`} type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} required onChange={e => { setFile(e.target.files?.[0] ?? null); setError(""); setMessage(""); }} /></FormField>
         {preview && <img className="assignment-preview" src={preview} alt="Ảnh đã chọn để nộp" />}
-        <button type="submit" className="button button-primary" disabled={busy || !file}>{busy ? "Đang nộp..." : assignment.submission ? "Nộp lại ảnh" : "Nộp bài"}</button>
+        <Button type="submit" disabled={busy || !file}>{busy ? "Đang nộp..." : assignment.submission ? "Nộp lại ảnh" : "Nộp bài"}</Button>
         <p>Có thể thay ảnh trước hạn, khi giáo viên chưa chấm.</p>
       </form>}
     {error && <p className="settings-error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}

@@ -1,21 +1,27 @@
 import {
   BookOpen,
   ChartNoAxesColumnIncreasing,
+  ClipboardList,
   FolderHeart,
+  GraduationCap,
   LayoutDashboard,
   PenTool,
   Settings,
+  ShieldAlert,
   Sparkles,
   Users,
   LogOut,
   ChevronUp,
+  Menu,
+  X,
 } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 import { useUserRole } from "../hooks/useUserRole";
 import { loadUserProfile, subscribeUserProfile } from "../lib/userProfile";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useAuth } from "../auth/useAuth";
+import { dashboardByRole } from "../logic/homeRoute";
 
 type SidebarProps = {
   user: User;
@@ -37,7 +43,10 @@ const studentNavigation = [
 ];
 
 const teacherNavigation = [
+  { label: "Tổng quan", icon: LayoutDashboard, to: "/teacher" },
   { label: "Khóa học của tôi", icon: BookOpen, to: "/my-courses" },
+  { label: "Bài chờ chấm", icon: ClipboardList, to: "/teacher/submissions" },
+  { label: "Học viên", icon: GraduationCap, to: "/teacher/students" },
   { label: "Tạo khóa học", icon: Sparkles, to: "/teacher/courses/new" },
   { label: "Hồ sơ giáo viên", icon: PenTool, to: "/teacher/onboarding" },
   { label: "Cộng đồng", icon: Users, to: "/community" },
@@ -45,7 +54,9 @@ const teacherNavigation = [
 ];
 
 const adminNavigation = [
+  { label: "Tổng quan", icon: LayoutDashboard, to: "/admin" },
   { label: "Quản trị", icon: Users, to: "/admin/manage" },
+  { label: "Kiểm duyệt cộng đồng", icon: ShieldAlert, to: "/admin/community" },
   { label: "Cộng đồng", icon: Users, to: "/community" },
   { label: "Cài đặt", icon: Settings, to: "/settings" },
 ];
@@ -54,10 +65,21 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
   const { role } = useUserRole();
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const navigationId = useId();
+  const navigationDialog = useRef<HTMLDialogElement>(null);
+  const [navigationOpen, setNavigationOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState("");
   const account = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 901px)");
+    const closeOnDesktop = () => {
+      if (desktop.matches) navigationDialog.current?.close();
+    };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, []);
   useEffect(() => {
     if (!menuOpen) return;
     function closeOutside(event: PointerEvent) {
@@ -109,38 +131,56 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
     : role === "teacher"
       ? teacherNavigation
       : studentNavigation;
-  const homePath = role === "admin" ? "/admin/manage" : role === "teacher" ? "/my-courses" : "/dashboard";
+  const homePath = role ? dashboardByRole[role] : "/";
+  const navigationLinks = (afterSelect?: () => void) => navigationItems.map(({ label, icon: Icon, to }) => (
+    <NavLink className={({ isActive }) => `settings-nav-item${isActive ? " active" : ""}`}
+      to={to} key={to} end onClick={afterSelect}>
+      <Icon aria-hidden="true" size={18} />
+      <span>{label}</span>
+    </NavLink>
+  ));
 
   return (
     <aside className="settings-sidebar">
+      <div className="settings-sidebar-heading">
       <Link className="settings-brand" to={homePath} aria-label="LINEA - Tổng quan">
         <span className="settings-brand-name">LINEA</span>
         <span className="settings-brand-caption">Không gian học sáng tạo</span>
       </Link>
+      <button type="button" className="settings-nav-toggle" aria-expanded={navigationOpen}
+        aria-controls={navigationId} onClick={() => {
+          setMenuOpen(false);
+          navigationDialog.current?.showModal();
+          setNavigationOpen(true);
+        }}>
+        <Menu size={18} aria-hidden="true" /> Menu
+      </button>
+      </div>
 
-      <nav className="settings-navigation" aria-label="Điều hướng chính">
-        {navigationItems.map(({ label, icon: Icon, to }) => (
-          to ? (
-            <NavLink
-              className={({ isActive }) => `settings-nav-item${isActive ? " active" : ""}`}
-              to={to}
-              key={label}
-              end
-            >
-              <Icon aria-hidden="true" size={18} />
-              <span>{label}</span>
-            </NavLink>
-          ) : (
-            <button className="settings-nav-item" type="button" key={label}>
-              <Icon aria-hidden="true" size={18} />
-              <span>{label}</span>
-            </button>
-          )
-        ))}
+      <nav className="settings-navigation settings-navigation--desktop" aria-label="Điều hướng chính">
+        {navigationLinks()}
       </nav>
+      <dialog id={navigationId} ref={navigationDialog} className="settings-mobile-drawer" aria-label="Menu điều hướng"
+        onClose={() => setNavigationOpen(false)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) navigationDialog.current?.close();
+        }}>
+        <div className="settings-mobile-drawer-content">
+          <header className="settings-mobile-drawer-heading">
+            <span className="settings-brand-name">LINEA</span>
+            <button type="button" className="settings-mobile-drawer-close" aria-label="Đóng menu"
+              onClick={() => navigationDialog.current?.close()}><X size={20} aria-hidden="true" /></button>
+          </header>
+          <nav className="settings-navigation" aria-label="Điều hướng chính">
+            {navigationLinks(() => navigationDialog.current?.close())}
+          </nav>
+        </div>
+      </dialog>
 
       <div className="sidebar-account" ref={account}>
-      <button type="button" className="sidebar-user sidebar-user-toggle" aria-label="Mở menu tài khoản" aria-expanded={menuOpen} aria-controls="sidebar-account-menu" onClick={() => setMenuOpen(current => !current)}>
+      <button type="button" className="sidebar-user sidebar-user-toggle" aria-label="Mở menu tài khoản" aria-expanded={menuOpen} aria-controls="sidebar-account-menu" onClick={() => {
+        setMenuOpen(current => !current);
+      }}>
         {profile?.avatar_url ? (
           <img className="avatar avatar-sidebar" src={profile.avatar_url} alt="" />
         ) : (

@@ -78,11 +78,12 @@ try {
   });
   const pageErrors = [];
   page.on("pageerror", error => { pageErrors.push(error.message); console.error(error.message); });
-  await page.goto(`${origin}/__editor-test.html`);
+  await page.goto(`${origin}/__editor-test.html`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.locator("#course-title").fill("Khóa học thử nghiệm");
   await page.locator("#course-description").fill("Mô tả nội dung khóa học đầy đủ để kiểm tra lưu và gửi xét duyệt thành công.");
   await page.locator("#course-level").selectOption("CO_BAN");
   await page.locator("#course-topic").fill("Hội họa");
+  await page.getByLabel("Học phí (VNĐ)").fill("250000");
   await page.getByRole("button", { name: /Nội dung bài học/ }).click();
   await page.getByRole("button", { name: "Thêm chương", exact: true }).click();
   await page.getByRole("button", { name: "Lưu toàn bộ", exact: true }).first().click();
@@ -96,6 +97,18 @@ try {
   await page.locator("#lesson-text").fill("Nội dung bài học để gửi xét duyệt.");
   assert.equal(await page.getByRole("alert").count(), 0);
   console.log("PASS chapter errors clear on edit; lesson validation points to the lesson");
+
+  const opener = page.getByRole("button", { name: "Gửi duyệt", exact: true });
+  await opener.click();
+  const confirmation = page.getByRole("dialog");
+  await confirmation.waitFor();
+  assert.equal(await confirmation.getByRole("button", { name: "Hủy", exact: true }).evaluate(button => button === document.activeElement), true);
+  await page.keyboard.press("Tab");
+  assert.equal(await confirmation.getByRole("button", { name: "Xác nhận", exact: true }).evaluate(button => button === document.activeElement), true);
+  await page.keyboard.press("Escape");
+  await confirmation.waitFor({ state: "hidden" });
+  assert.equal(await opener.evaluate(button => button === document.activeElement), true);
+  console.log("PASS course confirmation keyboard focus, Escape and focus return");
 
   async function submit() {
     await page.getByRole("button", { name: "Gửi duyệt", exact: true }).click();
@@ -113,6 +126,8 @@ try {
   const writes = calls.filter(call => call.method === "POST" || call.method === "PUT");
   assert.equal(writes.at(-2).method, "PUT");
   assert.equal(writes.at(-2).body.lessons[0].title, "Bài học đầu tiên");
+  assert.equal(writes.find(call => call.method === "POST" && call.path === "/api/courses").body.gia_vnd, 250000);
+  assert.equal(writes.at(-2).body.courseInfo.gia_vnd, 250000);
   assert.equal(writes.at(-1).path, "/api/courses/101/submit");
   assert.equal(calls.filter(call => call.method === "POST" && call.path === "/api/courses").length, 1);
   assert.deepEqual(pageErrors, []);

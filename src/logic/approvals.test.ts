@@ -14,7 +14,8 @@ import { teacherProfileListSchema } from "../lib/adminApi";
 
 describe("settings navigation", () => {
   it("keeps all approval tools out of account settings", () => {
-    expect(getSettingsTabs()).toEqual(["ho-so", "ua-thich", "bao-mat", "lich-su-mua-hang"]);
+    expect(getSettingsTabs()).toEqual(["ho-so", "bao-mat", "lich-su-mua-hang"]);
+    expect(parseSettingsView("?tab=ua-thich").tab).toBe("ho-so");
     expect(parseSettingsView("?tab=phe-duyet&muc=giao-vien").tab).toBe("ho-so");
   });
 

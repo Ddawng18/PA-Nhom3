@@ -1,16 +1,11 @@
+import Button from "../components/ui/Button";
+import FormField from "../components/ui/FormField";
 import { useEffect, useState } from "react";
 import {
-  ArrowUpRight,
-  Bell,
-  BookOpen,
-  ChevronRight,
-  Clock3,
   CreditCard,
   LockKeyhole,
   LogOut,
   MoreHorizontal,
-  Sparkles,
-  ShieldCheck,
 } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
@@ -22,34 +17,6 @@ import { fetchVerifiedAccount, type VerifiedAccount } from "../lib/account";
 import { loadUserProfile, saveUserProfile } from "../lib/userProfile";
 import { getSettingsTabs, parseSettingsView, type SettingsTab } from "../logic/approvals";
 import "../styles/settings.css";
-
-type ToggleSettingProps = {
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: () => void;
-};
-
-function ToggleSetting({ label, description, checked, onChange }: ToggleSettingProps) {
-  return (
-    <div className="notification-row">
-      <span className="notification-copy">
-        <span className="notification-title">{label}</span>
-        <span className="notification-description">{description}</span>
-      </span>
-      <button
-        className={`toggle-switch${checked ? " checked" : ""}`}
-        type="button"
-        role="switch"
-        aria-label={label}
-        aria-checked={checked}
-        onClick={onChange}
-      >
-        <span />
-      </button>
-    </div>
-  );
-}
 
 function getDisplayName(user: User): string {
   const metadataName = user.user_metadata.display_name;
@@ -70,7 +37,7 @@ const roleLabels = {
 } as const;
 
 export default function SettingsPage() {
-  const { user, session, signOut } = useAuth();
+  const { user, session, signOut, resetPassword } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -78,25 +45,39 @@ export default function SettingsPage() {
   const view = parseSettingsView(location.search, roleState.role);
   const [displayName, setDisplayName] = useState(user ? getDisplayName(user) : "");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [savedProfile, setSavedProfile] = useState<{ name: string; avatar: string } | null>(null);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [passwordRequest, setPasswordRequest] = useState<{ message: string; failed: boolean } | null>(null);
+  const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
   const [verifiedAccount, setVerifiedAccount] = useState<VerifiedAccount | null>(null);
-  const [notifications, setNotifications] = useState({
-    daily: true,
-    weekly: false,
-    streak: true,
-  });
+  async function requestPasswordReset() {
+    if (!user?.email || sendingPasswordReset) return;
+    setSendingPasswordReset(true);
+    setPasswordRequest(null);
+    try {
+      const { error } = await resetPassword(user.email);
+      setPasswordRequest({ message: error ?? "Đã gửi liên kết đổi mật khẩu đến email của bạn.", failed: Boolean(error) });
+    } catch {
+      setPasswordRequest({ message: "Không gửi được liên kết đổi mật khẩu. Vui lòng thử lại.", failed: true });
+    } finally {
+      setSendingPasswordReset(false);
+    }
+  }
 
   useEffect(() => {
     if (!user) return;
     const controller = new AbortController();
     void loadUserProfile(user.id).then((profile) => {
       if (controller.signal.aborted || !profile) return;
-      setDisplayName(profile.display_name || getDisplayName(user));
-      setAvatarUrl(profile.avatar_url || "");
+      const name = profile.display_name || getDisplayName(user);
+      const avatar = profile.avatar_url || "";
+      setDisplayName(name);
+      setAvatarUrl(avatar);
+      setSavedProfile({ name, avatar });
     }).catch(() => {
       if (!controller.signal.aborted) setProfileError("Không thể tải thông tin hồ sơ.");
     });
@@ -152,8 +133,11 @@ export default function SettingsPage() {
     setProfileMessage(null);
     try {
       const saved = await saveUserProfile(currentUser.id, { display_name: displayName, avatar_url: avatarUrl });
-      setDisplayName(saved.display_name || currentUser.email?.split("@")[0] || "Học viên LINEA");
-      setAvatarUrl(saved.avatar_url || "");
+      const name = saved.display_name || getDisplayName(currentUser);
+      const avatar = saved.avatar_url || "";
+      setDisplayName(name);
+      setAvatarUrl(avatar);
+      setSavedProfile({ name, avatar });
       setProfileMessage("Đã lưu hồ sơ.");
     } catch {
       setProfileError("Không thể lưu hồ sơ. Vui lòng thử lại.");
@@ -178,7 +162,7 @@ export default function SettingsPage() {
             <div>
               <p className="settings-eyebrow">TÀI KHOẢN CỦA BẠN</p>
               <h1>Hồ sơ &amp; Cài đặt</h1>
-              <p>{roleState.role === "admin" ? "Quản lý thông tin cá nhân và thiết lập bảo mật của tài khoản." : "Quản lý thông tin cá nhân, sở thích học tập và các thiết lập của tài khoản."}</p>
+              <p>Quản lý hồ sơ và bảo mật tài khoản.</p>
               {verifiedRole && <p>Vai trò: {{ student: "Học viên", teacher: "Giáo viên", admin: "Quản trị viên" }[verifiedRole]}</p>}
             </div>
             <div className="settings-heading-actions">
@@ -202,7 +186,6 @@ export default function SettingsPage() {
             {getSettingsTabs(roleState.role).map((tab) => {
               const labels: Record<SettingsTab, string> = {
                 "ho-so": "Hồ sơ",
-                "ua-thich": "Ưa thích học tập",
                 "bao-mat": "Bảo mật",
                 "lich-su-mua-hang": "Lịch sử mua hàng",
               };
@@ -220,9 +203,9 @@ export default function SettingsPage() {
             })}
           </nav>
 
-          <div className={`settings-columns${view.tab === "ho-so" ? "" : " appr-settings-columns-single"}`}>
-            <div className="settings-column" hidden={view.tab === "ua-thich" || view.tab === "lich-su-mua-hang"}>
-              <section className="settings-card profile-card" hidden={view.tab !== "ho-so"}>
+          <div className="settings-account-panels">
+            {view.tab === "ho-so" && (
+              <section className="settings-card profile-card">
                 <div className="card-heading profile-card-heading">
                   <div>
                     <span className="card-icon"><span className="avatar avatar-card">{initials}</span></span>
@@ -233,140 +216,63 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="profile-fields">
-                  <label className="settings-field">
-                    <span>Tên hiển thị</span>
-                    <input
+                  <FormField id="settings-display-name" label="Tên hiển thị" className="settings-field">
+                    <input id="settings-display-name"
                       type="text"
                       value={displayName}
                       onChange={(event) => setDisplayName(event.target.value)}
                     />
-                  </label>
-                  <label className="settings-field">
-                    <span>Địa chỉ email</span>
-                    <input type="email" value={user.email ?? ""} readOnly />
-                  </label>
-                  <label className="settings-field">
-                    <span>Ảnh đại diện (URL)</span>
-                    <input
+                  </FormField>
+                  <FormField id="settings-email" label="Địa chỉ email" className="settings-field">
+                    <input id="settings-email" type="email" value={user.email ?? ""} readOnly />
+                  </FormField>
+                  <FormField id="settings-avatar-url" label="Ảnh đại diện (URL)" className="settings-field">
+                    <input id="settings-avatar-url"
                       type="url"
                       value={avatarUrl}
                       placeholder="https://..."
                       onChange={(event) => setAvatarUrl(event.target.value)}
                     />
-                  </label>
-                  <label className="settings-field">
-                    <span>Vai trò tài khoản</span>
-                    <input
+                  </FormField>
+                  <FormField id="settings-role" label="Vai trò tài khoản" className="settings-field">
+                    <input id="settings-role"
                       type="text"
                       value={roleState.role ? roleLabels[roleState.role] : roleState.loading ? "Đang tải..." : "Chưa xác định"}
                       readOnly
                       aria-busy={roleState.loading}
                     />
-                  </label>
-                  <label className="settings-field">
-                    <span>Mục tiêu hàng ngày</span>
-                    <span className="field-with-icon">
-                      <Clock3 aria-hidden="true" size={16} />
-                      <input type="text" value="20 phút" readOnly />
-                      <ChevronRight aria-hidden="true" size={16} />
-                    </span>
-                  </label>
+                  </FormField>
                 </div>
                 <div className="profile-actions">
-                  <button className="button button-primary" type="button" disabled={isSavingProfile} onClick={() => void handleSaveProfile()}>
+                  <Button type="button" disabled={isSavingProfile} onClick={() => void handleSaveProfile()}>
                     {isSavingProfile ? "Đang lưu..." : "Lưu thay đổi"}
-                  </button>
-                  <button className="button button-outline" type="button" onClick={() => { setDisplayName(userDisplayName); setAvatarUrl(""); setProfileMessage(null); }}>Bỏ qua</button>
+                  </Button>
+                  <Button variant="outline" type="button" disabled={isSavingProfile} onClick={() => {
+                    setDisplayName(savedProfile?.name ?? userDisplayName);
+                    setAvatarUrl(savedProfile?.avatar ?? "");
+                    setProfileMessage(null);
+                  }}>Bỏ qua</Button>
                 </div>
                 {profileMessage && <p role="status">{profileMessage}</p>}
               </section>
-
-              <section className="settings-card security-card" hidden={view.tab !== "ho-so" && view.tab !== "bao-mat"}>
+            )}
+            {view.tab === "bao-mat" && (
+              <section className="settings-card security-card">
                 <div className="card-heading">
                   <span className="card-icon"><LockKeyhole aria-hidden="true" size={18} /></span>
                   <h2>Bảo mật</h2>
-                  <p>Quản lý mật khẩu và trạng thái đăng nhập của tài khoản.</p>
+                  <p>Gửi liên kết đặt lại mật khẩu đến email đăng nhập của bạn.</p>
                 </div>
                 <div className="security-password">
-                  <label className="settings-field">
-                    <span>Mật khẩu</span>
-                    <input type="password" value="lineasecurepassword" disabled readOnly />
-                  </label>
-                  <button className="button button-outline" type="button">Đổi mật khẩu</button>
+                  <Button variant="outline" disabled={!user.email || sendingPasswordReset} onClick={() => void requestPasswordReset()}>
+                    {sendingPasswordReset ? "Đang gửi..." : "Gửi email đổi mật khẩu"}
+                  </Button>
                 </div>
-                <div className="device-section">
-                  <h3>Thiết bị đang đăng nhập</h3>
-                  <div className="device-row">
-                    <span className="device-icon"><ShieldCheck aria-hidden="true" size={18} /></span>
-                    <span className="device-copy">
-                      <span>Chrome trên macOS</span>
-                      <span>Hà Nội · Đang hoạt động</span>
-                    </span>
-                    <span className="device-current">Chính</span>
-                  </div>
-                </div>
+                {passwordRequest && <p role={passwordRequest.failed ? "alert" : "status"}>{passwordRequest.message}</p>}
               </section>
-            </div>
-
-            <div className="settings-column" hidden={view.tab === "bao-mat"}>
-              <section className="settings-card preferences-card" hidden={roleState.role === "admin" || (view.tab !== "ho-so" && view.tab !== "ua-thich")}>
-                <div className="card-heading">
-                  <span className="card-icon"><Sparkles aria-hidden="true" size={18} /></span>
-                  <h2>Ưu thích học tập</h2>
-                  <p>Trạng thái mặc định cho kế hoạch học hàng ngày.</p>
-                </div>
-                <div className="preference-pills">
-                  <span>Cơ bản</span>
-                  <span>20 phút/ngày</span>
-                  <span>Minh họa nhân vật</span>
-                </div>
-                <div className="goal-progress-heading">
-                  <span>Tiến độ mục tiêu</span>
-                  <span>18/20 phút · 90%</span>
-                </div>
-                <div className="goal-progress" role="progressbar" aria-label="Tiến độ mục tiêu hàng ngày" aria-valuenow={90} aria-valuemin={0} aria-valuemax={100}>
-                  <span />
-                </div>
-                <div className="next-lesson">
-                  <span className="next-lesson-icon"><BookOpen aria-hidden="true" size={18} /></span>
-                  <span>
-                    <span className="next-lesson-label">Bài học tiếp theo</span>
-                    <strong>Gesture và nhịp điệu</strong>
-                    <span className="next-lesson-course">Khóa học: Vẽ nhân vật từ khối cơ bản</span>
-                  </span>
-                  <ArrowUpRight aria-hidden="true" size={16} />
-                </div>
-              </section>
-
-              <section className="settings-card notifications-card" hidden={view.tab !== "ho-so" && view.tab !== "ua-thich"}>
-                <div className="card-heading">
-                  <span className="card-icon"><Bell aria-hidden="true" size={18} /></span>
-                  <h2>Thông báo</h2>
-                  <p>Chọn loại thông báo bạn muốn nhận qua email và ứng dụng.</p>
-                </div>
-                <div className="notification-list">
-                  <ToggleSetting
-                    label="Nhắc nhở hàng ngày"
-                    description="Nhắc bạn dành thời gian luyện tập."
-                    checked={notifications.daily}
-                    onChange={() => setNotifications((current) => ({ ...current, daily: !current.daily }))}
-                  />
-                  <ToggleSetting
-                    label="Tổng kết hàng tuần"
-                    description="Nhận cập nhật về tiến độ học tập."
-                    checked={notifications.weekly}
-                    onChange={() => setNotifications((current) => ({ ...current, weekly: !current.weekly }))}
-                  />
-                  <ToggleSetting
-                    label="Phục hồi chuỗi"
-                    description="Nhắc bạn khi chuỗi học tập sắp gián đoạn."
-                    checked={notifications.streak}
-                    onChange={() => setNotifications((current) => ({ ...current, streak: !current.streak }))}
-                  />
-                </div>
-              </section>
-
-              <section className="settings-card purchase-card" hidden={roleState.role === "admin" || (view.tab !== "ho-so" && view.tab !== "lich-su-mua-hang")}>
+            )}
+            {view.tab === "lich-su-mua-hang" && (
+              <section className="settings-card purchase-card">
                 <div className="card-heading purchase-heading">
                   <span className="card-icon"><CreditCard aria-hidden="true" size={18} /></span>
                   <h2>Lịch sử mua hàng</h2>
@@ -376,7 +282,7 @@ export default function SettingsPage() {
                   <Link className="button button-primary" to="/orders">Xem lịch sử thanh toán</Link>
                 </div>
               </section>
-            </div>
+            )}
           </div>
 
           <div className="settings-mobile-user">

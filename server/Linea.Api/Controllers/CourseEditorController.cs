@@ -86,7 +86,8 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
             (info.Title.Trim().Length is < 5 or > 200 || info.Description.Trim().Length is < 50 or > 5000 ||
              info.Topic.Trim().Length is < 2 or > 100 || info.Level is not ("CO_BAN" or "TRUNG_CAP" or "NANG_CAO") ||
              (!string.IsNullOrWhiteSpace(info.CoverImage) &&
-              (!Uri.TryCreate(info.CoverImage, UriKind.Absolute, out var coverUri) || coverUri.Scheme != "https"))))
+              (!Uri.TryCreate(info.CoverImage, UriKind.Absolute, out var coverUri) || coverUri.Scheme != "https")) ||
+             info.DurationText is { Length: > 50 }))
             return BadRequest(new { detail = "Thông tin khóa học chưa hợp lệ." });
         static bool ValidIds(IEnumerable<long?> ids) {
             var values = ids.ToList();
@@ -138,6 +139,8 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
             course.Level = courseInfo.Level; course.Topic = courseInfo.Topic.Trim();
             course.PriceVnd = courseInfo.PriceVnd ?? course.PriceVnd;
             course.CoverImage = string.IsNullOrWhiteSpace(courseInfo.CoverImage) ? null : courseInfo.CoverImage;
+            course.DurationText = string.IsNullOrWhiteSpace(courseInfo.DurationText) ? null : courseInfo.DurationText.Trim();
+            course.StartDate = courseInfo.StartDate;
         }
         var oldChapters = await db.CourseChapters.Where(x => x.CourseId == courseId).ToListAsync(ct);
         var oldChapterIds = oldChapters.Select(x => x.Id).ToList();

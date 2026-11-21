@@ -51,3 +51,24 @@
     bottom: 16px;
   }
 }
+
+#root:has(.cookie-consent) .register-page--login {
+  min-height: calc(100svh - 80px);
+}
+
+#root:has(.register-page--login, .overview-page, .workspace-overview) .cookie-consent {
+  position: static;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding: 16px clamp(16px, 5vw, 64px);
+  border-width: 1px 0 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#root:has(.register-page--login, .overview-page, .workspace-overview) .cookie-consent p { margin: 0; }
+#root:has(.register-page--login, .overview-page, .workspace-overview) .cookie-consent .button { flex-basis: auto; }

@@ -10,9 +10,15 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:browser": "node tests/sprint5.browser.mjs",
+    "test:auth": "node tests/auth.browser.mjs",
     "test:course-review": "node tests/course-review.browser.mjs",
     "test:admin-refresh": "node tests/admin-refresh.browser.mjs",
     "test:community": "node tests/community.browser.mjs",
+    "test:community-likes": "node tests/community-likes.browser.mjs",
+    "test:studio": "node tests/studio.browser.mjs",
+    "test:a11y": "node tests/a11y.browser.mjs",
+    "test:roles": "node tests/roles.browser.mjs",
+    "test:learning": "node tests/learning.browser.mjs",
     "test:public-header": "node tests/public-header.browser.mjs",
     "test:student-courses": "node tests/student-courses.browser.mjs",
     "preview": "vite preview --host 0.0.0.0",
@@ -22,6 +28,7 @@
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "gifenc": "1.0.3",
     "lucide-react": "^0.545.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
@@ -42,5 +49,22 @@
     "typescript-eslint": "^8.46.1",
     "vite": "^7.1.9",
     "vitest": "^4.1.11"
-  }
+  },
+  "description": "Dự án chính: `D:\\QLDA\\PA-Nhom3`. Nhánh tích hợp: `develop`.\r Các thư mục `PA-Nhom3-checklist-1115`, `PA-Nhom3-handover-1115` và\r `PA-Nhom3-sprint6-review` là Git worktree phục vụ công việc riêng.",
+  "main": "eslint.config.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ddawng18/PA-Nhom3.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ddawng18/PA-Nhom3/issues"
+  },
+  "homepage": "https://github.com/Ddawng18/PA-Nhom3#readme"
 }

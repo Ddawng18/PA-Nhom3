@@ -15,6 +15,8 @@ public sealed record CatalogCourseItem(
     [property: JsonPropertyName("so_chuong")] int ChapterCount,
     [property: JsonPropertyName("so_bai_hoc")] int LessonCount,
     [property: JsonPropertyName("so_hoc_vien")] int StudentCount,
+    [property: JsonPropertyName("thoi_luong")] string? DurationText,
+    [property: JsonPropertyName("ngay_khai_giang")] DateOnly? StartDate,
     [property: JsonPropertyName("ngay_tao")] DateTimeOffset CreatedAt);
 
 public sealed record CatalogTopic(
