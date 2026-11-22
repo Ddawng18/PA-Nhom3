@@ -35,6 +35,8 @@ const catalogListSchema = z.object({
 
 const catalogDetailSchema = z.object({
   khoa_hoc: catalogCourseSchema,
+  anh_giang_vien: z.array(z.string()).max(5).default([]),
+  anh_hoc_vien: z.array(z.string()).max(5).default([]),
   chuong: z.array(z.object({
     ma_chuong: id,
     tieu_de: z.string(),

@@ -111,7 +111,7 @@ public sealed class CourseCatalogService(
         var related = await EnrichAsync(
             relatedRows.Select(row => (row.Course, row.Chapters, row.Lessons, row.Students)).ToList(),
             cancellationToken);
-        return new CatalogDetailResponse(detail, outline, related);
+        return new CatalogDetailResponse(detail, outline, related, course.TeacherArtwork, course.StudentArtwork);
     }
 
     private async Task<List<CatalogCourseItem>> EnrichAsync(

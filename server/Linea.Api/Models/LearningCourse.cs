@@ -14,6 +14,8 @@ public sealed class LearningCourse
     public DateOnly? StartDate { get; set; }
     public List<string> Outcomes { get; set; } = [];
     public string? SampleFeedback { get; set; }
+    public List<string> TeacherArtwork { get; set; } = [];
+    public List<string> StudentArtwork { get; set; } = [];
     public string CoverStyle { get; set; } = "auto";
     public long? RevisionOf { get; set; }
     public string Status { get; set; } = "NHAP";

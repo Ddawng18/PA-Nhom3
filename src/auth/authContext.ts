@@ -1,7 +1,7 @@
 import { createContext } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 
-export type AuthResult = { error: string | null; needsEmailConfirmation?: boolean };
+export type AuthResult = { error: string | null };
 
 export type AuthContextValue = {
   session: Session | null;

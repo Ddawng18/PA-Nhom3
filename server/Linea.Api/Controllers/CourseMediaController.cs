@@ -79,7 +79,8 @@ public sealed class CourseMediaController(
 
         var publicUrl = $"{baseUrl.TrimEnd('/')}/storage/v1/object/public/{bucket}/{path}";
         if (await db.CourseAttachments.AnyAsync(x => x.Path == path, ct) ||
-            (bucketKind == "media" && (await db.LearningCourses.AnyAsync(x => x.CoverImage == publicUrl, ct) ||
+            (bucketKind == "media" && (await db.LearningCourses.AnyAsync(x => x.CoverImage == publicUrl ||
+                x.TeacherArtwork.Contains(publicUrl) || x.StudentArtwork.Contains(publicUrl), ct) ||
                 await db.CourseLessons.AnyAsync(x => x.ImagePath == publicUrl || x.ImagePath == path, ct))))
             return Conflict(new { code = "MEDIA_IN_USE", detail = "Tệp vẫn đang được sử dụng. Tải lại nội dung trước khi xóa." });
         using var request = new HttpRequestMessage(HttpMethod.Delete, $"{baseUrl}/storage/v1/object/{Uri.EscapeDataString(bucket)}");
@@ -160,6 +161,19 @@ public sealed class CourseMediaController(
 
     private static string ObjectUrl(string baseUrl, string bucket, string path) =>
         $"{baseUrl}/storage/v1/object/{Uri.EscapeDataString(bucket)}/{string.Join("/", path.Split('/').Select(Uri.EscapeDataString))}";
+
+    internal static bool IsCourseArtworkUrl(IConfiguration configuration, long courseId, string url)
+    {
+        var baseUrl = configuration["SUPABASE_URL"]?.TrimEnd('/');
+        var bucket = configuration["SUPABASE_MEDIA_BUCKET"];
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(bucket)) return false;
+        var prefix = $"{baseUrl}/storage/v1/object/public/{bucket}/";
+        if (!url.StartsWith(prefix, StringComparison.Ordinal)) return false;
+        var path = url[prefix.Length..];
+        return IsOwnedPath(courseId, path) &&
+            (path.EndsWith(".jpg", StringComparison.Ordinal) || path.EndsWith(".png", StringComparison.Ordinal) ||
+             path.EndsWith(".webp", StringComparison.Ordinal));
+    }
 
     public static bool IsOwnedPath(long courseId, string path) =>
         !string.IsNullOrWhiteSpace(path) &&
