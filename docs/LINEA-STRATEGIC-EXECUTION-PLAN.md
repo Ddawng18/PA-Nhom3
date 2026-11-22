@@ -413,6 +413,18 @@ M3 evidence and blockers: `docs/operations/PHASE-3-EVIDENCE.md` (22/11/2026).
 - [ ] Support and moderation runbooks published; rollback evidence recorded.
 - [ ] Measured funnel and scale plan documented.
 
+**Implementation status (22/11/2026)**
+
+- [x] Proof image optimized from 2.5 MB PNG to 146 KB/75 KB JPEG with responsive `srcset`.
+- [x] Route-level lazy splitting verified in the production build.
+- [x] Public/learning/order indexes audited; existing indexes cover current list and lookup paths.
+- [x] Support and moderation runbook published.
+- [x] Scale plan and performance thresholds published.
+- [x] Automated accessibility suite passes.
+- [ ] A/B experiments are not started; they need analytics and assignment tracking.
+- [ ] Manual WCAG AA audit, Lighthouse/Core Web Vitals and load tests remain open.
+- [ ] Uptime/p95 evidence and rollback rehearsal remain open.
+
 ---
 
 ## 7. Workstreams and implementation details
