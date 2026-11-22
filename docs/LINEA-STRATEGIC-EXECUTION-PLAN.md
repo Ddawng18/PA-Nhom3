@@ -1,4 +1,4 @@
-# LINEA — Strategic Execution Plan (Phase-Based)
+﻿# LINEA — Strategic Execution Plan (Phase-Based)
 
 - **Date:** 22/11/2026
 - **Branch:** `develop`
@@ -112,7 +112,7 @@ Targets are proposed. Measure the baseline during Phase 0 before treating them a
 | Phase | Focus | Exit gate |
 |---|---|---|
 | **P0. Stabilise** | Commit placeholders, clean data, deploy verification, analytics baseline | **M0:** trusted baseline |
-| **P1. Public proof** | Homepage proof, catalog covers, course detail, auth benefits, pricing/FAQ | **M1:** test-ready public site |
+| **P1. Public proof** | Homepage proof, catalog covers, course detail, auth benefits, course payment clarity | **M1:** test-ready public site |
 | **P2. Learning loop** | Onboarding, dashboard states, first lesson, submission/feedback, Studio usability | **M2:** first-session success |
 | **P3. Demo supply and community** | Teacher placeholders, sample courses, community quality and moderation | **M3:** credible demo ecosystem |
 | **P4. Monetization and growth** | Payment pilot, email lifecycle, SEO/content, referral, experiments | **M4:** paid pilot evidence |
@@ -202,10 +202,7 @@ Preserve the existing visual system; add evidence, not a new design language.
 4. Auth:
    - add benefit bullets to the existing left panel;
    - keep current form and artwork geometry.
-5. Add Pricing/FAQ and explain:
-   - free entry;
-   - paid course;
-   - demo payment.
+5. Explain free entry, course price and demo payment on the course detail page; no separate pricing page.
 6. Add SEO metadata and social images for courses and teacher profiles.
 
 **Exit criteria (Gate M1)**
@@ -220,7 +217,7 @@ Preserve the existing visual system; add evidence, not a new design language.
 - [x] Homepage proof visual, practice loop, sample feedback, featured courses and final CTA.
 - [x] Designed catalog covers, `Học thử` badges, teacher/duration/start metadata and curated routes.
 - [x] Course detail outcomes, sample lesson, instructor placeholder, feedback and mobile sticky CTA.
-- [x] Auth benefit bullets, Pricing/FAQ page and public navigation.
+- [x] Auth benefit bullets and public navigation.
 - [x] Course/teacher SEO metadata, Open Graph/Twitter tags and social image.
 - [x] `npm run test:public-proof` plus public header, a11y, teacher-profile and course-review browser tests pass.
 - [ ] 30-second first-visitor usability check and manual public-page UAT remain for M1.
@@ -376,7 +373,7 @@ M3 evidence and blockers: `docs/operations/PHASE-3-EVIDENCE.md` (22/11/2026).
 
 - [x] Existing single-course checkout covers DEMO, VNPAY sandbox and ZaloPay sandbox with entitlement on verified payment.
 - [x] Payment sandbox protocol suite: **28/28 checks pass**.
-- [x] SEO for course, teacher and pricing pages is live.
+- [x] SEO for course and teacher pages is live.
 - [x] Printable receipt/invoice is available from successful orders.
 - [ ] Refund is not implemented; the order status model has no refunded state.
 - [ ] Email lifecycle is not implemented or measured.
@@ -395,7 +392,7 @@ M3 evidence and blockers: `docs/operations/PHASE-3-EVIDENCE.md` (22/11/2026).
    - hero;
    - CTA copy;
    - course-card proof;
-   - pricing placement.
+   - checkout CTA placement on course detail.
 2. Optimize:
    - images;
    - route splitting;
@@ -580,7 +577,7 @@ Targets are evaluated at the gate shown, using the baseline captured in P0.
 - Course preview: trailer/sample lesson.
 - Outcomes and curriculum accordion.
 - Instructor profile and sample feedback.
-- Pricing/FAQ page.
+- Demo-payment explanation on course detail.
 - Price filter and richer course cards.
 - SEO course and teacher pages.
 - Student-work and testimonial sections when real content exists.
@@ -690,7 +687,7 @@ Replaces the former “Next 14 days” list. Items 1–3 and 8–10 belong to P0
 
 7. Add homepage proof using existing demo teacher/course data.
 8. Replace letter/gradient covers with designed covers.
-9. Add pricing/FAQ and demo-payment explanation.
+9. Add demo-payment explanation on course detail.
 10. Add dashboard skeleton/timeout/retry.
 
 ---

@@ -70,13 +70,6 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, "course detail 390px overflow");
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto(origin + "/pricing", { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "Bắt đầu miễn phí. Chỉ trả tiền khi bạn cần thêm." }).waitFor();
-  assert.equal(await page.locator(".pricing-card").count(), 3);
-  assert.equal(await page.locator(".pricing-faq-item").count(), 5);
-  assert.match(await page.title(), /Học phí & FAQ/);
-  await page.locator(".pricing-faq-item").first().click();
-  assert.equal(await page.locator(".pricing-faq-item").first().getAttribute("open"), "");
 
   await page.goto(origin + "/register", { waitUntil: "networkidle" });
   assert.equal(await page.locator(".auth-benefit-list li").count(), 3);
@@ -88,7 +81,7 @@ try {
   assert.equal(await page.locator(".community-rules li").count(), 3);
   assert.ok((await page.locator(".community-post").count()) >= 5);
 
-  console.log("PASS homepage proof, featured courses, designed covers, sample lesson, pricing/FAQ, auth benefits, community rules and SEO");
+  console.log("PASS homepage proof, featured courses, designed covers, sample lesson, auth benefits, community rules and SEO");
 } finally {
   await browser?.close();
   server.kill();
