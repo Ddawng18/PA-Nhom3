@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { BookOpen, ClipboardCheck, GraduationCap, Palette, TrendingUp, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import PublicHeader from "../components/PublicHeader";
+import TeacherShowcase from "../components/TeacherShowcase";
 import "../styles/guest-home.css";
 
 export default function GuestHomePage() {
@@ -78,11 +79,13 @@ export default function GuestHomePage() {
               <p className="guest-eyebrow">MÀU SẮC · CƠ BẢN · 8 BÀI</p>
               <h3>Màu kỹ thuật số cho minh họa</h3>
               <p>Làm quen với vòng màu, sắc độ và cách phối màu cho nhân vật qua bài tập nhỏ mỗi ngày.</p>
-              <p className="guest-showcase-meta">Giảng viên minh họa: NmRAtist</p>
+              <p className="guest-showcase-meta">Giảng viên minh họa: <Link to="/teachers/nmratist">NmRAtist</Link></p>
               <Link className="button button-primary" to="/courses">Xem khóa học</Link>
             </div>
           </article>
         </section>
+
+        <TeacherShowcase />
 
         <section className="guest-steps" aria-labelledby="guest-steps-title">
           <p className="guest-section-label">CÁCH HỌC</p>
