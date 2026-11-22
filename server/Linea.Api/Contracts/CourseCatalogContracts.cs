@@ -17,7 +17,10 @@ public sealed record CatalogCourseItem(
     [property: JsonPropertyName("so_hoc_vien")] int StudentCount,
     [property: JsonPropertyName("thoi_luong")] string? DurationText,
     [property: JsonPropertyName("ngay_khai_giang")] DateOnly? StartDate,
-    [property: JsonPropertyName("ngay_tao")] DateTimeOffset CreatedAt);
+    [property: JsonPropertyName("ngay_tao")] DateTimeOffset CreatedAt,
+    [property: JsonPropertyName("ket_qua")] IReadOnlyList<string> Outcomes,
+    [property: JsonPropertyName("phan_hoi_mau")] string? SampleFeedback,
+    [property: JsonPropertyName("kieu_bia")] string CoverStyle);
 
 public sealed record CatalogTopic(
     [property: JsonPropertyName("chu_de")] string Topic,

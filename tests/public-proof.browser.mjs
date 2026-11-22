@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+﻿import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
@@ -49,6 +49,7 @@ try {
   assert.ok((await page.locator(".cat-card").count()) >= 7);
   assert.ok((await page.locator(".cat-card .course-cover").count()) >= 7);
   assert.ok((await page.locator(".cat-card-trial-badge").count()) >= 7);
+  assert.ok((await page.locator(".cat-card-demo-badge").count()) >= 7);
   assert.match(await page.locator(".cat-card").first().innerText(), /ThinhTester/);
   assert.match(await page.locator(".cat-card").first().innerText(), /Học thử/i);
 
@@ -59,6 +60,7 @@ try {
   assert.match(await page.getByRole("main").innerText(), /Bạn sẽ luyện được gì/);
   assert.match(await page.getByRole("main").innerText(), /VÍ DỤ PHẢN HỒI/);
   assert.match(await page.getByRole("main").innerText(), /GIẢNG VIÊN/);
+  assert.match(await page.getByRole("main").innerText(), /KHÓA HỌC MẪU|Khóa học mẫu/i);
   assert.match(await page.locator('meta[name="description"]').getAttribute("content") ?? "", /bảng màu|minh họa kỹ thuật số|LINEA/i);
   assert.match(await page.locator('meta[property="og:title"]').getAttribute("content") ?? "", /LINEA/);
   assert.match(await page.locator('meta[property="og:image"]').getAttribute("content") ?? "", /linea-studies\.png$/);
@@ -81,7 +83,12 @@ try {
   await page.goto(origin + "/login", { waitUntil: "networkidle" });
   assert.equal(await page.locator(".auth-benefit-list li").count(), 3);
 
-  console.log("PASS homepage proof, featured courses, designed covers, sample lesson, pricing/FAQ, auth benefits and SEO");
+  await page.goto(origin + "/community", { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Cùng nhau luyện vẽ" }).waitFor();
+  assert.equal(await page.locator(".community-rules li").count(), 3);
+  assert.ok((await page.locator(".community-post").count()) >= 5);
+
+  console.log("PASS homepage proof, featured courses, designed covers, sample lesson, pricing/FAQ, auth benefits, community rules and SEO");
 } finally {
   await browser?.close();
   server.kill();

@@ -3,14 +3,16 @@ import type { CatalogCourse } from "../lib/catalogApi";
 import { sanitizeCoverUrl } from "../logic/publicCourses";
 import "../styles/course-cover.css";
 
-type CoverCourse = Pick<CatalogCourse, "ma_khoa_hoc" | "tieu_de" | "chu_de" | "anh_dai_dien">;
+type CoverCourse = Pick<CatalogCourse, "ma_khoa_hoc" | "tieu_de" | "chu_de" | "anh_dai_dien"> & { kieu_bia?: string };
 
 const tones = ["forest", "clay", "indigo", "sun"] as const;
 
 export default function CourseCover({ course, className = "" }: { course: CoverCourse; className?: string }) {
   const [imageFailed, setImageFailed] = useState(false);
   const coverUrl = sanitizeCoverUrl(course.anh_dai_dien);
-  const tone = tones[Math.abs(course.ma_khoa_hoc) % tones.length];
+  const tone = tones.includes(course.kieu_bia as typeof tones[number])
+    ? course.kieu_bia as typeof tones[number]
+    : tones[Math.abs(course.ma_khoa_hoc) % tones.length];
   const variant = Math.abs(course.ma_khoa_hoc) % 3;
 
   return <div className={`course-cover course-cover-${tone} course-cover-variant-${variant} ${className}`.trim()}>

@@ -8,6 +8,7 @@ import PublicHeader from "../components/PublicHeader";
 import { AdminApiError, requestAdminApi } from "../lib/adminApi";
 import { prepareCommunityImage } from "../lib/communityImages";
 import "../styles/studio.css";
+import "../styles/community.css";
 
 const postSchema = z.object({ id: z.number().int().positive(), authorId: z.string().optional(), title: z.string(), body: z.string(), author: z.string(), createdAt: z.string(), imageUrl: z.string().nullable().optional(), commentCount: z.number().default(0), likeCount: z.number().default(0), liked: z.boolean().default(false) });
 type Post = z.infer<typeof postSchema>;
@@ -247,6 +248,14 @@ export default function CommunityPage() {
 
   return <div className="community-page"><PublicHeader authLink={{ to: "/login", label: "Đăng nhập" }} /><main className="community-main">
     <header className="community-heading"><div><p className="guest-eyebrow">GÓC CHIA SẺ</p><h1>{postId ? "Bài viết" : "Cùng nhau luyện vẽ"}</h1><p>Chia sẻ hành trình học vẽ cùng cộng đồng LINEA.</p></div>{postId && <Link to="/community">← Tất cả bài viết</Link>}</header>
+    {!postId && <section className="community-rules" aria-labelledby="community-rules-title">
+      <div><p className="guest-eyebrow">NỘI QUY CỘNG ĐỒNG</p><h2 id="community-rules-title">Giữ góc luyện tập hữu ích</h2></div>
+      <ul>
+        <li>Chia sẻ bài luyện, câu hỏi hoặc góp ý cụ thể — không đăng nội dung xúc phạm, spam hoặc thông tin cá nhân.</li>
+        <li>Ghi rõ nguồn khi đăng ảnh không phải của bạn; chỉ đăng tác phẩm bạn có quyền chia sẻ.</li>
+        <li>Báo cáo bài viết vi phạm thay vì tranh luận công khai. Quản trị viên xem xét báo cáo trong vòng 24 giờ.</li>
+      </ul>
+    </section>}
     {!postId && (authLoading ? <p role="status">Đang kiểm tra tài khoản...</p> : session ? <form className="community-compose" onSubmit={publish}>
       <h2>Chia sẻ bài viết</h2><FormField id="post-title" label="Tiêu đề"><input id="post-title" value={title} onChange={e => setTitle(e.target.value)} maxLength={160} required disabled={busy} /></FormField>
       <FormField id="post-body" label="Nội dung"><textarea id="post-body" value={body} onChange={e => setBody(e.target.value)} maxLength={5000} required disabled={busy} /></FormField>

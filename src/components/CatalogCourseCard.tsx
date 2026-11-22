@@ -8,6 +8,7 @@ import {
   formatStudentCount,
 } from "../logic/catalog";
 import { getCourseLevelLabel } from "../logic/courseEditor";
+import { isDemoCourse } from "../logic/demoCourses";
 import "../styles/courses.css";
 
 type CatalogCourseCardProps = {
@@ -34,6 +35,7 @@ export default function CatalogCourseCard({ course }: CatalogCourseCardProps) {
       </div>
       <div className="cat-card-title-row">
         <h3 className="cat-card-title">{course.tieu_de}</h3>
+        {isDemoCourse(course) && <span className="cat-card-demo-badge">Khóa mẫu</span>}
         <span className="cat-card-trial-badge">Học thử</span>
       </div>
       <p className="cat-card-teacher">{teacher}</p>

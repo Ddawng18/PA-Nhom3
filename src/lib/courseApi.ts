@@ -8,6 +8,9 @@ export const courseRowSchema = z.object({
   gia_vnd: z.number().int().nonnegative().optional(),
   thoi_luong: z.string().nullable().optional(),
   ngay_khai_giang: z.string().nullable().optional(),
+  ket_qua: z.array(z.string()).optional(),
+  phan_hoi_mau: z.string().nullable().optional(),
+  kieu_bia: z.string().optional(),
 });
 const listSchema = z.object({ items: z.array(courseRowSchema), totalCount: z.number().int() });
 export async function getCourse(token: string, id: string, signal?: AbortSignal) {
@@ -32,6 +35,11 @@ export async function submitCourse(token: string, id: string | number) {
 
 export async function deleteDraftCourse(token: string, id: string | number) {
   return requestAdminApi(`/api/courses/${encodeURIComponent(id)}`, { token, method: "DELETE" });
+}
+
+export async function createCourseRevision(token: string, id: string | number) {
+  return z.object({ ma_khoa_hoc: z.number().int().safe(), existing: z.boolean() })
+    .parse(await requestAdminApi(`/api/courses/${encodeURIComponent(id)}/revision`, { token, method: "POST" }));
 }
 
 export async function listEnrolledCourses(token: string, signal?: AbortSignal) {

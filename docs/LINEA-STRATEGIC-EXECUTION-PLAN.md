@@ -318,13 +318,31 @@ Preserve the existing visual system; add evidence, not a new design language.
 
 **Exit criteria (Gate M3)**
 
-- [ ] 3 demo teacher profiles complete, each with a visible “Hồ sơ mẫu” badge and disclaimer.
-- [ ] 6–8 labeled demo courses with covers, curriculum and level.
-- [ ] 5 quality seed posts live; 0 public abusive/test posts.
+- [x] 3 demo teacher profiles complete, each with a visible “Hồ sơ mẫu” badge and disclaimer.
+- [x] 6–8 labeled demo courses with covers, curriculum and level.
+- [x] 5 quality seed posts live; 0 public abusive/test posts.
 - [ ] Reports resolved within 24h in the test window.
 - [ ] Median grading time <48h; first Studio export ≥20%.
 - [ ] Teacher can create a course from a guided template, preview it, pass the publish checklist, and publish a revision.
 - [ ] Teacher/admin queue, grading and audit flows verified.
+
+**Implementation status (22/11/2026)**
+
+- [x] 8 published test courses now show the “Khóa mẫu” label on catalog cards and detail pages.
+- [x] Community rules are public; 5 educational seed posts are live under the Teacher Demo account.
+- [x] Teacher new-course flow has three guided templates and a live public-page preview.
+- [x] Existing publish checklist remains active before submit.
+- [x] `npm run test:teacher-authoring` and `npm run test:public-proof` cover the new P3 surfaces.
+- [x] Per-course outcomes, sample feedback and cover-style fields are persisted through the API and used on the public course page.
+- [x] Published courses can create a linked draft revision; approval hides the previous published version.
+- [x] Demo course 4 has seeded outcomes/feedback; published demo courses have distinct cover styles.
+- [x] Grading median measured at 0.02h (well below 48h) from production records.
+- [ ] Community report resolution: no report rows exist yet, so the 24h window cannot be evidenced.
+- [ ] Studio export rate: no export analytics are stored, so the ≥20% metric cannot be measured.
+- [ ] Teacher/admin queue, grading and audit UI verification remains blocked on demo-account access.
+- [ ] M3 is not complete until the missing evidence and live account checks are recorded.
+
+M3 evidence and blockers: `docs/operations/PHASE-3-EVIDENCE.md` (22/11/2026).
 
 ---
 
@@ -713,4 +731,14 @@ After coding:
 
 Do not mark Done if code is only locally tested and production verification is missing.
 Do not mark a phase complete until every exit criterion for its gate has evidence.
+
+Do:
+Read only what the task needs, using search and line ranges.
+Reuse existing components and make small targeted edits.
+Batch tool calls and run the narrowest check first, then the full suite once.
+Keep logs and reports short and ask one concise question when a requirement is ambiguous.
+Never trade away: the section 2 guardrails, security and ownership checks, required tests, build and lint, production verification, demo labels, and all UI states.
+Rule of thumb: a shortcut is acceptable only if it leaves the result, test coverage and report accuracy unchanged. If unsure, the agent takes the more thorough path for that step.
+Agent handoff prompt. It now has a compact "Token efficiency (save tokens, never quality)" block before "Before coding". It ends with the line that guardrails, security checks, tests, build, lint and production verification are never skipped to save tokens.
+Definition of Done. It now includes "token-efficiency rules followed without skipping any required check".
 ```
