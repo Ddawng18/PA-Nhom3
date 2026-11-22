@@ -30,6 +30,7 @@ export default function CatalogCourseCard({ course }: CatalogCourseCardProps) {
 
   return (
     <article className="cat-card" role="listitem">
+      <Link className="cat-card-overlay" to={`/courses/${course.ma_khoa_hoc}`} aria-label={`Xem ${course.tieu_de}`} />
       <div className="cat-card-thumb">
         <CourseCover course={course} />
         <span className="cat-card-level">{getCourseLevelLabel(course.cap_do)}</span>
@@ -44,7 +45,6 @@ export default function CatalogCourseCard({ course }: CatalogCourseCardProps) {
       {students && <p className="cat-card-students">{students}</p>}
       {price && <p className="cat-card-price">{price}</p>}
       <div className="cat-card-actions">
-        <Link className="cat-card-action" to={`/courses/${course.ma_khoa_hoc}`}>Xem khóa học</Link>
         <Link className="cat-card-preview" to={`/courses/${course.ma_khoa_hoc}#sample-lesson`} aria-label={`Học thử ${course.tieu_de}`}>
           Học thử
         </Link>
