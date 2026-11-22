@@ -41,6 +41,7 @@ const AdminCommunityPage = lazy(() => import("./pages/AdminCommunityPage"));
 const TeacherOverviewPage = lazy(() => import("./pages/TeacherOverviewPage"));
 const TeacherSubmissionsQueuePage = lazy(() => import("./pages/TeacherSubmissionsQueuePage"));
 const TeacherStudentsPage = lazy(() => import("./pages/TeacherStudentsPage"));
+const TeacherProfilePage = lazy(() => import("./pages/TeacherProfilePage"));
 
 function RouteFallback() {
   return <div className="route-fallback" role="status" aria-live="polite">Đang tải trang…</div>;
@@ -117,6 +118,7 @@ const router = createBrowserRouter(createRoutesFromElements(
               </ProtectedRoute>
             }
           />
+          <Route path="/teachers/:teacherSlug" element={withFallback(<TeacherProfilePage />)} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/orders" element={withFallback(<ProtectedRoute><DemoOrdersPage /></ProtectedRoute>)} />
           <Route path="/admin/manage" element={withFallback(<ProtectedRoute><AdminRoleGuard><AdminManagementPage /></AdminRoleGuard></ProtectedRoute>)} />
