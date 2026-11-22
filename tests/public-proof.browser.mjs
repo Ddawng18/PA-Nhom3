@@ -63,7 +63,7 @@ try {
   assert.match(await page.getByRole("main").innerText(), /KHÓA HỌC MẪU|Khóa học mẫu/i);
   assert.match(await page.locator('meta[name="description"]').getAttribute("content") ?? "", /bảng màu|minh họa kỹ thuật số|LINEA/i);
   assert.match(await page.locator('meta[property="og:title"]').getAttribute("content") ?? "", /LINEA/);
-  assert.match(await page.locator('meta[property="og:image"]').getAttribute("content") ?? "", /linea-studies\.png$/);
+  assert.match(await page.locator('meta[property="og:image"]').getAttribute("content") ?? "", /linea-studies-1200\.jpg$/);
 
   await page.setViewportSize({ width: 390, height: 1000 });
   assert.equal(await page.locator(".cd-mobile-cta").isVisible(), true);
