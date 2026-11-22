@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
@@ -39,7 +39,7 @@ export default function DemoOrdersPage() {
     } catch { setNotice("Chưa kiểm tra được trạng thái thanh toán. Vui lòng thử lại."); }
     finally { setRefreshing(null); }
   }
-  const labels = { PENDING: "Chờ thanh toán", SUCCEEDED: "Thành công", FAILED: "Thất bại", CANCELLED: "Đã hủy" };
+  const labels: Record<string, string> = { PENDING: "Chờ thanh toán", SUCCEEDED: "Thành công", FAILED: "Thất bại", CANCELLED: "Đã hủy", PAID_REVIEW: "Đang đối soát" };
   return <div className="register-page cd-page"><PublicHeader authLink={{ to: "/dashboard", label: "Tổng quan" }} />
     <main className="cd-main cd-orders-main">
       <header className="cd-orders-header"><div><p className="cd-topic">TÀI KHOẢN CỦA BẠN</p><h1>Lịch sử thanh toán</h1><p>Theo dõi trạng thái các đơn đăng ký khóa học.</p></div>
@@ -53,8 +53,8 @@ export default function DemoOrdersPage() {
         : orders === null ? <p role="status">Đang tải đơn...</p>
         : orders.length === 0 ? <section className="cd-orders-empty"><span aria-hidden="true">₫</span><h2>Chưa có giao dịch</h2><p>Khi bạn đăng ký khóa học, đơn sẽ xuất hiện tại đây.</p><Link className="cd-button cd-button-primary" to="/courses">Khám phá khóa học</Link></section>
         : <ul className="cd-order-list">{orders.map((order) => <li className="cd-order-row" key={order.id}>
-          <div className="cd-order-info"><strong><Link to={`/courses/${order.courseId}`}>{order.courseTitle}</Link></strong><span>Đơn #{order.id} · {new Date(order.createdAt).toLocaleString("vi-VN")}</span></div>
-          <div className="cd-order-amount"><strong>{order.priceVnd.toLocaleString("vi-VN")} ₫</strong><span className={`cd-order-status cd-order-status-${order.status.toLowerCase()}`}>{order.paymentProvider === "ZALOPAY_SANDBOX" && order.status === "PENDING" && Date.now() - new Date(order.createdAt).getTime() >= 15 * 60_000 ? "Quá hạn · chờ đối soát" : labels[order.status]}</span></div>
+          <div className="cd-order-info"><strong><Link to={`/courses/${order.courseId}`}>{order.courseTitle}</Link></strong><span>Đơn #{order.id} · {new Date(order.createdAt).toLocaleString("vi-VN")}</span>{order.items && order.items.length > 1 && <span>{order.items.length} khóa học</span>}</div>
+          <div className="cd-order-amount"><strong>{order.priceVnd.toLocaleString("vi-VN")} ₫</strong><span className={`cd-order-status cd-order-status-${order.status.toLowerCase()}`}>{order.paymentProvider === "ZALOPAY_SANDBOX" && order.status === "PENDING" && Date.now() - new Date(order.createdAt).getTime() >= 15 * 60_000 ? "Quá hạn · chờ đối soát" : labels[order.status] ?? order.status}</span></div>
           {order.status === "SUCCEEDED" && <button type="button" className="cd-order-invoice" onClick={() => setInvoice(order)}>Hóa đơn</button>}
           {order.paymentProvider === "ZALOPAY_SANDBOX" && order.status === "PENDING" && <div className="cd-order-payment-actions">
             {order.paymentUrl && <a className="cd-button" href={order.paymentUrl}>Tiếp tục với ZaloPay sandbox</a>}
@@ -74,7 +74,7 @@ function InvoiceDialog({ order, close }: { order: DemoOrder; close: () => void }
     <div className="cd-invoice-print">
       <header><div><p className="cd-topic">LINEA</p><h2 id="invoice-title">Hóa đơn học phí</h2></div><span>#{order.id}</span></header>
       <dl>
-        <div><dt>Khóa học</dt><dd>{order.courseTitle}</dd></div>
+        <div className="cd-invoice-items"><dt>Khóa học</dt><dd>{order.items && order.items.length > 1 ? <ul>{order.items.map(item => <li key={item.courseId}>{item.courseTitle}</li>)}</ul> : order.courseTitle}</dd></div>
         <div><dt>Ngày giao dịch</dt><dd>{new Date(order.createdAt).toLocaleString("vi-VN")}</dd></div>
         <div><dt>Phương thức</dt><dd>{order.paymentProvider === "ZALOPAY_SANDBOX" ? "ZaloPay sandbox" : order.paymentProvider === "VNPAY_SANDBOX" ? "VNPAY sandbox" : "Demo"}</dd></div>
         <div><dt>Trạng thái</dt><dd>Đã thanh toán</dd></div>
