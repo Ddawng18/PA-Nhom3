@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { createUuid } from "../logic/uuid";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
 import CatalogCourseCard from "../components/CatalogCourseCard";
 import CourseCover from "../components/CourseCover";
+import AddToCartButton from "../components/AddToCartButton";
 import CourseArtworkGallery from "../components/CourseArtworkGallery";
 import { getCourseFeedback, getCourseOutcomes, getCourseSample } from "../data/courseProof";
 import { isDemoCourse } from "../logic/demoCourses";
@@ -247,6 +248,7 @@ export default function CourseDetailPage() {
                     {actionError && <p className="cd-error" role="alert">{actionError}</p>}
                     {order?.status === "PENDING" && <p className="cd-order-pending-note" role="status">Đơn #{order.id} đang chờ thanh toán.</p>}
                     {primaryAction}
+                    {!enrolled && <AddToCartButton courseId={course.ma_khoa_hoc} />}
                     <dl className="cd-facts-list">
                       {course.so_bai_hoc > 0 && <div><dt>Số bài học</dt><dd>{formatLessonCount(course.so_bai_hoc)}</dd></div>}
                       {course.so_chuong > 0 && <div><dt>Số chương</dt><dd>{course.so_chuong} chương</dd></div>}

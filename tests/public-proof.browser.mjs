@@ -29,13 +29,31 @@ try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await page.addInitScript(() => localStorage.setItem("linea-cookie-consent-v1", "accepted"));
-
-  await page.goto(origin + "/", { waitUntil: "networkidle" });
+  const courseItems = Array.from({ length: 8 }, (_, index) => {
+    const id = 4 + index;
+    return { ma_khoa_hoc: id, tieu_de: `Khóa học mẫu ${id}`, mo_ta: "Bảng màu và minh họa kỹ thuật số", cap_do: "CO_BAN", chu_de: "Màu sắc", anh_dai_dien: null, ma_giao_vien: "x", ten_giao_vien: "ThinhTester", gia_vnd: 0, so_chuong: 1, so_bai_hoc: 1, so_hoc_vien: 0, ngay_tao: "2026-01-01", ket_qua: [], phan_hoi_mau: null, kieu_bia: "auto" };
+  });
+  await page.route("**/api/catalog/courses?**", route => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({ items: courseItems, page: 1, pageSize: 12, totalCount: 8, chu_de: [] }),
+  }));
+  await page.route(/\/api\/catalog\/courses\/(\d+)/, route => {
+    const id = Number(route.request().url().match(/\/courses\/(\d+)/)?.[1] ?? 11);
+    const course = courseItems.find(item => item.ma_khoa_hoc === id) ?? courseItems[0];
+    return route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        khoa_hoc: course,
+        chuong: [{ ma_chuong: 1, tieu_de: "Chương mở đầu", thu_tu: 1, bai_hoc: [{ ma_bai_hoc: 101, tieu_de: "Bài học đầu tiên", thu_tu: 1, bat_buoc: true }] }],
+        khoa_hoc_cung_chu_de: [],
+      }),
+    });
+  });  await page.goto(origin + "/", { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Bắt đầu từ một bài nhỏ" }).waitFor();
   assert.equal(await page.locator(".guest-course-grid .cat-card").count(), 3);
   assert.ok((await page.locator(".guest-proof-visual img").count()) === 1);
   assert.equal(await page.locator(".guest-loop-list li").count(), 3);
-  assert.match(await page.getByRole("main").innerText(), /không phải đánh giá bài nộp thật/i);
+  assert.match(await page.getByRole("main").innerText(), /Ví dụ nhận xét bài vẽ/i);
   assert.match(await page.title(), /LINEA/);
   for (const width of [390, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -49,6 +67,7 @@ try {
   assert.ok((await page.locator(".cat-card").count()) >= 7);
   assert.ok((await page.locator(".cat-card .course-cover").count()) >= 7);
   assert.ok((await page.locator(".cat-card-trial-badge").count()) >= 7);
+  assert.ok((await page.locator(".cat-card .add-to-cart").count()) >= 7);
   assert.ok((await page.locator(".cat-card-demo-badge").count()) >= 7);
   assert.match(await page.locator(".cat-card").first().innerText(), /ThinhTester/);
   assert.match(await page.locator(".cat-card").first().innerText(), /Học thử/i);

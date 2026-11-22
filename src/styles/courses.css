@@ -1,4 +1,4 @@
-.cat-page {
+﻿.cat-page {
   min-height: 100vh;
   background: #f7f8f2;
   color: #23332a;
@@ -450,6 +450,7 @@
 
 .cat-card-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: auto;
@@ -638,4 +639,41 @@
   font-weight: 700;
   line-height: 1.4;
   white-space: nowrap;
+}
+
+.add-to-cart {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid #b9d3a8;
+  border-radius: 999px;
+  background: #f5faee;
+  color: #315a3b;
+  font-size: 11px;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.add-to-cart:hover {
+  background: #eaf4df;
+}
+
+.add-to-cart:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.add-to-cart.is-added {
+  border-color: #d8e6cc;
+  background: #fffefa;
+}
+
+.cd-buy .add-to-cart,
+.cd-mobile-cta .add-to-cart {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 8px;
 }
