@@ -1,11 +1,11 @@
-export type PageMeta = {
+﻿export type PageMeta = {
   title: string;
   description: string;
   image?: string | null;
   type?: "website" | "article";
 };
 
-const defaultImage = "/linea-studies.png";
+const defaultImage = "/linea-studies-1200.jpg";
 const defaultDescription = "LINEA - lộ trình học vẽ, luyện tập và nhận phản hồi dành cho người mới bắt đầu.";
 
 function setNamedMeta(attribute: "name" | "property", key: string, content: string) {
