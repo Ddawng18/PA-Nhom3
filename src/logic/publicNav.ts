@@ -1,6 +1,7 @@
 export const publicNavItems = [
   { label: "Tổng quan", to: "/" },
   { label: "Khóa học", to: "/courses" },
+  { label: "Học phí", to: "/pricing" },
   { label: "Studio", to: "/studio" },
   { label: "Cộng đồng", to: "/community" },
 ] as const;

@@ -17,7 +17,7 @@ const server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "--host
   cwd: fileURLToPath(new URL("../", import.meta.url)), windowsHide: true, stdio: "ignore",
   env: { ...process.env, VITE_API_URL: "http://localhost:4174" },
 });
-const auditPages = ["/", "/courses", "/studio", "/community", "/login", "/register"];
+const auditPages = ["/", "/courses", "/pricing", "/teachers/nmratist", "/studio", "/community", "/login", "/register"];
 let browser;
 try {
   for (let i = 0; i < 60; i++) {

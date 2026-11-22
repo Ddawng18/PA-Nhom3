@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import PublicHeader from "../components/PublicHeader";
 import { useDemoTeachers } from "../hooks/useDemoTeachers";
 import { useUserRole } from "../hooks/useUserRole";
+import { setPageMeta } from "../lib/seo";
 import "../styles/teacher-showcase.css";
 
 export default function TeacherProfilePage() {
@@ -13,7 +14,18 @@ export default function TeacherProfilePage() {
   const { role } = useUserRole();
 
   useEffect(() => {
-    document.title = teacher ? `${teacher.name} · Hồ sơ giảng viên mẫu · LINEA` : "Không tìm thấy hồ sơ · LINEA";
+    if (teacher) {
+      setPageMeta({
+        title: `${teacher.name} · Hồ sơ giảng viên mẫu · LINEA`,
+        description: `${teacher.name} là hồ sơ giảng viên mẫu trên LINEA. ${teacher.bio[0] ?? ""}`.trim(),
+        type: "article",
+      });
+    } else {
+      setPageMeta({
+        title: "Không tìm thấy hồ sơ · LINEA",
+        description: "Hồ sơ giảng viên mẫu không tồn tại hoặc đã được gỡ khỏi bản thử nghiệm.",
+      });
+    }
   }, [teacher]);
 
   if (!teacher) {

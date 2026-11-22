@@ -1,6 +1,6 @@
-import { useEffect, useState, type FormEvent } from "react";
+﻿import { useEffect, useState, type FormEvent } from "react";
 import { Search } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AdminApiError, AdminApiTimeoutError } from "../lib/adminApi";
 import { catalogQueryPath, listCatalogCourses, type CatalogList } from "../lib/catalogApi";
 import {
@@ -16,6 +16,7 @@ import {
 } from "../logic/catalog";
 import { mapApiError } from "../logic/approvals";
 import { getTotalPages } from "../logic/publicCourses";
+import { setPageMeta } from "../lib/seo";
 import PublicHeader from "../components/PublicHeader";
 import CatalogCourseCard from "../components/CatalogCourseCard";
 import "../styles/settings.css";
@@ -44,7 +45,10 @@ export default function CoursesPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
-    document.title = "Khóa học · LINEA";
+    setPageMeta({
+      title: "Khóa học · LINEA",
+      description: "Khám phá khóa học vẽ theo chủ đề và trình độ, xem chương, bài học mẫu và giảng viên trước khi ghi danh.",
+    });
   }, []);
 
   useEffect(() => {
@@ -119,6 +123,35 @@ export default function CoursesPage() {
               <p>Chọn khóa học phù hợp và bắt đầu hành trình vẽ của bạn.</p>
             </div>
           </header>
+
+          {!hasActiveFilters(query) && (
+            <section className="cat-curated" aria-labelledby="cat-curated-title">
+              <div className="cat-curated-heading">
+                <div>
+                  <p className="settings-eyebrow">LỘ TRÌNH GỢI Ý</p>
+                  <h2 id="cat-curated-title">Chọn theo mục tiêu của bạn</h2>
+                </div>
+                <p>Ba hướng bắt đầu, tất cả đều có bài học mẫu để xem trước.</p>
+              </div>
+              <div className="cat-curated-grid">
+                <Link className="cat-curated-card" to="/courses?chu_de=V%E1%BA%BD%20c%C6%A1%20b%E1%BA%A3n&cap_do=CO_BAN">
+                  <span className="cat-curated-number">01</span>
+                  <strong>Nền tảng vững</strong>
+                  <span>Hình khối, nét và tỷ lệ</span>
+                </Link>
+                <Link className="cat-curated-card" to="/courses?chu_de=Minh%20h%E1%BB%8Da%20nh%C3%A2n%20v%E1%BA%ADt">
+                  <span className="cat-curated-number">02</span>
+                  <strong>Nhân vật có cá tính</strong>
+                  <span>Dáng, biểu cảm và silhouette</span>
+                </Link>
+                <Link className="cat-curated-card" to="/courses?chu_de=M%C3%A0u%20s%E1%BA%AFc">
+                  <span className="cat-curated-number">03</span>
+                  <strong>Ánh sáng & màu sắc</strong>
+                  <span>Sắc độ, bảng màu và điểm nhấn</span>
+                </Link>
+              </div>
+            </section>
+          )}
 
           <div className="cat-layout">
             <aside className={`cat-filters${filtersOpen ? " is-open" : ""}`} aria-label="Lọc khóa học">

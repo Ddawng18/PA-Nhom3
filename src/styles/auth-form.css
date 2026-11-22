@@ -264,6 +264,46 @@
   line-height: 1.6;
 }
 
+.auth-benefit-list {
+  display: grid;
+  gap: 8px;
+  margin: 22px 0 0;
+  padding: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  list-style: none;
+}
+
+.auth-benefit-list-dark {
+  color: #eef2dc;
+}
+
+.auth-benefit-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.auth-benefit-list li > span {
+  display: inline-flex;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.auth-benefit-list-dark li > span {
+  background: #d8f0b0;
+}
+
 .register-page--login .login-panel {
   width: 100%;
   padding: 32px;
@@ -322,6 +362,6 @@
   .register-page--login .register-main { gap: 16px; }
   .login-intro { padding: 24px; }
   .login-intro h2 { font-size: 32px; }
-  .login-intro h2 br, .login-intro p { display: none; }
+  .login-intro h2 br, .login-intro p, .login-intro .auth-benefit-list { display: none; }
   .register-page--login .login-panel { padding: 24px; }
 }
