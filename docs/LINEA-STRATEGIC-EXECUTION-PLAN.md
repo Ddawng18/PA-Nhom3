@@ -376,7 +376,8 @@ M3 evidence and blockers: `docs/operations/PHASE-3-EVIDENCE.md` (22/11/2026).
 - [x] SEO for course and teacher pages is live.
 - [x] Printable receipt/invoice is available from successful orders.
 - [ ] Refund is not implemented; the order status model has no refunded state.
-- [ ] Email lifecycle is not implemented or measured.
+- [x] Email lifecycle implemented for welcome, first lesson and graded feedback, with `lifecycle_emails` deduplication.
+- [ ] Incomplete-course and win-back emails, SMTP delivery evidence and lifecycle measurement remain open.
 - [ ] Paid-pilot conversion/refund metrics and creator clip/referral programs remain open.
 - [ ] Live sandbox checkout still needs a deployed backend and a test student account.
 

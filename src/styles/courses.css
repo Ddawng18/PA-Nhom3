@@ -369,28 +369,6 @@
   border-radius: 12px;
 }
 
-.cat-card-thumb img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cat-card-thumb::after {
-  position: absolute;
-  inset: auto 0 0;
-  height: 52px;
-  background: linear-gradient(to bottom, rgba(38, 51, 43, 0), rgba(38, 51, 43, 0.7));
-  content: "";
-}
-
-.cat-card-thumb-fallback {
-  color: #d8f0b0;
-  font-size: 42px;
-  font-weight: 600;
-}
-
 .cat-card-level {
   position: absolute;
   z-index: 1;
