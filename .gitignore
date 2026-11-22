@@ -21,3 +21,7 @@ supabase/.temp/
 
 # Private teacher portfolio uploads stored by the API
 server/**/App_Data/
+
+# Local/internal working notes — never push
+docs/docs2/
+docs/PROJECT-CHANGES-AND-PLAN.md

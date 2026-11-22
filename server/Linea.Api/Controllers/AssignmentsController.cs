@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Linea.Api.Data;
 using Linea.Api.Models;
 using Linea.Api.Security;
@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Linea.Api.Controllers;
 
 [ApiController, Route("api/assignments"), Authorize]
-public sealed class AssignmentsController(AppDbContext db, AssignmentStorage storage, LearningProgressService progress) : ControllerBase
+public sealed class AssignmentsController(AppDbContext db, AssignmentStorage storage, LearningProgressService progress, LifecycleEmailService lifecycle) : ControllerBase
 {
     private IQueryable<AssignmentCourse> Contexts =>
         from a in db.Assignments
@@ -167,6 +167,7 @@ public sealed class AssignmentsController(AppDbContext db, AssignmentStorage sto
         await db.SaveChangesAsync(ct);
         await progress.RefreshAsync(submission.UserId, target.CourseId, ct);
         await tx.CommitAsync(ct);
+        await lifecycle.SendFeedbackAsync(submission.UserId, id, grade.Score, ct);
         return Ok(GradeView(grade));
     }
 

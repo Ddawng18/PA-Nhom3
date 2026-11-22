@@ -55,7 +55,7 @@ export default function GuestHomePage() {
               srcSet="/linea-studies-800.jpg 800w, /linea-studies-1200.jpg 1200w"
               sizes="(max-width: 899px) 100vw, 50vw"
               width={1200}
-              height={675}
+              height={849}
               alt="Bàn luyện vẽ với hình khối, sắc độ và bài vẽ minh họa"
               loading="lazy"
               decoding="async"
