@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
 import { listCatalogCourses, getCatalogCourse, type CatalogCourse } from "../lib/catalogApi";
+import { requestAdminApi } from "../lib/adminApi";
 import { setPageMeta } from "../lib/seo";
 import { parseCatalogQuery } from "../logic/catalog";
 import {
@@ -18,7 +19,7 @@ import {
 import "../styles/onboarding.css";
 
 export default function OnboardingPage() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const navigate = useNavigate();
   const [goal, setGoal] = useState<LearnerGoal>("habit");
   const [level, setLevel] = useState<LearnerLevel>("CO_BAN");
@@ -49,6 +50,9 @@ export default function OnboardingPage() {
     const saved = saveLearnerProfile(user.id, { goal, level, practiceTime });
     if (!saved) {
       setError("Không thể lưu lộ trình trên trình duyệt này. Bạn vẫn có thể tiếp tục học.");
+    }
+    if (session?.access_token) {
+      void requestAdminApi("/api/lifecycle/welcome", { token: session.access_token, method: "POST" }).catch(() => undefined);
     }
     const recommended = courses?.find((course) => course.cap_do === level) ?? courses?.[0];
     if (!recommended) {
