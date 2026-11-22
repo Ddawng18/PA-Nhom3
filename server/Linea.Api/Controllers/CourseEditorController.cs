@@ -87,7 +87,10 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
              info.Topic.Trim().Length is < 2 or > 100 || info.Level is not ("CO_BAN" or "TRUNG_CAP" or "NANG_CAO") ||
              (!string.IsNullOrWhiteSpace(info.CoverImage) &&
               (!Uri.TryCreate(info.CoverImage, UriKind.Absolute, out var coverUri) || coverUri.Scheme != "https")) ||
-             info.DurationText is { Length: > 50 }))
+             info.DurationText is { Length: > 50 } ||
+             info.Outcomes is { Count: > 8 } || info.Outcomes?.Any(item => item.Trim().Length is < 5 or > 300) == true ||
+             info.SampleFeedback is { Length: > 1000 } ||
+             info.CoverStyle is not null and not ("auto" or "forest" or "clay" or "indigo" or "sun")))
             return BadRequest(new { detail = "Thông tin khóa học chưa hợp lệ." });
         static bool ValidIds(IEnumerable<long?> ids) {
             var values = ids.ToList();
@@ -140,6 +143,9 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
             course.PriceVnd = courseInfo.PriceVnd ?? course.PriceVnd;
             course.CoverImage = string.IsNullOrWhiteSpace(courseInfo.CoverImage) ? null : courseInfo.CoverImage;
             course.DurationText = string.IsNullOrWhiteSpace(courseInfo.DurationText) ? null : courseInfo.DurationText.Trim();
+            course.Outcomes = (courseInfo.Outcomes ?? []).Select(item => item.Trim()).Where(item => item.Length > 0).Take(8).ToList();
+            course.SampleFeedback = string.IsNullOrWhiteSpace(courseInfo.SampleFeedback) ? null : courseInfo.SampleFeedback.Trim();
+            course.CoverStyle = string.IsNullOrWhiteSpace(courseInfo.CoverStyle) ? "auto" : courseInfo.CoverStyle;
             course.StartDate = courseInfo.StartDate;
         }
         var oldChapters = await db.CourseChapters.Where(x => x.CourseId == courseId).ToListAsync(ct);
@@ -232,8 +238,11 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
 
     private async Task<string> ComputeVersion(long courseId, CancellationToken ct)
     {
-        var info = await db.LearningCourses.AsNoTracking().Where(item => item.Id == courseId)
-            .Select(item => $"{item.Id}|{item.Title}|{item.Description}|{item.Level}|{item.Topic}|{item.CoverImage}|{item.PriceVnd}|{item.Status}").ToListAsync(ct);
+        var infoRows = await db.LearningCourses.AsNoTracking().Where(item => item.Id == courseId)
+            .Select(item => new { item.Id, item.Title, item.Description, item.Level, item.Topic, item.CoverImage,
+                item.PriceVnd, item.Status, item.CoverStyle, item.Outcomes, item.SampleFeedback }).ToListAsync(ct);
+        var info = infoRows.Select(item =>
+            $"{item.Id}|{item.Title}|{item.Description}|{item.Level}|{item.Topic}|{item.CoverImage}|{item.PriceVnd}|{item.Status}|{item.CoverStyle}|{string.Join(",", item.Outcomes)}|{item.SampleFeedback}").ToList();
         var chapters = await db.CourseChapters.AsNoTracking().Where(item => item.CourseId == courseId)
             .OrderBy(item => item.Id).Select(item => $"{item.Id}|{item.Title}|{item.Order}").ToListAsync(ct);
         var lessons = await (from lesson in db.CourseLessons.AsNoTracking()

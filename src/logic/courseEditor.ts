@@ -55,6 +55,11 @@ export const courseInfoSchema = z.object({
   ngay_khai_giang: z.string().trim()
     .refine(value => !value || /^\d{4}-\d{2}-\d{2}$/.test(value), "Ngày khai giảng không hợp lệ.")
     .default(""),
+  ket_qua: z.array(z.string().trim().min(5, "Mỗi kết quả cần ít nhất 5 ký tự.").max(300, "Mỗi kết quả tối đa 300 ký tự."))
+    .max(8, "Tối đa 8 kết quả.")
+    .default([]),
+  phan_hoi_mau: z.string().trim().max(1000, "Phản hồi mẫu tối đa 1.000 ký tự.").default(""),
+  kieu_bia: z.enum(["auto", "forest", "clay", "indigo", "sun"]).default("auto"),
 });
 
 export type CourseInfo = z.infer<typeof courseInfoSchema>;
