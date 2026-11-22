@@ -154,7 +154,7 @@ export function useApprovals(active: boolean, isAdmin: boolean, token: string | 
   }, [active, isAdmin, token, reloadKey]);
 
   useEffect(() => {
-    if (!active || !isAdmin || !token) return;
+    if (!isAdmin || !token) return;
     const controller = new AbortController();
     getTeacherProfiles(token, {
       status: "CHO_DUYET",
@@ -173,7 +173,29 @@ export function useApprovals(active: boolean, isAdmin: boolean, token: string | 
         if (!controller.signal.aborted) setTeacherError((current) => current ?? getApiErrorMessage(error));
       });
     return () => controller.abort();
-  }, [active, isAdmin, token, reloadKey]);
+  }, [isAdmin, token, reloadKey]);
+
+  useEffect(() => {
+    if (!isAdmin || !token) return;
+    const controller = new AbortController();
+    requestAdminApi("/api/admin/courses", { token, signal: controller.signal }, {
+      status: "CHO_DUYET",
+      page: 1,
+      pageSize: 1,
+    })
+      .then((payload) => {
+        const result = pendingCoursePageSchema.parse(payload);
+        setCounts((current) => ({
+          teachers: current.teachers,
+          courses: result.totalCount,
+          total: current.teachers + result.totalCount,
+        }));
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setCourseError((current) => current ?? getApiErrorMessage(error));
+      });
+    return () => controller.abort();
+  }, [isAdmin, token, reloadKey]);
 
   const loadSignedUrls = useCallback(async (profileId: number, files: PortfolioFile[], accessToken = token) => {
     if (!accessToken) return;
