@@ -419,14 +419,265 @@
   gap: 14px;
 }
 
-.cd-teacher-row strong {
-  display: block;
-  color: #26332b;
-  font-size: 18px;
+.cd-instructor {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #e4e9dd;
+  border-radius: 14px;
+  background: #fffefa;
 }
 
-.cd-teacher-row small {
+.cd-instructor-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.cd-instructor-copy strong {
+  display: block;
+  color: #26332b;
+  font-size: 17px;
+}
+
+.cd-instructor-copy small {
+  display: block;
+  margin-top: 2px;
   color: #727b72;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.cd-instructor-link {
+  flex: 0 0 auto;
+  color: #315a3b;
+  font-size: 11px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.cd-instructor-link:hover {
+  text-decoration: underline;
+}
+
+.cd-proof {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 16px;
+}
+
+.cd-proof-label {
+  margin: 0;
+  color: #6f8468;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  line-height: 1.5;
+}
+
+.cd-outcomes,
+.cd-sample,
+.cd-feedback {
+  min-width: 0;
+  margin: 0;
+  padding: 20px;
+  border: 1px solid #e4e9dd;
+  border-radius: 16px;
+  background: #fffefa;
+}
+
+.cd-outcomes h2,
+.cd-sample h2 {
+  margin: 6px 0 0;
+  color: #26332b;
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.cd-outcomes ul {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cd-outcomes li {
+  position: relative;
+  padding-left: 22px;
+  color: #4a574d;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cd-outcomes li::before {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #a8d96c;
+  content: "";
+}
+
+.cd-sample {
+  scroll-margin-top: 24px;
+  background: #f7faf1;
+}
+
+.cd-sample > p:not(.cd-proof-label) {
+  margin: 10px 0 0;
+  color: #5b675f;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.cd-sample-exercise {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-left: 3px solid #a8d96c;
+  border-radius: 0 10px 10px 0;
+  background: #fffefa;
+}
+
+.cd-sample-exercise strong {
+  display: block;
+  color: #26332b;
+  font-size: 11px;
+}
+
+.cd-sample-exercise p {
+  margin: 4px 0 0;
+  color: #5b675f;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.cd-sample-checklist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 14px 0 0;
+  padding: 0;
+  color: #4a574d;
+  font-size: 11px;
+  line-height: 1.45;
+  list-style: none;
+}
+
+.cd-sample-checklist li::before {
+  margin-right: 6px;
+  color: #5b8b4c;
+  content: "✓";
+  font-weight: 700;
+}
+
+.cd-sample > figcaption {
+  margin-top: 14px;
+  color: #8a948b;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.cd-feedback {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.cd-feedback blockquote {
+  flex: 1;
+  margin: 0;
+  color: #35443a;
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.6;
+}
+
+.cd-feedback figcaption {
+  flex: 0 0 auto;
+  max-width: 160px;
+  color: #8a948b;
+  font-size: 9px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.cd-mobile-cta {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .cd-main {
+    padding-right: 24px;
+    padding-bottom: 104px;
+    padding-left: 24px;
+  }
+
+  .cd-proof {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cd-feedback {
+    grid-column: auto;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .cd-feedback figcaption {
+    max-width: none;
+    text-align: left;
+  }
+
+  .cd-mobile-cta {
+    position: fixed;
+    z-index: 20;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid #e4e9dd;
+    background: rgb(255 253 247 / 96%);
+    box-shadow: 0 -8px 24px rgb(34 49 37 / 8%);
+    backdrop-filter: blur(10px);
+  }
+
+  .cd-mobile-cta > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .cd-mobile-cta strong {
+    color: #26332b;
+    font-size: 14px;
+  }
+
+  .cd-mobile-cta small {
+    overflow: hidden;
+    color: #727b72;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cd-mobile-cta .cd-button {
+    min-height: 42px;
+    flex: 0 0 auto;
+    padding: 0 16px;
+    font-size: 12px;
+  }
 }
 
 .cd-avatar {

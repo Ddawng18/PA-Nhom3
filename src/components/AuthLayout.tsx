@@ -27,6 +27,7 @@ function Header({ authLink }: { authLink: AuthLayoutProps["authLink"] }) {
         </Link>
         <nav className="header-nav" aria-label="Điều hướng chính">
           <Link to="/courses">Khám phá</Link>
+          <Link to="/pricing">Học phí</Link>
         </nav>
       </div>
 
@@ -44,6 +45,17 @@ function Header({ authLink }: { authLink: AuthLayoutProps["authLink"] }) {
   );
 }
 
+function BenefitList({ dark = false }: { dark?: boolean }) {
+  const items = [
+    "Lộ trình từ nền tảng đến bài tập thực hành",
+    "Studio luyện vẽ ngay trên trình duyệt",
+    "Phản hồi bài tập và tiến độ rõ ràng",
+  ];
+  return <ul className={`auth-benefit-list${dark ? " auth-benefit-list-dark" : ""}`}>
+    {items.map((item) => <li key={item}><span aria-hidden="true">✓</span>{item}</li>)}
+  </ul>;
+}
+
 function HeroText() {
   return (
     <section className="hero-text" aria-label="Giới thiệu LINEA">
@@ -53,6 +65,7 @@ function HeroText() {
         <br />
         Một thế giới mới.
       </h2>
+      <BenefitList />
     </section>
   );
 }
@@ -96,6 +109,7 @@ export default function AuthLayout({ authLink, children }: AuthLayoutProps) {
             <ConstructionSketch variant="login" />
             <h2 id="login-intro-title">Trở lại<br /> bàn vẽ</h2>
             <p>Tiếp tục bài học digital art và luyện nét trong Studio LINEA.</p>
+            <BenefitList dark />
           </section>
         ) : <HeroText />}
         {children}

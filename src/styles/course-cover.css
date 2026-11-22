@@ -1,0 +1,170 @@
+.course-cover {
+  --cover-bg: #33583a;
+  --cover-shape: #a8d96c;
+  --cover-line: #d8f0b0;
+  --cover-accent: #d8f0b0;
+  --cover-text: #fffdf7;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--cover-bg);
+  color: var(--cover-text);
+  isolation: isolate;
+}
+
+.course-cover-clay {
+  --cover-bg: #9a5d43;
+  --cover-shape: #f1c9a8;
+  --cover-line: #f6dfcb;
+  --cover-accent: #ffe3a8;
+}
+
+.course-cover-indigo {
+  --cover-bg: #3f4b73;
+  --cover-shape: #b9c6ee;
+  --cover-line: #dce3fa;
+  --cover-accent: #f4d49a;
+}
+
+.course-cover-sun {
+  --cover-bg: #8b7832;
+  --cover-shape: #f2df92;
+  --cover-line: #fff2b7;
+  --cover-accent: #d8f0b0;
+}
+
+.course-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.course-cover-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.course-cover-field {
+  fill: var(--cover-bg);
+}
+
+.course-cover-orb {
+  fill: var(--cover-shape);
+  opacity: 0.9;
+}
+
+.course-cover-arc {
+  fill: none;
+  stroke: var(--cover-accent);
+  stroke-width: 10;
+  stroke-linecap: round;
+  opacity: 0.92;
+}
+
+.course-cover-arc-soft {
+  stroke: var(--cover-line);
+  stroke-width: 2;
+  opacity: 0.7;
+}
+
+.course-cover-grid {
+  fill: none;
+  stroke: var(--cover-line);
+  stroke-width: 1.3;
+  opacity: 0.5;
+}
+
+.course-cover-block {
+  fill: var(--cover-accent);
+  opacity: 0.95;
+}
+
+.course-cover-dot {
+  fill: var(--cover-line);
+  opacity: 0.9;
+}
+
+.course-cover-dot-small {
+  opacity: 0.65;
+}
+
+.course-cover::after {
+  position: absolute;
+  z-index: 1;
+  inset: auto 0 0;
+  height: 62%;
+  background: linear-gradient(to top, rgb(25 35 28 / 78%), rgb(25 35 28 / 0%));
+  content: "";
+  pointer-events: none;
+}
+
+.course-cover-topic,
+.course-cover-mark {
+  position: absolute;
+  z-index: 2;
+  color: var(--cover-text);
+}
+
+.course-cover-topic {
+  right: 12px;
+  bottom: 10px;
+  left: 12px;
+  overflow: hidden;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.course-cover-mark {
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid rgb(255 253 247 / 55%);
+  border-radius: 50%;
+  background: rgb(25 35 28 / 22%);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  backdrop-filter: blur(4px);
+}
+
+.course-cover-variant-1 .course-cover-art {
+  transform: scaleX(-1);
+}
+
+.course-cover-variant-2 .course-cover-art {
+  transform: scale(1.08) rotate(-2deg);
+}
+
+.cd-cover .course-cover-topic,
+.cd-cover .course-cover-mark {
+  display: none;
+}
+
+.cd-cover .course-cover {
+  border-radius: 18px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .course-cover {
+    transition: transform 220ms ease;
+  }
+
+  .cat-card:hover .course-cover {
+    transform: scale(1.015);
+  }
+}
