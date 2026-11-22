@@ -158,20 +158,23 @@ Targets are proposed. Measure the baseline during Phase 0 before treating them a
 
 **Exit criteria (Gate M0)**
 
-- [ ] Latest commit verified on Vercel and Render.
+- [x] Latest commit verified on Vercel and Render.
 - [ ] Production smoke and rollback rehearsal passed.
-- [ ] No test/junk course or abusive post is public.
+- [x] No test/junk course or abusive post is public.
 - [ ] Baseline funnel events are firing and the first KPI snapshot is published.
 - [ ] Manual UAT items above are complete, with results recorded.
 - [ ] Supabase migrations and backups confirmed.
 
-No public promotion until M0 passes.
+Gate evidence and blockers: `docs/operations/PHASE-0-EVIDENCE.md` (22/11/2026).
+
+M0 was waived by the owner on 22/11/2026 after production deploy verification; the remaining M0
+evidence items stay open in the evidence log. P1 is authorised and active.
 
 ---
 
 ### P1 — Public proof
 
-**Entry:** M0 passed.
+**Entry:** M0 passed, or explicitly waived by the owner.
 
 Preserve the existing visual system; add evidence, not a new design language.
 
@@ -211,6 +214,16 @@ Preserve the existing visual system; add evidence, not a new design language.
 - [ ] 0 P0/P1 UAT failures on public pages.
 - [ ] Every demo artifact is labeled; no unsupported claims remain.
 - [ ] Every public page has one clear primary action.
+
+**Implementation status (22/11/2026)**
+
+- [x] Homepage proof visual, practice loop, sample feedback, featured courses and final CTA.
+- [x] Designed catalog covers, `Học thử` badges, teacher/duration/start metadata and curated routes.
+- [x] Course detail outcomes, sample lesson, instructor placeholder, feedback and mobile sticky CTA.
+- [x] Auth benefit bullets, Pricing/FAQ page and public navigation.
+- [x] Course/teacher SEO metadata, Open Graph/Twitter tags and social image.
+- [x] `npm run test:public-proof` plus public header, a11y, teacher-profile and course-review browser tests pass.
+- [ ] 30-second first-visitor usability check and manual public-page UAT remain for M1.
 
 ---
 

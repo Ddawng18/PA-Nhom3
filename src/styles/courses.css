@@ -21,6 +21,86 @@
   margin-top: 24px;
 }
 
+.cat-curated {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #e3ead9;
+  border-radius: 17px;
+  background: #f1f7e9;
+}
+
+.cat-curated-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.cat-curated-heading .settings-eyebrow {
+  margin: 0;
+}
+
+.cat-curated-heading h2 {
+  margin: 4px 0 0;
+  color: #26332b;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.cat-curated-heading > p {
+  max-width: 300px;
+  margin: 0;
+  color: #667268;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.cat-curated-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.cat-curated-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid #dbe7cf;
+  border-radius: 12px;
+  background: #fffefa;
+  color: #26332b;
+  text-decoration: none;
+  transition: border-color 140ms ease, transform 140ms ease;
+}
+
+.cat-curated-card:hover {
+  border-color: #a8c995;
+  transform: translateY(-1px);
+}
+
+.cat-curated-number {
+  color: #7b9b70;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.cat-curated-card strong {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.cat-curated-card > span:last-child {
+  color: #6d796f;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
 .cat-filters {
   position: sticky;
   top: 20px;
@@ -283,6 +363,12 @@
   background: linear-gradient(135deg, #355c3a, #26332b);
 }
 
+.cat-card-thumb .course-cover {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+}
+
 .cat-card-thumb img {
   position: absolute;
   inset: 0;
@@ -318,19 +404,38 @@
   font-weight: 650;
 }
 
-.cat-card-topic {
-  position: absolute;
-  z-index: 1;
-  right: 10px;
-  bottom: 7px;
-  left: 10px;
-  overflow: hidden;
-  color: #fffdf7;
+.cat-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cat-card-title-row .cat-card-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.cat-card-trial-badge {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid #dbe8d0;
+  border-radius: 999px;
+  background: #f2f8ea;
+  color: #315a3b;
   font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.cat-card-teacher {
+  overflow: hidden;
+  margin: 0;
+  color: #4f5f54;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
   text-overflow: ellipsis;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -365,12 +470,20 @@
   font-weight: 650;
 }
 
+.cat-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 2px;
+}
+
 .cat-card-action {
   display: flex;
   height: 36px;
+  flex: 1;
   align-items: center;
   justify-content: center;
-  margin-top: auto;
   border-radius: 999px;
   background: #355c3a;
   color: #ffffff;
@@ -381,6 +494,24 @@
 
 .cat-card-action:hover {
   background: #2b4d30;
+}
+
+.cat-card-preview {
+  display: inline-flex;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid #dbe8d0;
+  border-radius: 999px;
+  color: #315a3b;
+  font-size: 11px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.cat-card-preview:hover {
+  background: #f2f8ea;
 }
 
 .cat-status {
@@ -444,6 +575,17 @@
     padding: 30px 24px 44px;
   }
 
+  .cat-curated-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .cat-curated-heading > p {
+    max-width: none;
+    text-align: left;
+  }
+
   .cat-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
@@ -483,6 +625,14 @@
   .cat-toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .cat-curated {
+    padding: 16px;
+  }
+
+  .cat-curated-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .cat-search {
