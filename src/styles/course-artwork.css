@@ -1,0 +1,14 @@
+.course-artwork {
+  margin: 28px 0;
+  padding: clamp(16px, 3vw, 28px);
+  border: 1px solid #e4e9dd;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.course-artwork h2 { margin: 0 0 18px; font-size: clamp(19px, 3vw, 24px); }
+.course-artwork-group + .course-artwork-group { margin-top: 20px; }
+.course-artwork h3 { margin: 0 0 10px; font-size: 16px; }
+.course-artwork ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 12px; list-style: none; margin: 0; padding: 0; }
+.course-artwork a { display: block; overflow: hidden; border-radius: 10px; background: #f5f7f0; }
+.course-artwork img { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; }

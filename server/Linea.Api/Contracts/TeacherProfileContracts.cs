@@ -10,6 +10,20 @@ public sealed class SubmitTeacherProfileRequest
     public string Experience { get; set; } = string.Empty;
 
     public List<string> PortfolioFiles { get; set; } = [];
+
+    public TeacherApplicationDetails? Details { get; set; }
+
+    public byte[]? CvPdf { get; set; }
+}
+
+public sealed record TeacherApplicationDetails(
+    string[]? CvTags,
+    string? Specialties,
+    string? Languages,
+    string? TeachingApproach)
+{
+    public static TeacherApplicationDetails From(TeacherProfile profile) => new(
+        profile.CvTags, profile.Specialties, profile.Languages, profile.TeachingApproach);
 }
 
 public sealed record PortfolioFileResponse(
@@ -41,13 +55,16 @@ public sealed record TeacherProfileResponse(
     DateTimeOffset SubmittedAt,
     DateTimeOffset? ReviewedAt,
     IReadOnlyList<PortfolioFileResponse> PortfolioFiles,
-    IReadOnlyList<ProfileHistoryResponse> History)
+    IReadOnlyList<ProfileHistoryResponse> History,
+    TeacherApplicationDetails Details,
+    bool HasCv)
 {
     public static TeacherProfileResponse From(
         TeacherProfile profile,
         IReadOnlyList<ProfileHistoryResponse> history,
         string downloadUrlPrefix,
-        string signedUrlPrefix) => new(
+        string signedUrlPrefix,
+        bool hasCv) => new(
         profile.Id,
         profile.UserId,
         profile.Introduction,
@@ -68,7 +85,9 @@ public sealed record TeacherProfileResponse(
                 $"{signedUrlPrefix}/{image.Id}/signed-url",
                 image.UploadedAt))
             .ToList(),
-        history);
+        history,
+        TeacherApplicationDetails.From(profile),
+        hasCv);
 }
 
 public sealed record SubmitTeacherProfileResponse(
@@ -118,7 +137,9 @@ public sealed record AdminTeacherProfileDetailResponse(
     DateTimeOffset SubmittedAt,
     DateTimeOffset? ReviewedAt,
     IReadOnlyList<PortfolioFileResponse> PortfolioFiles,
-    IReadOnlyList<ProfileHistoryResponse> History);
+    IReadOnlyList<ProfileHistoryResponse> History,
+    TeacherApplicationDetails Details,
+    bool HasCv);
 
 public sealed class ApproveTeacherProfileRequest
 {

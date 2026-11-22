@@ -68,18 +68,27 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
-export async function getGoogleProviderStatus(): Promise<boolean | null> {
-  if (!isSupabaseConfigured) return false;
-
+async function loadAuthSettings(): Promise<{ external?: { google?: boolean }; mailer_autoconfirm?: boolean } | null> {
+  if (!isSupabaseConfigured) return null;
   try {
     const response = await fetch(`${supabaseUrl}/auth/v1/settings`, {
       headers: { apikey: supabaseAnonKey },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
     });
-    if (!response.ok) return null;
-
-    const settings = await response.json();
-    return Boolean(settings?.external?.google);
+    return response.ok ? await response.json() : null;
   } catch {
     return null;
   }
+}
+
+export async function getGoogleProviderStatus(): Promise<boolean | null> {
+  if (!isSupabaseConfigured) return false;
+  const settings = await loadAuthSettings();
+  return settings ? Boolean(settings.external?.google) : null;
+}
+
+export async function getEmailConfirmationRequired(): Promise<boolean | null> {
+  const settings = await loadAuthSettings();
+  return typeof settings?.mailer_autoconfirm === "boolean" ? !settings.mailer_autoconfirm : null;
 }

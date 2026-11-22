@@ -48,7 +48,7 @@ public sealed class AdminTeacherProfilesController(
         if (statusFilter is not null && !TeacherProfileStatus.IsValid(statusFilter))
         {
             return ApiProblem(StatusCodes.Status400BadRequest, "VALIDATION_ERROR",
-                "Trạng thái phải là CHO_DUYET, CAN_BO_SUNG, DA_DUYET hoặc TU_CHOI.");
+                "Trạng thái phải là CHO_DUYET, CAN_BO_SUNG, DA_DUYET, TU_CHOI hoặc DA_RUT.");
         }
 
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
@@ -99,7 +99,8 @@ public sealed class AdminTeacherProfilesController(
                     entry.ObjectType == HistoryObjectTypes.HoSoGiaoVien &&
                     profileIds.Contains(entry.ObjectId) &&
                     (entry.PreviousStatus == TeacherProfileStatus.TuChoi ||
-                     entry.PreviousStatus == TeacherProfileStatus.CanBoSung) &&
+                     entry.PreviousStatus == TeacherProfileStatus.CanBoSung ||
+                     entry.PreviousStatus == TeacherProfileStatus.DaRut) &&
                     entry.Status == TeacherProfileStatus.ChoDuyet)
                 .GroupBy(entry => entry.ObjectId)
                 .Select(group => new { ObjectId = group.Key, Count = group.Count() })
@@ -168,7 +169,9 @@ public sealed class AdminTeacherProfilesController(
                     $"/api/admin/teacher-profiles/{profile.Id}/portfolio/{image.Id}/signed-url",
                     image.UploadedAt))
                 .ToList(),
-            history));
+            history,
+            TeacherApplicationDetails.From(profile),
+            await db.TeacherProfileCvs.AnyAsync(item => item.ProfileId == id, cancellationToken)));
     }
 
     [HttpPost("{id:long}/approve")]
@@ -209,7 +212,8 @@ public sealed class AdminTeacherProfilesController(
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
         var affected = await db.TeacherProfiles
-            .Where(item => item.Id == id && item.Status == TeacherProfileStatus.ChoDuyet)
+            .Where(item => item.Id == id && item.Status == TeacherProfileStatus.ChoDuyet &&
+                           item.SubmittedAt == profile.SubmittedAt)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(item => item.Status, TeacherProfileStatus.DaDuyet)
                 .SetProperty(item => item.ReviewedAt, now)
@@ -314,7 +318,8 @@ public sealed class AdminTeacherProfilesController(
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
         var affected = await db.TeacherProfiles
-            .Where(item => item.Id == id && item.Status == TeacherProfileStatus.ChoDuyet)
+            .Where(item => item.Id == id && item.Status == TeacherProfileStatus.ChoDuyet &&
+                           item.SubmittedAt == profile.SubmittedAt)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(item => item.Status, TeacherProfileStatus.TuChoi)
                 .SetProperty(item => item.ReviewedAt, now)
@@ -415,7 +420,8 @@ public sealed class AdminTeacherProfilesController(
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
         var affected = await db.TeacherProfiles
-            .Where(item => item.Id == id && item.Status == TeacherProfileStatus.ChoDuyet)
+            .Where(item => item.Id == id && item.Status == TeacherProfileStatus.ChoDuyet &&
+                           item.SubmittedAt == profile.SubmittedAt)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(item => item.Status, TeacherProfileStatus.CanBoSung)
                 .SetProperty(item => item.ReviewedAt, now)

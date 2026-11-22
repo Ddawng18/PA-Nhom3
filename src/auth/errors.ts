@@ -1,5 +1,22 @@
-export function getAuthErrorMessage(message?: string): string {
+export function getAuthErrorMessage(message?: string, code?: string): string {
   const normalizedMessage = message?.toLowerCase() ?? "";
+
+  if (code === "weak_password") {
+    return "Mật khẩu chưa đáp ứng yêu cầu bảo mật. Hãy chọn mật khẩu dài hơn và khó đoán hơn.";
+  }
+  if (code === "email_address_invalid") {
+    return "Địa chỉ email không hợp lệ. Vui lòng kiểm tra lại.";
+  }
+  if (code === "email_address_not_authorized") {
+    return "Hệ thống gửi thư chưa cho phép gửi đến địa chỉ này. Vui lòng liên hệ hỗ trợ.";
+  }
+  if (
+    normalizedMessage.includes("error sending confirmation email") ||
+    normalizedMessage.includes("error sending recovery email") ||
+    normalizedMessage.includes("error sending password recovery email")
+  ) {
+    return "Hệ thống chưa gửi được email. Vui lòng thử lại sau.";
+  }
 
   if (
     normalizedMessage.includes("provider is not enabled") ||
@@ -35,6 +52,8 @@ export function getAuthErrorMessage(message?: string): string {
     return "Email này đã được đăng ký.";
   }
   if (
+    code === "over_email_send_rate_limit" ||
+    code === "over_request_rate_limit" ||
     normalizedMessage.includes("too many requests") ||
     normalizedMessage.includes("rate limit") ||
     normalizedMessage.includes("security purposes")
@@ -52,5 +71,6 @@ export function getAuthErrorMessage(message?: string): string {
     return "Không thể kết nối mạng. Vui lòng kiểm tra kết nối và thử lại.";
   }
 
-  return "Đã có lỗi xảy ra. Vui lòng thử lại sau.";
+  const reference = code && /^[a-z0-9_]{1,60}$/.test(code) ? ` (mã ${code})` : "";
+  return `Đã có lỗi xảy ra${reference}. Vui lòng thử lại sau.`;
 }

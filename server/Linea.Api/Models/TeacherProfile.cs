@@ -6,9 +6,10 @@ public static class TeacherProfileStatus
     public const string CanBoSung = "CAN_BO_SUNG";
     public const string DaDuyet = "DA_DUYET";
     public const string TuChoi = "TU_CHOI";
+    public const string DaRut = "DA_RUT";
 
     public static bool IsValid(string? status) =>
-        status is ChoDuyet or CanBoSung or DaDuyet or TuChoi;
+        status is ChoDuyet or CanBoSung or DaDuyet or TuChoi or DaRut;
 }
 
 public static class HistoryObjectTypes
@@ -67,6 +68,14 @@ public sealed class TeacherProfile
 
     public string Experience { get; set; } = string.Empty;
 
+    public string[]? CvTags { get; set; }
+
+    public string? Specialties { get; set; }
+
+    public string? Languages { get; set; }
+
+    public string? TeachingApproach { get; set; }
+
     public string Status { get; set; } = TeacherProfileStatus.ChoDuyet;
 
     public string? RejectionReason { get; set; }
@@ -84,6 +93,13 @@ public sealed class TeacherProfile
     public DateTimeOffset? ReviewedAt { get; set; }
 
     public List<PortfolioImage> PortfolioImages { get; set; } = [];
+}
+
+public sealed class TeacherProfileCv
+{
+    public long ProfileId { get; set; }
+
+    public byte[] Content { get; set; } = [];
 }
 
 public sealed class PortfolioImage

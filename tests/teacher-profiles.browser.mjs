@@ -22,90 +22,140 @@ try {
     try { if ((await fetch(origin)).ok) break; } catch { /* starting */ }
     await new Promise(resolve => setTimeout(resolve, 250));
   }
-  browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  await page.addInitScript(() => localStorage.setItem("linea-cookie-consent-v1", "accepted"));
-  await page.goto(origin + "/", { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "Những người đồng hành mẫu" }).waitFor();
-  assert.equal(await page.locator(".teacher-showcase-card").count(), 3);
-  assert.ok((await page.getByText("Hồ sơ mẫu").count()) >= 3);
-  assert.equal(await page.getByRole("link", { name: /Xem hồ sơ mẫu/ }).count(), 3);
+  browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL });
 
-  assert.ok((await page.locator('a[href="/teachers/nmratist"]').count()) >= 1);
-  await page.goto(origin + "/teachers/nmratist", { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "NmRAtist", exact: true }).waitFor();
-  const main = page.getByRole("main");
-  const text = await main.innerText();
-  assert.match(text, /HỒ SƠ GIẢNG VIÊN MINH HỌA/);
-  assert.match(text, /Dữ liệu mẫu/i);
-  assert.match(text, /Tác phẩm mẫu/);
-  assert.match(text, /Lớp học minh họa/);
-  assert.match(text, /không phải hồ sơ giáo viên thật/i);
-  assert.doesNotMatch(text, /đã xác minh/i);
-  for (const width of [390, 768, 1440]) {
-    await page.setViewportSize({ width, height: 1000 });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, `${width}px overflow`);
+  const guest = await browser.newPage();
+  await guest.goto(origin + "/");
+  await guest.getByText("Ví dụ nhận xét bài vẽ").waitFor();
+  assert.equal(await guest.locator('a[href^="/teachers/"]').count(), 0);
+  await guest.goto(origin + "/teachers/nmratist");
+  await guest.waitForURL(origin + "/courses");
+  await guest.goto(origin + "/teacher/onboarding");
+  await guest.waitForURL(origin + "/login");
+  await guest.close();
+
+  for (const [role, home] of [["student", null], ["admin", "/admin"], ["teacher", "/teacher"]]) {
+    const page = await browser.newPage();
+    await page.route(/\/src\/auth\/useAuth\.ts(?:\?|$)/, route => route.fulfill({
+      contentType: "application/javascript",
+      body: "export function useAuth(){return {user:{id:'fixture-user',email:'user@example.test',user_metadata:{}},session:{access_token:'fixture'},loading:false}}",
+    }));
+    await page.route(/\/src\/hooks\/useUserRole\.ts(?:\?|$)/, route => route.fulfill({
+      contentType: "application/javascript",
+      body: `export function useUserRole(){return {role:${JSON.stringify(role)},loading:false,error:null}}`,
+    }));
+    await page.route("**/api/**", route => route.fulfill({ status: 404, json: { code: "NOT_FOUND" } }));
+    await page.route("**/api/teacher/profile/me", route => role === "teacher"
+      ? route.fulfill({ json: {
+          id: 1, userId: "fixture-user", introduction: "", experience: "", status: "DA_DUYET",
+          rejectionReason: null, supplementReason: null, fields: [], portfolioFiles: [], history: [],
+        } })
+      : route.fulfill({ status: 404, json: { code: "NOT_FOUND" } }));
+
+    await page.goto(origin + "/teacher/onboarding");
+    const application = page.getByRole("heading", { name: "Bạn muốn làm giáo viên?" });
+    if (home) {
+      await page.waitForURL(origin + home);
+      assert.equal(await application.count(), 0);
+      assert.equal(await page.locator('a[href="/teacher/onboarding"]').count(), 0);
+    } else {
+      await application.waitFor();
+      await page.getByLabel("Giới thiệu bản thân").waitFor();
+      assert.equal(await page.getByRole("button", { name: "Gửi hồ sơ xét duyệt" }).isEnabled(), true);
+      assert.equal(await page.getByRole("link", { name: "Bạn muốn làm giáo viên?" }).count(), 1);
+      assert.equal(await page.getByText("Khóa học mẫu", { exact: true }).count(), 0);
+      assert.equal(await page.getByLabel("Tiêu đề chuyên môn").count(), 0);
+      assert.equal(await page.getByLabel("Khu vực", { exact: true }).count(), 0);
+      const tagInput = page.getByRole("textbox", { name: "Thẻ CV" });
+      await tagInput.fill("Minh họa nhân vật");
+      await tagInput.press("Enter");
+      await tagInput.fill("Màu nước");
+      await page.getByRole("button", { name: "Thêm thẻ", exact: true }).click();
+      await page.getByRole("button", { name: "Xóa thẻ Màu nước" }).click();
+      await page.getByLabel("Ngôn ngữ giảng dạy").fill("Tiếng Việt");
+      await page.getByLabel("Phương pháp giảng dạy", { exact: true }).fill("Thực hành theo từng bước.");
+      await page.getByLabel("Giới thiệu bản thân").fill("Tôi giảng dạy minh họa và giúp học viên hoàn thành bản vẽ theo từng bước.");
+      await page.getByLabel("Kinh nghiệm giảng dạy và sáng tác").fill("Tôi đã dạy minh họa trong hai năm.");
+      const pdf = Buffer.from("%PDF-1.4\n%%EOF");
+      const cvInput = page.getByLabel("CV", { exact: true });
+      await cvInput.setInputFiles({ name: "wrong.pdf", mimeType: "application/pdf", buffer: pdf });
+      await page.getByRole("button", { name: "Xóa CV đã chọn" }).click();
+      assert.equal(await cvInput.inputValue(), "");
+      await cvInput.setInputFiles({ name: "cv.pdf", mimeType: "application/pdf", buffer: pdf });
+      await page.getByLabel("Ảnh tác phẩm").setInputFiles([
+        { name: "art.png", mimeType: "image/png", buffer: Buffer.from([1]) },
+        { name: "wrong.png", mimeType: "image/png", buffer: Buffer.from([2]) },
+      ]);
+      await page.getByRole("button", { name: "Xóa ảnh wrong.png" }).click();
+      assert.equal(await page.getByText("wrong.png", { exact: false }).count(), 0);
+      await page.route("**/api/teacher/profile/me/portfolio", route => {
+        assert.match(route.request().postData(), /art\.png/);
+        assert.doesNotMatch(route.request().postData(), /wrong\.png/);
+        return route.fulfill({ status: 201, json: { filePath: "art.png", fileName: "art.png", size: 1 } });
+      });
+      await page.route("**/api/teacher/profile/me/submit", route => route.fulfill({ status: 202, json: {} }));
+      const submitted = page.waitForRequest(request => request.url().endsWith("/api/teacher/profile/me/submit"));
+      await page.getByRole("button", { name: "Gửi hồ sơ xét duyệt" }).click();
+      const submission = (await submitted).postDataJSON();
+      assert.deepEqual(submission.details.cvTags, ["Minh họa nhân vật"]);
+      assert.ok(!("location" in submission.details));
+      assert.equal(submission.details.languages, "Tiếng Việt");
+      assert.equal(submission.details.teachingApproach, "Thực hành theo từng bước.");
+      assert.equal(submission.cvPdf, pdf.toString("base64"));
+
+      let status;
+      let hasCv = true;
+      let portfolioFiles = [{
+        id: 17, filePath: "saved.png", downloadUrl: "/download", signedUrlEndpoint: "/signed",
+        uploadedAt: "2026-11-22T12:00:00+07:00",
+      }];
+      await page.route("**/api/teacher/profile/me/cv", route => {
+        assert.equal(route.request().method(), "DELETE");
+        hasCv = false;
+        return route.fulfill({ status: 204 });
+      });
+      await page.route("**/api/teacher/profile/me/portfolio/17", route => {
+        assert.equal(route.request().method(), "DELETE");
+        portfolioFiles = [];
+        return route.fulfill({ status: 204 });
+      });
+      await page.route("**/api/teacher/profile/me", route => route.fulfill({ json: {
+        id: 1, userId: "fixture-user", introduction: "Nội dung hồ sơ đã gửi.", experience: "Kinh nghiệm đã lưu.",
+        status, rejectionReason: null, supplementReason: null, fields: [], portfolioFiles, hasCv, history: [],
+      } }));
+      await page.route("**/api/teacher/profile/me/withdraw", route => {
+        assert.equal(route.request().method(), "POST");
+        status = "DA_RUT";
+        return route.fulfill({ status: 204 });
+      });
+      for (const initialStatus of ["CHO_DUYET", "TU_CHOI"]) {
+        status = initialStatus;
+        await page.reload();
+        const introduction = page.getByLabel("Giới thiệu bản thân");
+        const withdraw = page.getByRole("button", { name: "Rút hồ sơ để chỉnh sửa" });
+        await withdraw.waitFor();
+        assert.ok(await introduction.isDisabled());
+        assert.equal(await page.getByRole("button", { name: "Xóa CV đã nộp" }).count(), 0);
+        await withdraw.click();
+        await page.getByRole("heading", { name: "Đã rút hồ sơ" }).waitFor();
+        await introduction.fill("Nội dung chỉnh sửa sau khi rút hồ sơ.");
+        assert.ok(await page.getByRole("button", { name: "Gửi lại hồ sơ" }).isEnabled());
+        if (initialStatus === "CHO_DUYET") {
+          await page.getByRole("button", { name: "Xóa CV đã nộp" }).click();
+          await page.getByText("Đã xóa CV khỏi hồ sơ.").waitFor();
+          await page.getByRole("button", { name: "Xóa ảnh tác phẩm #17" }).click();
+          await page.getByText("Đã xóa ảnh khỏi hồ sơ.").waitFor();
+          assert.equal(await introduction.inputValue(), "Nội dung chỉnh sửa sau khi rút hồ sơ.");
+          await page.reload();
+          await page.getByRole("heading", { name: "CV và tác phẩm" }).waitFor();
+          assert.equal(await page.getByRole("button", { name: "Tải CV đã nộp" }).count(), 0);
+          assert.equal(await page.getByRole("button", { name: "Xem ảnh tác phẩm #17" }).count(), 0);
+        }
+      }
+    }
+    await page.close();
   }
-
-  await page.goto(origin + "/teachers/khong-ton-tai", { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "Không tìm thấy hồ sơ mẫu" }).waitFor();
-
-  const adminContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-  const adminPage = await adminContext.newPage();
-  adminPage.on("dialog", dialog => dialog.accept());
-  await adminPage.addInitScript(() => localStorage.setItem("linea-cookie-consent-v1", "accepted"));
-  await adminPage.route(/\/src\/auth\/useAuth\.ts(?:\?|$)/, route => route.fulfill({ contentType: "application/javascript",
-    body: "export function useAuth(){return {user:{id:'admin-1',email:'admin@example.test',user_metadata:{}},session:{access_token:'fixture'},loading:false,signOut:async()=>({error:null}),resetPassword:async()=>({error:null})}}" }));
-  await adminPage.route(/\/src\/hooks\/useUserRole\.ts(?:\?|$)/, route => route.fulfill({ contentType: "application/javascript",
-    body: "export function useUserRole(){return {role:'admin',loading:false,error:null}}" }));
-  await adminPage.route(/\/src\/lib\/supabase\.ts(?:\?|$)/, route => route.fulfill({ contentType: "application/javascript",
-    body: "export const supabase=null; export const isSupabaseConfigured=false; export const getGoogleProviderStatus=async()=>false;" }));
-  await adminPage.goto(origin + "/admin/demo-teachers", { waitUntil: "networkidle" });
-  await adminPage.getByRole("heading", { name: "Hồ sơ giảng viên mẫu" }).waitFor();
-  for (const width of [390, 768, 1440]) {
-    await adminPage.setViewportSize({ width, height: 1000 });
-    assert.equal(await adminPage.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, `admin list ${width}px overflow`);
-  }
-  const nmratistCard = adminPage.locator(".demo-teacher-admin-card").filter({ hasText: "NmRAtist" });
-  await nmratistCard.getByRole("link", { name: "Chỉnh sửa hồ sơ" }).click();
-  await adminPage.waitForURL("**/admin/demo-teachers/nmratist");
-  await adminPage.getByRole("heading", { name: "Chỉnh sửa hồ sơ mẫu" }).waitFor();
-  for (const width of [390, 768, 1440]) {
-    await adminPage.setViewportSize({ width, height: 1000 });
-    assert.equal(await adminPage.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, `admin editor ${width}px overflow`);
-  }
-  await adminPage.getByLabel("Tên hiển thị").fill("NmRAtist Studio");
-  await adminPage.getByLabel("Tiêu đề chuyên môn").fill("Character illustration studio");
-  await adminPage.getByRole("button", { name: "Lưu thay đổi" }).click();
-  await adminPage.getByText("Đã lưu hồ sơ mẫu của NmRAtist Studio").waitFor();
-
-  await adminPage.goto(origin + "/teachers/nmratist", { waitUntil: "networkidle" });
-  await adminPage.getByRole("heading", { name: "NmRAtist Studio", exact: true }).waitFor();
-  assert.match(await adminPage.getByRole("main").innerText(), /Character illustration studio/);
-
-  const publicPage = await adminContext.newPage();
-  await publicPage.addInitScript(() => localStorage.setItem("linea-cookie-consent-v1", "accepted"));
-  await publicPage.route(/\/src\/auth\/useAuth\.ts(?:\?|$)/, route => route.fulfill({ contentType: "application/javascript",
-    body: "export function useAuth(){return {user:null,session:null,loading:false}}" }));
-  await publicPage.route(/\/src\/hooks\/useUserRole\.ts(?:\?|$)/, route => route.fulfill({ contentType: "application/javascript",
-    body: "export function useUserRole(){return {role:null,loading:false,error:null}}" }));
-  await publicPage.goto(origin + "/", { waitUntil: "networkidle" });
-  await publicPage.getByRole("heading", { name: "NmRAtist Studio", exact: true }).waitFor();
-  await publicPage.close();
-
-  await adminPage.goto(origin + "/admin/demo-teachers", { waitUntil: "networkidle" });
-  const editedCard = adminPage.locator(".demo-teacher-admin-card").filter({ hasText: "NmRAtist Studio" });
-  await editedCard.getByText("Đã chỉnh sửa").waitFor();
-  await editedCard.getByRole("link", { name: "Chỉnh sửa hồ sơ" }).click();
-  await adminPage.waitForURL("**/admin/demo-teachers/nmratist");
-  await adminPage.getByRole("button", { name: "Đặt lại hồ sơ này" }).click();
-  await adminPage.getByText("Đã đặt lại hồ sơ của NmRAtist Studio").waitFor();
-  assert.equal(await adminPage.getByLabel("Tên hiển thị").inputValue(), "NmRAtist");
-  await adminPage.goto(origin + "/teachers/nmratist", { waitUntil: "networkidle" });
-  await adminPage.getByRole("heading", { name: "NmRAtist", exact: true }).waitFor();
-
-  console.log("PASS demo teacher showcase, profile labels, disclaimer, not-found and responsive layout");
-  console.log("PASS demo teacher profiles are editable, persist locally, update public pages and reset");
+  console.log("PASS teacher application route and navigation by role, and removal of sample profiles");
 } finally {
   await browser?.close();
   server.kill();
