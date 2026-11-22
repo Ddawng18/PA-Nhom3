@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { ArrowRight, ShoppingBag, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
@@ -112,7 +112,7 @@ export default function CartPage() {
           {items.map(item => <article className="cart-item" key={item.courseId}>
             <div className="cart-item-main">
               <p className="cart-item-topic">{item.level || "KHÓA HỌC"}</p>
-              <h2>{item.title}</h2>
+              <h2><Link to={`/courses/${item.courseId}`}>{item.title}</Link></h2>
               <p className="cart-item-price">{item.priceVnd === 0 ? "Miễn phí" : `${item.priceVnd.toLocaleString("vi-VN")} ₫`}</p>
               {!item.available && <p className="cart-item-state is-blocked">Khóa học không còn mở để đăng ký.</p>}
               {item.enrolled && <p className="cart-item-state">Bạn đã sở hữu khóa này.</p>}

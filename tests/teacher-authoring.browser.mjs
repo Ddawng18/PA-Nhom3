@@ -54,7 +54,12 @@ try {
   assert.match(await page.locator("#course-outcomes").inputValue(), /Dựng hình|silhouette/i);
   assert.match(await page.locator("#course-sample-feedback").inputValue(), /Bài luyện/);
   assert.equal(await page.locator("#course-cover-style").inputValue(), "auto");
-
+  const artworkButton = page.getByRole("button", { name: "Chọn ảnh tác phẩm giảng viên" });
+  assert.equal(await artworkButton.isDisabled(), false);
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), artworkButton.click()]);
+  await chooser.setFiles({ name: "artwork.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
+  await page.locator(".teacher-artwork-list img").waitFor();
+  await page.getByRole("button", { name: "Xóa ảnh tác phẩm giảng viên 1" }).click();
   await page.getByRole("button", { name: "Xem trước" }).click();
   await page.locator(".teacher-preview-course").waitFor();
   assert.match(await page.locator(".teacher-preview-course").innerText(), /Minh họa nhân vật/);
