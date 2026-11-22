@@ -167,6 +167,25 @@
   gap: 10px;
 }
 
+.teacher-profile-edit-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 2px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.teacher-profile-edit-link:hover {
+  border-color: #a5c297;
+  background: var(--color-soft-bg);
+}
+
 .teacher-profile-eyebrow {
   margin: 0;
   color: var(--color-primary);

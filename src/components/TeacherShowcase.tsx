@@ -1,12 +1,13 @@
 ﻿import { Link } from "react-router-dom";
-import { demoTeachers } from "../data/demoTeachers";
+import { useDemoTeachers } from "../hooks/useDemoTeachers";
 import "../styles/teacher-showcase.css";
 
 export default function TeacherShowcase() {
+  const demoTeachers = useDemoTeachers();
   return <section className="teacher-showcase" aria-labelledby="teacher-showcase-title">
     <p className="guest-section-label">HỒ SƠ GIẢNG VIÊN MINH HỌA</p>
     <h2 className="guest-section-title" id="teacher-showcase-title">Những người đồng hành mẫu</h2>
-    <p className="teacher-showcase-note">Hồ sơ và số liệu dưới đây là dữ liệu minh họa cho bản thử nghiệm, không phải giáo viên thật.</p>
+    <p className="teacher-showcase-note">Hồ sơ và số liệu dưới đây là dữ liệu mẫu có thể chỉnh sửa cho bản thử nghiệm, không phải giáo viên thật.</p>
     <div className="teacher-showcase-grid">
       {demoTeachers.map(teacher => <article className="teacher-showcase-card" key={teacher.slug}>
         <div className={`teacher-avatar tone-${teacher.tone ?? "forest"}`} aria-hidden="true">{teacher.initials}</div>
