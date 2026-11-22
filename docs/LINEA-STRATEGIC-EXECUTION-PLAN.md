@@ -268,9 +268,19 @@ Preserve the existing visual system; add evidence, not a new design language.
 - [ ] Playwright covers signup → first lesson → submission and passes.
 - [ ] Dashboard has loading, timeout, retry and cached states.
 
+**Implementation status (22/11/2026)**
+
+- [x] Learner onboarding: goal, level, practice time and recommended first lesson.
+- [x] Dashboard skeleton, 8s timeout, retry, last-known cache and “next best action”.
+- [x] Lesson resume, completion feedback, previous/next and persisted progress.
+- [x] Assignment deadline state, image validation, grade feedback and Studio handoff.
+- [x] Studio grouped toolbar, first-run guide, templates, autosave status and assignment submission.
+- [x] `npm run test:learning-loop` covers signup → onboarding → first lesson completion → cached dashboard → Studio submission.
+- [ ] M2 conversion metrics require live test signups; the gate remains open.
+
 ---
 
-### P3 — Demo supply and community
+### P3 — Demo supply, teacher authoring and community
 
 **Entry:** M2 passed.
 
@@ -297,7 +307,14 @@ Preserve the existing visual system; add evidence, not a new design language.
    - add rules;
    - seed five quality posts;
    - expose report and moderation state.
-5. Verify teacher/admin queue, grading and audit flows with demo accounts.
+5. Teacher authoring experience:
+   - guided course template and recommended curriculum;
+   - live preview of the public course page;
+   - quality checklist before submit;
+   - per-course outcomes and sample feedback fields;
+   - cover template/fallback controls;
+   - revision/versioning after publish.
+6. Verify teacher/admin queue, grading and audit flows with demo accounts.
 
 **Exit criteria (Gate M3)**
 
@@ -306,6 +323,7 @@ Preserve the existing visual system; add evidence, not a new design language.
 - [ ] 5 quality seed posts live; 0 public abusive/test posts.
 - [ ] Reports resolved within 24h in the test window.
 - [ ] Median grading time <48h; first Studio export ≥20%.
+- [ ] Teacher can create a course from a guided template, preview it, pass the publish checklist, and publish a revision.
 - [ ] Teacher/admin queue, grading and audit flows verified.
 
 ---

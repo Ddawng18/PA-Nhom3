@@ -1,6 +1,7 @@
-import {
+﻿import {
   BookOpen,
   ChartNoAxesColumnIncreasing,
+  Compass,
   ClipboardList,
   FolderHeart,
   GraduationCap,
@@ -31,6 +32,7 @@ type SidebarProps = {
 
 const studentNavigation = [
   { label: "Tổng quan", icon: LayoutDashboard, to: "/dashboard" },
+  { label: "Lộ trình", icon: Compass, to: "/onboarding" },
   { label: "Khóa học", icon: BookOpen, to: "/my-courses" },
   { label: "Studio", icon: PenTool, to: "/studio" },
   { label: "Bài luyện tập", icon: Sparkles, to: "/assignments" },

@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useBlocker } from "react-router-dom";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useBlocker, useSearchParams } from "react-router-dom";
+import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
+import { learningError, submitAssignment } from "../lib/learningApi";
 import {
   getBrushSettings,
   MOTION_FRAME_COUNT,
@@ -26,8 +28,22 @@ const HEIGHT = 720;
 const GRID_SIZE = 24;
 const HISTORY_LIMIT = 30;
 const STORAGE_KEY = "linea-studio-v1";
+const INTRO_KEY = "linea-studio-intro-v1";
 const PAPER_COLOR = "#fffdf7";
 type Snapshot = { images: Promise<Blob[]>; hasMotion: boolean; id: number };
+type StudioPrompt = {
+  title: string;
+  description: string;
+  background: StudioBackground;
+  brush: StudioBrush;
+  color: string;
+};
+
+const studioPrompts: StudioPrompt[] = [
+  { title: "Khối cơ bản", description: "Dựng ba khối lớn trên nền lưới.", background: "grid", brush: "pencil", color: "#26332b" },
+  { title: "Sắc độ mềm", description: "Luyện chuyển sắc với cọ mềm.", background: "paper", brush: "soft", color: "#5f7352" },
+  { title: "Nét có nhịp", description: "Thử nét chuyển động và độ sần.", background: "paper", brush: "marker", color: "#8a5a42" },
+];
 
 function encodeCanvas(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -129,6 +145,13 @@ function paintBackground(context: CanvasRenderingContext2D, background: StudioBa
 }
 
 export default function StudioPage() {
+  const { session } = useAuth();
+  const [searchParams] = useSearchParams();
+  const assignmentParam = searchParams.get("assignmentId");
+  const assignmentId = assignmentParam && /^\d+$/.test(assignmentParam) ? Number(assignmentParam) : null;
+  const backCourseId = searchParams.get("courseId");
+  const backLessonId = searchParams.get("lessonId");
+  const token = session?.access_token;
   const pageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previewRef = useRef<HTMLCanvasElement>(null);
@@ -165,6 +188,12 @@ export default function StudioPage() {
   const [revision, setRevision] = useState(0);
   const [notice, setNotice] = useState("");
   const [unexported, setUnexported] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitNotice, setSubmitNotice] = useState("");
+  const [showIntro, setShowIntro] = useState(() => {
+    try { return !localStorage.getItem(INTRO_KEY); } catch { return false; }
+  });
   const blocker = useBlocker(unexported);
   const { state: blockerState, proceed, reset } = blocker;
   const handledBlocker = useRef(false);
@@ -253,7 +282,9 @@ export default function StudioPage() {
     const persist = (image: string, frames: string[]) => {
       localStorage.setItem(STORAGE_KEY, serializeStudioDraft({ ...settings, image, frames: frames.length ? frames : undefined }));
       saved = true;
+      setSaveState("saved");
     };
+    setSaveState("saving");
     snapshot.images.then(images => {
       if (!cancelled) return Promise.all(images.map(readBlobUrl));
     }).then(urls => {
@@ -262,7 +293,10 @@ export default function StudioPage() {
         persist(image, frames);
       }
     }).catch(() => {
-      if (!cancelled) setNotice("Không thể tự lưu bản vẽ. Hãy tải tranh về thiết bị.");
+      if (!cancelled) {
+        setSaveState("error");
+        setNotice("Không thể tự lưu bản vẽ. Hãy tải tranh về thiết bị.");
+      }
     });
     const flushOnHide = () => {
       if (saved || !draftCanvas || drawing.current !== null || history.current[index.current] !== snapshot) return;
@@ -602,12 +636,52 @@ export default function StudioPage() {
     }
   };
 
+  async function submitDrawing() {
+    const canvas = canvasRef.current;
+    if (!canvas || !token || !assignmentId || submitting || exporting) return;
+    setSubmitting(true);
+    setSubmitNotice("Đang nộp bản vẽ...");
+    try {
+      const blob = await encodeCanvas(canvas);
+      const file = new File([blob], "linea-studio.png", { type: "image/png" });
+      await submitAssignment(token, assignmentId, file);
+      setSubmitNotice(`Đã nộp bản vẽ vào bài tập #${assignmentId}.`);
+    } catch (error) {
+      setSubmitNotice(learningError(error));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function dismissIntro() {
+    try { localStorage.setItem(INTRO_KEY, "seen"); } catch { /* localStorage unavailable */ }
+    setShowIntro(false);
+  }
+
+  function applyPrompt(prompt: StudioPrompt) {
+    setBackground(prompt.background);
+    setBrush(prompt.brush);
+    setColor(prompt.color);
+    setTool("pen");
+    setNotice(`Gợi ý: ${prompt.title} — ${prompt.description}`);
+  }
+
   return <div className="studio-page" ref={pageRef}><PublicHeader authLink={{ to: "/login", label: "Đăng nhập" }} />
     <main className="studio-main">
       <header className="studio-heading"><div><p className="guest-eyebrow">STUDIO LUYỆN VẼ</p><h1>Không gian sáng tạo</h1><p>Vẽ một nét và xem nó chuyển động ngay trên giấy.</p></div><Link to="/courses">Khám phá khóa học</Link></header>
+      {showIntro && <section className="studio-intro" aria-labelledby="studio-intro-title">
+        <div><p className="guest-eyebrow">LẦN ĐẦU VÀO STUDIO</p><h2 id="studio-intro-title">Bắt đầu trong ba bước</h2></div>
+        <ol><li><strong>1. Chọn cọ và màu</strong><span>Dùng thanh công cụ hoặc bảng màu bên dưới.</span></li><li><strong>2. Vẽ trên giấy</strong><span>Kéo chuột hoặc ngón tay trực tiếp lên canvas.</span></li><li><strong>3. Lưu hoặc nộp</strong><span>Tải PNG/GIF hoặc nộp vào bài tập đang mở.</span></li></ol>
+        <button className="button button-primary" type="button" onClick={dismissIntro}>Bắt đầu vẽ</button>
+      </section>}
+      <section className="studio-prompts" aria-labelledby="studio-prompts-title">
+        <div><p className="guest-eyebrow">GỢI Ý LUYỆN TẬP</p><h2 id="studio-prompts-title">Hôm nay vẽ gì?</h2></div>
+        <div className="studio-prompt-list">{studioPrompts.map((prompt) => <button key={prompt.title} type="button" onClick={() => applyPrompt(prompt)}><strong>{prompt.title}</strong><span>{prompt.description}</span></button>)}</div>
+      </section>
       <div className="studio-toolbar" role="toolbar" aria-label="Công cụ vẽ">
         <button type="button" className={tool === "pen" ? "selected" : ""} aria-pressed={tool === "pen"} onClick={() => setTool("pen")}>Bút</button>
         <button type="button" className={tool === "eraser" ? "selected" : ""} aria-pressed={tool === "eraser"} onClick={() => setTool("eraser")}>Tẩy</button>
+        <span className="studio-tool-divider" aria-hidden="true" />
         <button type="button" className={animatedBrush ? "selected" : ""} aria-pressed={animatedBrush}
           disabled={tool === "eraser" || canvasBusy} onClick={() => {
             const next = !animatedBrush;
@@ -623,6 +697,7 @@ export default function StudioPage() {
         <label>Tốc độ <select aria-label="Tốc độ chuyển động" value={motionDelay} onChange={event => setMotionDelay(Number(event.target.value))}>
           {studioMotionSpeeds.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select></label>
+        <span className="studio-tool-divider" aria-hidden="true" />
         <label>Nền <select aria-label="Nền canvas" value={background} disabled={canvasBusy} onChange={(event) => {
           const next = studioBackgrounds.find((item) => item.value === event.target.value);
           if (next) changeBackground(next.value);
@@ -630,8 +705,10 @@ export default function StudioPage() {
         <label>Màu <input aria-label="Màu nét vẽ" type="color" value={color} onChange={(event) => setColor(event.target.value)} disabled={tool === "eraser"} /></label>
         <label>Cỡ nét <input aria-label="Cỡ nét" type="range" min="1" max="48" value={size} onChange={(event) => setSize(Number(event.target.value))} /><span>{size}px</span></label>
         <label>Độ đậm <input aria-label="Độ đậm nét vẽ" type="range" min="0.1" max="1" step="0.1" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} disabled={tool === "eraser"} /><span>{Math.round(opacity * 100)}%</span></label>
+        <span className="studio-tool-divider" aria-hidden="true" />
         <button type="button" onClick={() => restore(index.current - 1)} disabled={canvasBusy || index.current <= 0}>Hoàn tác</button>
         <button type="button" onClick={() => restore(index.current + 1)} disabled={canvasBusy || index.current >= history.current.length - 1}>Làm lại</button>
+        <span className="studio-tool-divider" aria-hidden="true" />
         <button type="button" disabled={canvasBusy} onClick={() => fileRef.current?.click()}>Chèn ảnh</button>
         <input ref={fileRef} className="sr-only" type="file" aria-label="Chọn ảnh để chèn vào bản vẽ" accept="image/jpeg,image/png,image/webp" onChange={(event) => { importImage(event.target.files?.[0] ?? null); event.target.value = ""; }} />
         <button type="button" disabled={canvasBusy} onClick={clear}>Xóa tranh</button>
@@ -664,8 +741,11 @@ export default function StudioPage() {
         </div>
       </div>
       <div className="studio-footer">
-        <span role="status">{notice || "Bật Nét chuyển động để tạo tranh GIF."}</span>
+        <span role="status">{submitNotice || notice || "Bật Nét chuyển động để tạo tranh GIF."}</span>
+        <span className={`studio-save-status is-${saveState}`} aria-live="polite">{saveState === "saving" ? "Đang tự lưu..." : saveState === "saved" ? "Đã lưu trên thiết bị" : saveState === "error" ? "Chưa lưu được" : ""}</span>
         <div className="studio-export-actions">
+          {assignmentId && token && <button type="button" disabled={canvasBusy || submitting || exporting} onClick={() => void submitDrawing()}>{submitting ? "Đang nộp..." : "Nộp vào bài tập"}</button>}
+          {assignmentId && backCourseId && backLessonId && <Link className="studio-back-link" to={`/courses/${backCourseId}/learn/${backLessonId}`}>Quay lại bài học</Link>}
           <button type="button" disabled={canvasBusy} onClick={exportPng}>Tải PNG</button>
           <button type="button" disabled={canvasBusy || !hasMotion} onClick={() => void exportGif()}>{exporting ? "Đang tạo GIF..." : "Tải GIF"}</button>
         </div>
