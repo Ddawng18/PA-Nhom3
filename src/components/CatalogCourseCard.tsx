@@ -1,5 +1,6 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import CourseCover from "./CourseCover";
+import AddToCartButton from "./AddToCartButton";
 import type { CatalogCourse } from "../lib/catalogApi";
 import {
   formatLessonCount,
@@ -47,6 +48,7 @@ export default function CatalogCourseCard({ course }: CatalogCourseCardProps) {
         <Link className="cat-card-preview" to={`/courses/${course.ma_khoa_hoc}#sample-lesson`} aria-label={`Học thử ${course.tieu_de}`}>
           Học thử
         </Link>
+        <AddToCartButton courseId={course.ma_khoa_hoc} />
       </div>
     </article>
   );

@@ -1,7 +1,8 @@
-import { Menu, Search, X } from "lucide-react";
+﻿import { Menu, Search, ShoppingCart, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
+import { useCart } from "../context/CartProvider";
 import { getUserChip } from "../lib/userDisplay";
 import { isNavItemActive, publicNavItems } from "../logic/publicNav";
 import Sidebar from "./Sidebar";
@@ -18,6 +19,7 @@ export default function PublicHeader({ authLink }: PublicHeaderProps) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, loading } = useAuth();
+  const { count } = useCart();
   const accountChip = user ? getUserChip(user) : null;
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -66,6 +68,10 @@ export default function PublicHeader({ authLink }: PublicHeaderProps) {
           {menuOpen ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
           <span aria-hidden="true">Menu</span>
         </button>
+        <Link className="header-cart-link" to="/cart" aria-label={`Giỏ hàng, ${count} khóa học`}>
+          <ShoppingCart aria-hidden="true" size={18} />
+          <span className="header-cart-count">{count}</span>
+        </Link>
         {accountChip ? (
           <Link
             className="header-user-chip"

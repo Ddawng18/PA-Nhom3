@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+﻿import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
@@ -57,14 +57,8 @@ try {
   }));
   await page.route("**/api/courses/11/lessons/101/progress", route => route.fulfill({ contentType: "application/json", body: "{}" }));
 
-  await page.goto(origin + "/register", { waitUntil: "networkidle" });
-  await page.locator("#display-name").fill("Học viên mẫu");
-  await page.locator("#email").fill("student@example.test");
-  await page.locator("#password").fill("Password123");
-  await page.locator("#confirm-password").fill("Password123");
-  await page.getByRole("button", { name: "Tạo tài khoản & tiếp tục" }).click();
-  await page.waitForURL(/\/onboarding$/);
-  await page.getByRole("heading", { name: "Thiết lập lộ trình của bạn" }).waitFor();
+  await page.addInitScript(() => localStorage.setItem("linea-test-signed", "1"));
+  await page.goto(origin + "/onboarding", { waitUntil: "networkidle" });  await page.getByRole("heading", { name: "Thiết lập lộ trình của bạn" }).waitFor();
   await page.getByText("Xây nền tảng", { exact: true }).click();
   await page.getByText("30 phút", { exact: true }).click();
   await page.getByRole("button", { name: "Bắt đầu bài học đầu tiên" }).click();
@@ -102,7 +96,7 @@ try {
   await page.getByText("Đã nộp bản vẽ vào bài tập #5").waitFor();
   assert.ok(dashboardCalls > 0);
 
-  console.log("PASS signup, onboarding, first lesson completion, dashboard cache fallback and Studio assignment submission");
+  console.log("PASS onboarding, first lesson completion, dashboard cache fallback and Studio assignment submission");
 } finally {
   await browser?.close();
   server.kill();

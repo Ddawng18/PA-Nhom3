@@ -4,6 +4,7 @@ import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterP
 import AuthProvider from "./auth/AuthProvider";
 import CookieConsent from "./components/CookieConsent";
 import UserRoleProvider from "./auth/UserRoleProvider";
+import { CartProvider } from "./context/CartProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoleGuard from "./components/AdminRoleGuard";
 import TeacherRoleGuard from "./components/TeacherRoleGuard";
@@ -42,6 +43,7 @@ const TeacherOverviewPage = lazy(() => import("./pages/TeacherOverviewPage"));
 const TeacherSubmissionsQueuePage = lazy(() => import("./pages/TeacherSubmissionsQueuePage"));
 const TeacherStudentsPage = lazy(() => import("./pages/TeacherStudentsPage"));
 const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
+const CartPage = lazy(() => import("./pages/CartPage"));
 
 function RouteFallback() {
   return <div className="route-fallback" role="status" aria-live="polite">Đang tải trang…</div>;
@@ -129,6 +131,7 @@ const router = createBrowserRouter(createRoutesFromElements(
           />
           <Route path="/teachers/:teacherSlug" element={<Navigate to="/courses" replace />} />
           <Route path="/courses" element={<CoursesPage />} />
+          <Route path="/cart" element={withFallback(<CartPage />)} />
           <Route path="/orders" element={withFallback(<ProtectedRoute><DemoOrdersPage /></ProtectedRoute>)} />
           <Route path="/admin/manage" element={withFallback(<ProtectedRoute><AdminRoleGuard><AdminManagementPage /></AdminRoleGuard></ProtectedRoute>)} />
           <Route path="/studio" element={withFallback(<StudioPage />)} />
@@ -183,7 +186,7 @@ const router = createBrowserRouter(createRoutesFromElements(
 ));
 
 function App() {
-  return <AuthProvider><UserRoleProvider><RouterProvider router={router} /><CookieConsent /></UserRoleProvider></AuthProvider>;
+  return <AuthProvider><CartProvider><UserRoleProvider><RouterProvider router={router} /><CookieConsent /></UserRoleProvider></CartProvider></AuthProvider>;
 }
 
 const root = document.getElementById("root");
