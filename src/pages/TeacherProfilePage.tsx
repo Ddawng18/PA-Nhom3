@@ -1,13 +1,16 @@
 ﻿import { useEffect } from "react";
-import { ArrowLeft, ArrowRight, BookOpen, Clock3, Languages, MapPin, MessageSquareText } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Clock3, Languages, MapPin, MessageSquareText, Pencil } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import PublicHeader from "../components/PublicHeader";
-import { findDemoTeacher } from "../data/demoTeachers";
+import { useDemoTeachers } from "../hooks/useDemoTeachers";
+import { useUserRole } from "../hooks/useUserRole";
 import "../styles/teacher-showcase.css";
 
 export default function TeacherProfilePage() {
   const { teacherSlug } = useParams();
-  const teacher = findDemoTeacher(teacherSlug);
+  const demoTeachers = useDemoTeachers();
+  const teacher = demoTeachers.find(item => item.slug === teacherSlug);
+  const { role } = useUserRole();
 
   useEffect(() => {
     document.title = teacher ? `${teacher.name} · Hồ sơ giảng viên mẫu · LINEA` : "Không tìm thấy hồ sơ · LINEA";
@@ -36,6 +39,9 @@ export default function TeacherProfilePage() {
           <div className="teacher-profile-kicker">
             <p className="teacher-profile-eyebrow">HỒ SƠ GIẢNG VIÊN MINH HỌA</p>
             <span className="teacher-demo-badge">Dữ liệu mẫu</span>
+            {role === "admin" && <Link className="teacher-profile-edit-link" to={`/admin/demo-teachers/${teacher.slug}`}>
+              <Pencil aria-hidden="true" size={13} /> Chỉnh sửa hồ sơ mẫu
+            </Link>}
           </div>
           <h1>{teacher.name}</h1>
           <p className="teacher-profile-handle">{teacher.handle} · {teacher.title}</p>
@@ -101,7 +107,7 @@ export default function TeacherProfilePage() {
           </section>
           <section className="teacher-profile-quote-card">
             <p className="teacher-profile-label">VÍ DỤ PHẢN HỒI</p>
-            <blockquote>“Bố cục đã rõ, nhưng vùng tối bên trái đang tranh mất điểm nhấn. Hãy thử giảm độ tương phản ở nền và giữ chi tiết sắc nét nhất cho khuôn mặt.”</blockquote>
+            <blockquote>{teacher.feedbackExample}</blockquote>
             <p>Đây là mẫu phản hồi, không phải nhận xét thật của học viên.</p>
           </section>
           <Link className="button button-outline teacher-profile-back" to="/"><ArrowLeft aria-hidden="true" size={15} /> Quay lại trang chủ</Link>

@@ -56,6 +56,7 @@ const teacherNavigation = [
 const adminNavigation = [
   { label: "Tổng quan", icon: LayoutDashboard, to: "/admin" },
   { label: "Quản trị", icon: Users, to: "/admin/manage" },
+  { label: "Hồ sơ mẫu", icon: PenTool, to: "/admin/demo-teachers" },
   { label: "Kiểm duyệt cộng đồng", icon: ShieldAlert, to: "/admin/community" },
   { label: "Cộng đồng", icon: Users, to: "/community" },
   { label: "Cài đặt", icon: Settings, to: "/settings" },

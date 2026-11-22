@@ -38,6 +38,8 @@ const AdminManagementPage = lazy(() => import("./pages/AdminManagementPage"));
 const AdminOverviewPage = lazy(() => import("./pages/AdminOverviewPage"));
 const AdminAuditPage = lazy(() => import("./pages/AdminAuditPage"));
 const AdminCommunityPage = lazy(() => import("./pages/AdminCommunityPage"));
+const AdminDemoTeachersPage = lazy(() => import("./pages/AdminDemoTeachersPage"));
+const AdminDemoTeacherEditPage = lazy(() => import("./pages/AdminDemoTeacherEditPage"));
 const TeacherOverviewPage = lazy(() => import("./pages/TeacherOverviewPage"));
 const TeacherSubmissionsQueuePage = lazy(() => import("./pages/TeacherSubmissionsQueuePage"));
 const TeacherStudentsPage = lazy(() => import("./pages/TeacherStudentsPage"));
@@ -60,6 +62,8 @@ const router = createBrowserRouter(createRoutesFromElements(
           <Route path="/admin" element={withFallback(<ProtectedRoute><AdminRoleGuard><AdminOverviewPage /></AdminRoleGuard></ProtectedRoute>)} />
           <Route path="/admin/audit" element={withFallback(<ProtectedRoute><AdminRoleGuard><AdminAuditPage /></AdminRoleGuard></ProtectedRoute>)} />
           <Route path="/admin/community" element={withFallback(<ProtectedRoute><AdminRoleGuard><AdminCommunityPage /></AdminRoleGuard></ProtectedRoute>)} />
+          <Route path="/admin/demo-teachers" element={withFallback(<ProtectedRoute><AdminRoleGuard><AdminDemoTeachersPage /></AdminRoleGuard></ProtectedRoute>)} />
+          <Route path="/admin/demo-teachers/:teacherSlug" element={withFallback(<ProtectedRoute><AdminRoleGuard><AdminDemoTeacherEditPage /></AdminRoleGuard></ProtectedRoute>)} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />

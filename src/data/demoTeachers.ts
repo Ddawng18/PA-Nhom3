@@ -26,6 +26,7 @@ export type DemoTeacher = {
   approach: string[];
   availability: string;
   responseTime: string;
+  feedbackExample: string;
   portfolio: DemoTeacherPortfolio[];
   courses: DemoTeacherCourse[];
 };
@@ -53,6 +54,7 @@ export const demoTeachers: DemoTeacher[] = [
     ],
     availability: "Nhận phản hồi mẫu vào thứ Ba và thứ Năm",
     responseTime: "Phản hồi minh họa trong 48 giờ",
+    feedbackExample: "“Bố cục đã rõ, nhưng vùng tối bên trái đang tranh mất điểm nhấn. Hãy thử giảm độ tương phản ở nền và giữ chi tiết sắc nét nhất cho khuôn mặt.”",
     portfolio: [
       { label: "01", caption: "Nghiên cứu nhân vật", tone: "forest" },
       { label: "02", caption: "Bảng màu giới hạn", tone: "clay" },
@@ -86,6 +88,7 @@ export const demoTeachers: DemoTeacher[] = [
     ],
     availability: "Nhận phản hồi mẫu vào cuối tuần",
     responseTime: "Phản hồi minh họa trong 72 giờ",
+    feedbackExample: "“Không gian đã có chiều sâu, nhưng đường chân trời đang cao hơn điểm nhìn. Hạ thấp đường chân trời và giữ vùng sáng ở cửa sổ để dẫn mắt vào nhân vật.”",
     portfolio: [
       { label: "01", caption: "Phố buổi sớm", tone: "sand" },
       { label: "02", caption: "Cây và bóng đổ", tone: "forest" },
@@ -119,6 +122,7 @@ export const demoTeachers: DemoTeacher[] = [
     ],
     availability: "Nhận phản hồi mẫu vào thứ Hai",
     responseTime: "Phản hồi minh họa trong 48 giờ",
+    feedbackExample: "“Nhịp đọc đã rõ, nhưng khung thứ hai đang lặp lại khung đầu. Đổi góc máy hoặc khoảng trống để chuỗi hình có tiến triển.”",
     portfolio: [
       { label: "01", caption: "Nhịp điệu đường chéo", tone: "clay" },
       { label: "02", caption: "Khoảng trống", tone: "sand" },
@@ -131,7 +135,3 @@ export const demoTeachers: DemoTeacher[] = [
     ],
   },
 ];
-
-export function findDemoTeacher(slug: string | undefined) {
-  return demoTeachers.find(teacher => teacher.slug === slug);
-}
