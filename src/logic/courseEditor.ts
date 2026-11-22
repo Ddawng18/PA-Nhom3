@@ -107,6 +107,17 @@ export function validateLesson(value: unknown) {
   return lessonSchema.safeParse(value);
 }
 
+/** Converts an API timestamp to the wall time expected by a datetime-local input. */
+export function formatLocalDateTime(value: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+
+  const pad = (part: number) => String(part).padStart(2, "0");
+  const year = String(date.getFullYear()).padStart(4, "0");
+  return `${year}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export const assignmentSchema = z.object({
   de_bai: z.string().trim().min(10, "Vui lòng nhập đề bài.").max(5000, "Đề bài không được dài quá 5000 ký tự."),
   han_nop: z.string().nullable().refine((value) => {

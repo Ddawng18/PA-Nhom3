@@ -92,6 +92,7 @@ export function mapTeacherStatus(code: string): { label: string; tone: string } 
   const statuses: Record<string, { label: string; tone: string }> = {
     CHO_DUYET: { label: "Đang chờ duyệt", tone: "pending" },
     CAN_BO_SUNG: { label: "Cần bổ sung", tone: "supplement" },
+    DA_RUT: { label: "Đã rút hồ sơ", tone: "neutral" },
     DA_DUYET: { label: "Đã duyệt", tone: "approved" },
     TU_CHOI: { label: "Bị từ chối", tone: "rejected" },
   };

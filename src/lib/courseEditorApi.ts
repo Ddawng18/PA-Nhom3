@@ -62,6 +62,7 @@ export async function saveCourseEditor(
         weight: rubric.ty_trong,
         order: rubric.thu_tu,
       })) ?? []),
+      artwork: { teacher: course.anh_giang_vien, student: course.anh_hoc_vien },
       expectedVersion,
       courseInfo: courseInfo ? { ...courseInfo, ngay_khai_giang: courseInfo.ngay_khai_giang || null } : null,
     },
@@ -73,6 +74,7 @@ export async function saveCourseEditor(
     chapterIds: z.array(z.number()),
     lessonIds: z.array(z.number()),
     assignmentIds: z.array(z.number()),
+    artworkSaved: z.boolean().optional(),
     version: z.string(),
   }).parse(response);
 }

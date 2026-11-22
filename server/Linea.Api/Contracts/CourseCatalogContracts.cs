@@ -48,4 +48,6 @@ public sealed record CatalogChapter(
 public sealed record CatalogDetailResponse(
     [property: JsonPropertyName("khoa_hoc")] CatalogCourseItem Course,
     [property: JsonPropertyName("chuong")] IReadOnlyList<CatalogChapter> Chapters,
-    [property: JsonPropertyName("khoa_hoc_cung_chu_de")] IReadOnlyList<CatalogCourseItem> Related);
+    [property: JsonPropertyName("khoa_hoc_cung_chu_de")] IReadOnlyList<CatalogCourseItem> Related,
+    [property: JsonPropertyName("anh_giang_vien")] IReadOnlyList<string> TeacherArtwork,
+    [property: JsonPropertyName("anh_hoc_vien")] IReadOnlyList<string> StudentArtwork);

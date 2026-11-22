@@ -298,6 +298,7 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
             Level = original.Level, Topic = original.Topic, CoverImage = original.CoverImage,
             PriceVnd = original.PriceVnd, DurationText = original.DurationText, StartDate = original.StartDate,
             Outcomes = [.. original.Outcomes], SampleFeedback = original.SampleFeedback,
+            TeacherArtwork = [.. original.TeacherArtwork], StudentArtwork = [.. original.StudentArtwork],
             CoverStyle = original.CoverStyle, RevisionOf = original.Id, Status = "NHAP", CreatedAt = DateTimeOffset.UtcNow,
         };
         db.LearningCourses.Add(copy);

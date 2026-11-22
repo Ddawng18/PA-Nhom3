@@ -100,6 +100,15 @@ describe("getAuthErrorMessage", () => {
     expect(getAuthErrorMessage("access_denied")).toBe("Bạn đã hủy đăng nhập Google.");
   });
 
+  it("distinguishes delivery errors from other provider failures without exposing provider details", () => {
+    expect(getAuthErrorMessage("Error sending confirmation email", "unexpected_failure")).toBe(
+      "Hệ thống chưa gửi được email. Vui lòng thử lại sau.",
+    );
+    expect(getAuthErrorMessage("Unexpected server error", "unexpected_failure")).toContain("mã unexpected_failure");
+    expect(getAuthErrorMessage(undefined, "weak_password")).toContain("bảo mật");
+    expect(getAuthErrorMessage(undefined, "email_address_not_authorized")).toContain("chưa cho phép");
+  });
+
   it("returns a friendly fallback for unknown errors", () => {
     expect(getAuthErrorMessage("unexpected error")).toBe("Đã có lỗi xảy ra. Vui lòng thử lại sau.");
   });
