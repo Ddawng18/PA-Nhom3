@@ -7,6 +7,7 @@ import CatalogCourseCard from "../components/CatalogCourseCard";
 import CourseCover from "../components/CourseCover";
 import { demoTeachers } from "../data/demoTeachers";
 import { getCourseFeedback, getCourseOutcomes, getCourseSample } from "../data/courseProof";
+import { isDemoCourse } from "../logic/demoCourses";
 import { setPageMeta } from "../lib/seo";
 import { AdminApiError, AdminApiTimeoutError } from "../lib/adminApi";
 import { getCatalogCourse, type CatalogDetail } from "../lib/catalogApi";
@@ -188,8 +189,8 @@ export default function CourseDetailPage() {
         const startDate = formatStartDate(course.ngay_khai_giang);
         const paid = course.gia_vnd !== null && course.gia_vnd > 0;
         const sample = getCourseSample(course, chapters[0]?.bai_hoc[0]?.tieu_de);
-        const outcomes = getCourseOutcomes(course);
-        const sampleFeedback = getCourseFeedback(course);
+        const outcomes = course.ket_qua?.length ? course.ket_qua : getCourseOutcomes(course);
+        const sampleFeedback = course.phan_hoi_mau || getCourseFeedback(course);
         const demoTeacher = demoTeachers.find((teacher) => teacher.name.toLocaleLowerCase("vi") === teacherName.toLocaleLowerCase("vi"));
         const primaryAction = enrolled ? (
           <Link className="cd-button cd-button-primary" to={`/courses/${courseId}/learn`}>
@@ -220,7 +221,7 @@ export default function CourseDetailPage() {
                   <div className="cd-cover">
                     <CourseCover course={course} />
                   </div>
-                  <p className="cd-topic">{course.chu_de.toUpperCase()}</p>
+                  <p className="cd-topic">{course.chu_de.toUpperCase()} {isDemoCourse(course) && <span className="cd-demo-badge">Khóa học mẫu</span>}</p>
                   <h1>{course.tieu_de}</h1>
                   <div className="cd-meta">
                     <span className="cd-pill">{level}</span>

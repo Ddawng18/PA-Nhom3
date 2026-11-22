@@ -747,3 +747,17 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.cd-demo-badge {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #f0e8d4;
+  color: #78653c;
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  text-transform: none;
+}

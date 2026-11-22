@@ -137,7 +137,7 @@ public sealed class CourseCatalogService(
             teacherNames.TryGetValue(row.Course.TeacherId, out var name) ? name : null,
             prices.TryGetValue(row.Course.Id, out var price) ? price : null,
             row.Chapters, row.Lessons, row.Students, row.Course.DurationText, row.Course.StartDate,
-            row.Course.CreatedAt)).ToList();
+            row.Course.CreatedAt, row.Course.Outcomes, row.Course.SampleFeedback, row.Course.CoverStyle)).ToList();
     }
 
     private async Task<Dictionary<long, long>> LoadPricesAsync(

@@ -1,4 +1,4 @@
-.studio-page,.community-page{min-height:100vh;background:var(--color-page-bg);color:var(--color-text)}
+﻿.studio-page,.community-page{min-height:100vh;background:var(--color-page-bg);color:var(--color-text)}
 .studio-main,.community-main{width:min(1120px,100%);margin:auto;padding:40px 24px 72px}
 .studio-heading,.community-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:24px}
 .studio-heading h1,.community-heading h1{margin:8px 0;font-size:clamp(30px,5vw,44px)}
@@ -162,7 +162,7 @@
 
 .studio-intro .button {
   flex: 0 0 auto;
-  min-height: 38px;
+  min-height: 40px;
   padding-inline: 14px;
   white-space: nowrap;
 }
