@@ -50,7 +50,16 @@ export default function GuestHomePage() {
 
         <section className="guest-proof" aria-labelledby="guest-proof-title">
           <figure className="guest-proof-visual">
-            <img src="/linea-studies.png" alt="Bàn luyện vẽ với hình khối, sắc độ và bài vẽ minh họa" loading="lazy" />
+            <img
+              src="/linea-studies-1200.jpg"
+              srcSet="/linea-studies-800.jpg 800w, /linea-studies-1200.jpg 1200w"
+              sizes="(max-width: 899px) 100vw, 50vw"
+              width={1200}
+              height={675}
+              alt="Bàn luyện vẽ với hình khối, sắc độ và bài vẽ minh họa"
+              loading="lazy"
+              decoding="async"
+            />
             <figcaption>Hình minh họa không gian luyện tập</figcaption>
           </figure>
           <div className="guest-proof-copy">
