@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
@@ -13,6 +13,7 @@ export default function DemoOrdersPage() {
   const [notice, setNotice] = useState("");
   const [retry, setRetry] = useState(0);
   const [refreshing, setRefreshing] = useState<number | null>(null);
+  const [invoice, setInvoice] = useState<DemoOrder | null>(null);
   const returnedOrder = searchParams.get("payment") === "zalopay_return" ? searchParams.get("orderId") : null;
   useEffect(() => {
     const controller = new AbortController();
@@ -54,10 +55,33 @@ export default function DemoOrdersPage() {
         : <ul className="cd-order-list">{orders.map((order) => <li className="cd-order-row" key={order.id}>
           <div className="cd-order-info"><strong><Link to={`/courses/${order.courseId}`}>{order.courseTitle}</Link></strong><span>Đơn #{order.id} · {new Date(order.createdAt).toLocaleString("vi-VN")}</span></div>
           <div className="cd-order-amount"><strong>{order.priceVnd.toLocaleString("vi-VN")} ₫</strong><span className={`cd-order-status cd-order-status-${order.status.toLowerCase()}`}>{order.paymentProvider === "ZALOPAY_SANDBOX" && order.status === "PENDING" && Date.now() - new Date(order.createdAt).getTime() >= 15 * 60_000 ? "Quá hạn · chờ đối soát" : labels[order.status]}</span></div>
+          {order.status === "SUCCEEDED" && <button type="button" className="cd-order-invoice" onClick={() => setInvoice(order)}>Hóa đơn</button>}
           {order.paymentProvider === "ZALOPAY_SANDBOX" && order.status === "PENDING" && <div className="cd-order-payment-actions">
             {order.paymentUrl && <a className="cd-button" href={order.paymentUrl}>Tiếp tục với ZaloPay sandbox</a>}
             <button type="button" className="cd-button" disabled={refreshing !== null} onClick={() => void refresh(order.id)}>{refreshing === order.id ? "Đang kiểm tra..." : "Kiểm tra trạng thái"}</button>
           </div>}
         </li>)}</ul>}
+      {invoice && <InvoiceDialog order={invoice} close={() => setInvoice(null)} />}
     </main></div>;
+}
+
+function InvoiceDialog({ order, close }: { order: DemoOrder; close: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    ref.current?.showModal();
+  }, []);
+  return <dialog className="cd-invoice-dialog" ref={ref} aria-labelledby="invoice-title" onClose={close}>
+    <div className="cd-invoice-print">
+      <header><div><p className="cd-topic">LINEA</p><h2 id="invoice-title">Hóa đơn học phí</h2></div><span>#{order.id}</span></header>
+      <dl>
+        <div><dt>Khóa học</dt><dd>{order.courseTitle}</dd></div>
+        <div><dt>Ngày giao dịch</dt><dd>{new Date(order.createdAt).toLocaleString("vi-VN")}</dd></div>
+        <div><dt>Phương thức</dt><dd>{order.paymentProvider === "ZALOPAY_SANDBOX" ? "ZaloPay sandbox" : order.paymentProvider === "VNPAY_SANDBOX" ? "VNPAY sandbox" : "Demo"}</dd></div>
+        <div><dt>Trạng thái</dt><dd>Đã thanh toán</dd></div>
+      </dl>
+      <p className="cd-invoice-total"><span>Tổng cộng</span><strong>{order.priceVnd.toLocaleString("vi-VN")} ₫</strong></p>
+      <p className="cd-invoice-note">Hóa đơn minh họa cho môi trường thử nghiệm. Không phải chứng từ thu tiền thật.</p>
+    </div>
+    <div className="cd-invoice-actions"><button type="button" className="cd-button" onClick={() => window.print()}>In hóa đơn</button><button type="button" className="cd-button cd-button-primary" onClick={() => ref.current?.close()}>Đóng</button></div>
+  </dialog>;
 }

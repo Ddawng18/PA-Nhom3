@@ -761,3 +761,117 @@
   vertical-align: middle;
   text-transform: none;
 }
+
+.cd-order-invoice {
+  align-self: center;
+  padding: 6px 10px;
+  border: 1px solid #dbe8d0;
+  border-radius: 999px;
+  background: #fffefa;
+  color: #315a3b;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.cd-invoice-dialog {
+  width: min(100% - 32px, 520px);
+  padding: 0;
+  border: 1px solid #e4e9dd;
+  border-radius: 16px;
+  background: #fffefa;
+  color: #35443a;
+}
+
+.cd-invoice-dialog::backdrop {
+  background: rgb(25 35 28 / 45%);
+}
+
+.cd-invoice-print {
+  padding: 24px;
+}
+
+.cd-invoice-print header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e8ebe3;
+}
+
+.cd-invoice-print header > span {
+  color: #7b857c;
+  font-size: 11px;
+}
+
+.cd-invoice-print h2 {
+  margin: 4px 0 0;
+  color: #26332b;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.cd-invoice-print dl {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.cd-invoice-print dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cd-invoice-print dt {
+  color: #7b857c;
+  font-size: 11px;
+}
+
+.cd-invoice-print dd {
+  margin: 0;
+  color: #35443a;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.cd-invoice-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+  padding: 14px 0;
+  border-top: 1px solid #e8ebe3;
+  border-bottom: 1px solid #e8ebe3;
+  color: #35443a;
+  font-size: 13px;
+}
+
+.cd-invoice-total strong {
+  color: #26332b;
+  font-size: 20px;
+}
+
+.cd-invoice-note {
+  margin: 14px 0 0;
+  color: #7b857c;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.cd-invoice-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 24px 24px;
+}
+
+@media print {
+  body * { visibility: hidden; }
+  .cd-invoice-dialog, .cd-invoice-dialog * { visibility: visible; }
+  .cd-invoice-dialog { position: absolute; inset: 0; width: 100%; margin: 0; border: 0; box-shadow: none; }
+  .cd-invoice-actions { display: none; }
+}
