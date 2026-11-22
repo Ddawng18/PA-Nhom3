@@ -205,6 +205,10 @@ export default function TeacherCourseFormPage() {
   const nextAttachmentId = useRef(-1);
   const previewUrls = useRef(new Set<string>());
   const artworkFiles = useRef(new Map<string, File>());
+  const artworkInputs = useRef<Record<ArtworkField, HTMLInputElement | null>>({
+    anh_giang_vien: null,
+    anh_hoc_vien: null,
+  });
   const removedArtwork = useRef(new Set<string>());
   const [artworkError, setArtworkError] = useState("");
   useEffect(() => {
@@ -972,13 +976,21 @@ export default function TeacherCourseFormPage() {
                     <p>Ảnh sẽ xuất hiện trên trang khóa học sau khi xuất bản. Chỉ chọn tác phẩm học viên đã đồng ý công khai.</p>
                   </div>
                   {artworkGroups.map(({ field, label }) => (
-                    <FormField key={field} id={field} label={label} className="teacher-form-field"
-                      hint={`${course[field].length}/${artworkLimit} ảnh · JPG, PNG, WEBP · tối đa 10 MB mỗi ảnh`}>
-                      <input id={field} type="file" accept=".jpg,.jpeg,.png,.webp" multiple
-                        aria-describedby={`${field}-hint`}
-                        disabled={!editable || !isCourseMediaConfigured || saving || uploading || course[field].length >= artworkLimit}
-                        onChange={event => void selectArtwork(field, event)} />
-                      {course[field].length > 0 && <ul className="teacher-artwork-list">
+                      <FormField key={field} id={field} label={label} className="teacher-form-field"
+                        hint={`${course[field].length}/${artworkLimit} ảnh · JPG, PNG, WEBP · tối đa 10 MB mỗi ảnh`}>
+                        <input ref={element => { artworkInputs.current[field] = element; }} id={field} type="file" accept=".jpg,.jpeg,.png,.webp" multiple hidden
+                          aria-describedby={`${field}-hint`}
+                          disabled={!editable || !isCourseMediaConfigured || saving || uploading || course[field].length >= artworkLimit}
+                          onChange={event => void selectArtwork(field, event)} />
+                        <Button variant="outline" type="button"
+                          aria-label={`Chọn ảnh ${label.toLowerCase()}`}
+                          disabled={!editable || !isCourseMediaConfigured || saving || uploading || course[field].length >= artworkLimit}
+                          onClick={() => artworkInputs.current[field]?.click()}>
+                          Chọn ảnh
+                        </Button>
+                        {!isCourseMediaConfigured && <p className="teacher-field-help" role="status">Tải ảnh chưa được cấu hình.</p>}
+                        {!editable && <p className="teacher-field-help" role="status">Khóa học đang ở trạng thái chỉ đọc.</p>}
+                        {course[field].length > 0 && <ul className="teacher-artwork-list">
                         {course[field].map((url, index) => (
                           <li key={url}>
                             <img src={url} alt={`${label} ${index + 1}`} />
