@@ -19,6 +19,9 @@ const courseSchema = z.object({
   gia_vnd: z.number().int().nonnegative().optional(),
   thoi_luong: z.string().nullable().optional(),
   ngay_khai_giang: z.string().nullable().optional(),
+  ket_qua: z.array(z.string()).optional(),
+  phan_hoi_mau: z.string().nullable().optional(),
+  kieu_bia: z.string().optional(),
   trang_thai: z.string(),
 });
 const chapterSchema = z.object({
@@ -99,6 +102,9 @@ export type CourseEditorModel = {
   gia_vnd?: number;
   thoi_luong?: string | null;
   ngay_khai_giang?: string | null;
+  ket_qua: string[];
+  phan_hoi_mau: string;
+  kieu_bia: string;
   trang_thai: string;
   chuong: CourseEditorChapter[];
 };
@@ -193,6 +199,9 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
             course: {
               ...course,
               anh_dai_dien: course.anh_dai_dien ?? "",
+              ket_qua: course.ket_qua ?? [],
+              phan_hoi_mau: course.phan_hoi_mau ?? "",
+              kieu_bia: course.kieu_bia ?? "auto",
               chuong: chapters,
             },
             version,

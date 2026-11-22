@@ -1,0 +1,45 @@
+.community-rules {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 26px;
+  margin-bottom: 22px;
+  padding: 16px 18px;
+  border: 1px solid #dce8cf;
+  border-radius: 14px;
+  background: #f4f9ed;
+}
+
+.community-rules h2 {
+  margin: 3px 0 0;
+  color: #26332b;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.community-rules ul {
+  display: grid;
+  max-width: 620px;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  color: #5b675f;
+  font-size: 10px;
+  line-height: 1.5;
+  list-style: none;
+}
+
+.community-rules li::before {
+  margin-right: 7px;
+  color: #5b8b4c;
+  content: "•";
+  font-weight: 750;
+}
+
+@media (max-width: 700px) {
+  .community-rules {
+    flex-direction: column;
+    gap: 10px;
+  }
+}

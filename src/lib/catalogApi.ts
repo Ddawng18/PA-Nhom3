@@ -20,6 +20,9 @@ export const catalogCourseSchema = z.object({
   thoi_luong: z.string().nullable().optional(),
   ngay_khai_giang: z.string().nullable().optional(),
   ngay_tao: z.string(),
+  ket_qua: z.array(z.string()).optional(),
+  phan_hoi_mau: z.string().nullable().optional(),
+  kieu_bia: z.string().optional(),
 });
 
 const catalogListSchema = z.object({

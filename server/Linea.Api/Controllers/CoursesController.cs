@@ -1,4 +1,4 @@
-using Linea.Api.Contracts;
+﻿using Linea.Api.Contracts;
 using Linea.Api.Data;
 using Linea.Api.Models;
 using Linea.Api.Security;
@@ -261,6 +261,9 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
                 .SetProperty(item => item.PriceVnd, item => request.PriceVnd ?? item.PriceVnd)
                 .SetProperty(item => item.CoverImage, string.IsNullOrWhiteSpace(request.CoverImage) ? null : request.CoverImage)
                 .SetProperty(item => item.DurationText, string.IsNullOrWhiteSpace(request.DurationText) ? null : request.DurationText.Trim())
+                .SetProperty(item => item.Outcomes, request.Outcomes ?? new List<string>())
+                .SetProperty(item => item.SampleFeedback, string.IsNullOrWhiteSpace(request.SampleFeedback) ? null : request.SampleFeedback.Trim())
+                .SetProperty(item => item.CoverStyle, string.IsNullOrWhiteSpace(request.CoverStyle) ? "auto" : request.CoverStyle)
                 .SetProperty(item => item.StartDate, request.StartDate), cancellationToken);
         if (changed == 0) return Conflict(new { detail = "Chỉ được sửa khóa học ở trạng thái nháp." });
         Apply(course, request); return Ok(LearningCourseResponse.From(course));
@@ -273,6 +276,91 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
     [HttpDelete("{id:long}"), Authorize(Policy = AuthPolicies.TeacherAccess)]
     public Task<IActionResult> DeleteDraft(long id, CancellationToken cancellationToken) =>
         Transition(id, "NHAP", "DA_GO", "Giáo viên xóa bản nháp", false, cancellationToken);
+
+    [HttpPost("{id:long}/revision"), Authorize(Policy = AuthPolicies.TeacherAccess)]
+    public async Task<IActionResult> CreateRevision(long id, CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var userId)) return Unauthorized();
+        var original = await db.LearningCourses.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.Id == id && item.TeacherId == userId, cancellationToken);
+        if (original is null) return NotFound();
+        if (original.Status is not ("DA_DANG" or "AN"))
+            return Conflict(new { detail = "Chỉ có thể tạo bản sửa từ khóa học đã đăng hoặc đã ẩn." });
+        var existing = await db.LearningCourses.AsNoTracking().FirstOrDefaultAsync(item =>
+            item.RevisionOf == id && (item.Status == "NHAP" || item.Status == "CHO_DUYET"), cancellationToken);
+        if (existing is not null) return Ok(new { ma_khoa_hoc = existing.Id, existing = true });
+
+        var copy = new LearningCourse {
+            TeacherId = userId, Title = original.Title, Description = original.Description,
+            Level = original.Level, Topic = original.Topic, CoverImage = original.CoverImage,
+            PriceVnd = original.PriceVnd, DurationText = original.DurationText, StartDate = original.StartDate,
+            Outcomes = [.. original.Outcomes], SampleFeedback = original.SampleFeedback,
+            CoverStyle = original.CoverStyle, RevisionOf = original.Id, Status = "NHAP", CreatedAt = DateTimeOffset.UtcNow,
+        };
+        db.LearningCourses.Add(copy);
+        await db.SaveChangesAsync(cancellationToken);
+
+        var oldChapters = await db.CourseChapters.AsNoTracking()
+            .Where(item => item.CourseId == id).OrderBy(item => item.Order).ToListAsync(cancellationToken);
+        var chapterMap = new Dictionary<long, CourseChapter>();
+        foreach (var chapter in oldChapters)
+        {
+            var created = new CourseChapter { CourseId = copy.Id, Title = chapter.Title, Order = chapter.Order };
+            db.CourseChapters.Add(created);
+            chapterMap[chapter.Id] = created;
+        }
+        await db.SaveChangesAsync(cancellationToken);
+
+        var oldLessons = await db.CourseLessons.AsNoTracking()
+            .Where(item => chapterMap.Keys.Contains(item.ChapterId)).OrderBy(item => item.Order).ToListAsync(cancellationToken);
+        var lessonMap = new Dictionary<long, CourseLesson>();
+        foreach (var lesson in oldLessons)
+        {
+            var created = new CourseLesson {
+                ChapterId = chapterMap[lesson.ChapterId].Id, Title = lesson.Title, Order = lesson.Order,
+                TextContent = lesson.TextContent, ImagePath = lesson.ImagePath, VideoUrl = lesson.VideoUrl,
+                Required = lesson.Required,
+            };
+            db.CourseLessons.Add(created);
+            lessonMap[lesson.Id] = created;
+        }
+        await db.SaveChangesAsync(cancellationToken);
+
+        var oldAssignments = await db.Assignments.AsNoTracking()
+            .Where(item => lessonMap.Keys.Contains(item.LessonId)).ToListAsync(cancellationToken);
+        var assignmentMap = new Dictionary<long, Assignment>();
+        foreach (var assignment in oldAssignments)
+        {
+            var created = new Assignment {
+                LessonId = lessonMap[assignment.LessonId].Id, Prompt = assignment.Prompt,
+                Deadline = assignment.Deadline, Required = assignment.Required,
+            };
+            db.Assignments.Add(created);
+            assignmentMap[assignment.Id] = created;
+        }
+        await db.SaveChangesAsync(cancellationToken);
+
+        var oldAttachments = await db.CourseAttachments.AsNoTracking()
+            .Where(item => lessonMap.Keys.Contains(item.LessonId)).ToListAsync(cancellationToken);
+        foreach (var attachment in oldAttachments)
+        {
+            db.CourseAttachments.Add(new CourseAttachmentContent {
+                LessonId = lessonMap[attachment.LessonId].Id, Name = attachment.Name, Path = attachment.Path,
+                Type = attachment.Type, Size = attachment.Size,
+            });
+        }
+        var oldRubrics = await db.CourseRubrics.AsNoTracking()
+            .Where(item => assignmentMap.Keys.Contains(item.AssignmentId)).ToListAsync(cancellationToken);
+        foreach (var rubric in oldRubrics)
+        {
+            db.CourseRubrics.Add(new CourseRubricContent {
+                AssignmentId = assignmentMap[rubric.AssignmentId].Id, Name = rubric.Name,
+                Weight = rubric.Weight, Order = rubric.Order,
+            });
+        }
+        await db.SaveChangesAsync(cancellationToken);
+        return Ok(new { ma_khoa_hoc = copy.Id, existing = false });
+    }
 
     [HttpPost("/api/admin/courses/{id:long}/approve"), Authorize(Policy = AuthPolicies.AdminOnly)]
     public Task<IActionResult> Approve(long id, CancellationToken cancellationToken) =>
@@ -296,6 +384,9 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
         var changed = await db.LearningCourses.Where(item => item.Id == id && item.Status == expected)
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Status, next), cancellationToken);
         if (changed == 0) return Conflict(new { detail = "Trạng thái khóa học đã thay đổi. Vui lòng tải lại." });
+        if (admin && next == "DA_DANG" && course.RevisionOf is long originalId)
+            await db.LearningCourses.Where(item => item.Id == originalId && item.Status == "DA_DANG")
+                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Status, "AN"), cancellationToken);
         User.TryGetUserId(out var actorId);
         db.StatusHistory.Add(new StatusHistoryEntry { ObjectType = "KHOA_HOC", ObjectId = id.ToString(),
             PreviousStatus = expected, Status = next, ActorId = actorId, Reason = reason, OccurredAt = now });
@@ -316,6 +407,12 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
             return BadRequest(new { detail = "Ảnh đại diện phải dùng URL HTTPS." });
         if (request.DurationText is { Length: > 50 })
             return BadRequest(new { detail = "Thời lượng tối đa 50 ký tự." });
+        if (request.Outcomes is { Count: > 8 } || request.Outcomes?.Any(item => item.Trim().Length is < 5 or > 300) == true)
+            return BadRequest(new { detail = "Kết quả học tập tối đa 8 mục, mỗi mục 5-300 ký tự." });
+        if (request.SampleFeedback is { Length: > 1000 })
+            return BadRequest(new { detail = "Phản hồi mẫu tối đa 1.000 ký tự." });
+        if (request.CoverStyle is not null and not ("auto" or "forest" or "clay" or "indigo" or "sun"))
+            return BadRequest(new { detail = "Kiểu bìa khóa học không hợp lệ." });
         return null;
     }
     private static void Apply(LearningCourse course, SaveLearningCourseRequest request)
@@ -325,6 +422,9 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
         course.PriceVnd = request.PriceVnd ?? course.PriceVnd;
         course.CoverImage = string.IsNullOrWhiteSpace(request.CoverImage) ? null : request.CoverImage;
         course.DurationText = string.IsNullOrWhiteSpace(request.DurationText) ? null : request.DurationText.Trim();
+        course.Outcomes = (request.Outcomes ?? []).Select(item => item.Trim()).Where(item => item.Length > 0).Take(8).ToList();
+        course.SampleFeedback = string.IsNullOrWhiteSpace(request.SampleFeedback) ? null : request.SampleFeedback.Trim();
+        course.CoverStyle = string.IsNullOrWhiteSpace(request.CoverStyle) ? "auto" : request.CoverStyle;
         course.StartDate = request.StartDate;
     }
 }

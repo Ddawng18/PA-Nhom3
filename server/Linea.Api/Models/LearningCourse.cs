@@ -12,6 +12,10 @@ public sealed class LearningCourse
     public long PriceVnd { get; set; }
     public string? DurationText { get; set; }
     public DateOnly? StartDate { get; set; }
+    public List<string> Outcomes { get; set; } = [];
+    public string? SampleFeedback { get; set; }
+    public string CoverStyle { get; set; } = "auto";
+    public long? RevisionOf { get; set; }
     public string Status { get; set; } = "NHAP";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

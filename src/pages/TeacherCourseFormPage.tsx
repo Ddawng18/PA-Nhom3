@@ -7,6 +7,7 @@ import {
   ArrowUp,
   Check,
   ChevronDown,
+  Eye,
   FileText,
   ImagePlus,
   Plus,
@@ -20,10 +21,13 @@ import { createUuid } from "../logic/uuid";
 import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
 import { courseLevels, courseTopics } from "../data/courseEditorOptions";
+import { courseTemplates, type CourseTemplate } from "../data/courseTemplates";
+import { getCourseOutcomes } from "../data/courseProof";
 import { useCourseEditor, type CourseEditorChapter, type CourseEditorLesson, type CourseEditorModel } from "../hooks/useCourseEditor";
 import { supabase } from "../lib/supabase";
 import {
   canEditCourse,
+  getCourseLevelLabel,
   getCourseStatusLabel,
   getSubmitBlockers,
   reorder,
@@ -35,7 +39,7 @@ import {
 } from "../logic/courseEditor";
 import type { CourseEditorAttachment, CourseEditorRubric } from "../hooks/useCourseEditor";
 import { cleanCourseMediaName, createCourseMediaSignedUrl, isCourseAttachmentConfigured, isCourseMediaConfigured, removeCourseMedia, uploadCourseMedia } from "../lib/courseStorage";
-import { deleteDraftCourse, saveCourseInfo, submitCourse } from "../lib/courseApi";
+import { deleteDraftCourse, createCourseRevision, saveCourseInfo, submitCourse } from "../lib/courseApi";
 import { loadCourseEditorVersion, saveCourseEditor } from "../lib/courseEditorApi";
 import "../styles/teacher-course.css";
 
@@ -65,6 +69,9 @@ function asLocalCourse(course: CourseEditorModel): LocalCourse {
     ...course,
     thoi_luong: course.thoi_luong ?? "",
     ngay_khai_giang: course.ngay_khai_giang ?? "",
+    ket_qua: course.ket_qua ?? [],
+    phan_hoi_mau: course.phan_hoi_mau ?? "",
+    kieu_bia: course.kieu_bia ?? "auto",
     chuong: course.chuong.map((chapter) => ({
       ...chapter,
       localId: String(chapter.ma_chuong),
@@ -84,6 +91,9 @@ function emptyCourse(userId: string): LocalCourse {
     anh_dai_dien: "",
     thoi_luong: "",
     ngay_khai_giang: "",
+    ket_qua: [],
+    phan_hoi_mau: "",
+    kieu_bia: "auto",
     trang_thai: "NHAP",
     chuong: [],
   };
@@ -163,13 +173,14 @@ export default function TeacherCourseFormPage() {
   const [course, setCourse] = useState<LocalCourse>(() => emptyCourse(userId));
   const [existingTopics, setExistingTopics] = useState<string[]>([]);
   const [topicError, setTopicError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"basic" | "content">("basic");
+  const [activeTab, setActiveTab] = useState<"basic" | "content" | "preview">("basic");
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [revisionBusy, setRevisionBusy] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -281,6 +292,8 @@ export default function TeacherCourseFormPage() {
     { label: "Ảnh bìa", complete: Boolean(course.anh_dai_dien) },
     { label: "Chủ đề và cấp độ", complete: Boolean(course.chu_de.trim() && course.cap_do) },
     { label: "Mỗi chương có ít nhất một bài học", complete: course.chuong.length > 0 && course.chuong.every((chapter) => chapter.bai_hoc.length > 0) },
+    { label: "Kết quả học tập", complete: course.ket_qua.filter((item) => item.trim().length >= 5).length >= 2 },
+    { label: "Phản hồi mẫu", complete: course.phan_hoi_mau.trim().length >= 20 },
   ];
 
   if (!user) return null;
@@ -317,8 +330,49 @@ export default function TeacherCourseFormPage() {
     setErrors(current => ({ ...current, [`lesson.${localId}`]: "" }));
   }
 
+  function applyTemplate(template: CourseTemplate) {
+    function apply() {
+      const chapters = template.chapters.map((chapter, chapterIndex) => {
+        const localChapter = newChapter(course.ma_khoa_hoc);
+        return {
+          ...localChapter,
+          tieu_de: chapter.title,
+          thu_tu: chapterIndex + 1,
+          bai_hoc: chapter.lessons.map((lesson, lessonIndex) => ({
+            ...newLesson(localChapter.ma_chuong ?? "", lessonIndex + 1),
+            tieu_de: lesson.title,
+            noi_dung_van_ban: lesson.content,
+          })),
+        };
+      });
+      setCourse((current) => ({
+        ...current,
+        tieu_de: template.name,
+        mo_ta: template.description,
+        cap_do: template.level,
+        chu_de: template.topic,
+        thoi_luong: template.duration,
+        ket_qua: getCourseOutcomes({ tieu_de: template.name, chu_de: template.topic, cap_do: template.level }),
+        phan_hoi_mau: "“Bài luyện đã có hướng rõ. Hãy chọn một điểm nhấn duy nhất và giảm chi tiết ở vùng phụ để mắt có nơi dừng.”",
+        kieu_bia: "auto",
+        chuong: chapters,
+      }));
+      setSelectedChapterId(chapters[0]?.localId ?? null);
+      setSelectedLessonId(chapters[0]?.bai_hoc[0]?.localId ?? null);
+      setExpanded(chapters[0] ? { [chapters[0].localId]: true } : {});
+      setHasUnsavedChanges(true);
+      setMessage(`Đã áp dụng mẫu “${template.name}”. Bạn có thể chỉnh sửa toàn bộ nội dung trước khi lưu.`);
+      setActiveTab("basic");
+    }
+    if (course.chuong.length || course.tieu_de.trim()) {
+      askConfirmation("Thay nội dung hiện tại?", "Áp dụng mẫu sẽ thay thế thông tin và cấu trúc bài học đang soạn.", apply);
+      return;
+    }
+    apply();
+  }
+
   function fieldError(field: string) {
-    const error = errors[field];
+    const error = errors[field] ?? Object.entries(errors).find(([key]) => key.startsWith(`${field}.`))?.[1];
     return error ? <span className="teacher-field-error" id={`${field.replaceAll(".", "-")}-error`} role="alert">{error}</span> : null;
   }
 
@@ -577,6 +631,21 @@ export default function TeacherCourseFormPage() {
     }
   }
 
+  async function createRevision() {
+    if (!session?.access_token || !courseId) return;
+    setRevisionBusy(true);
+    setMessage(null);
+    try {
+      const revision = await createCourseRevision(session.access_token, courseId);
+      setHasUnsavedChanges(false);
+      navigate(`/teacher/courses/${revision.ma_khoa_hoc}/edit`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Không thể tạo bản sửa. Vui lòng thử lại.");
+    } finally {
+      setRevisionBusy(false);
+    }
+  }
+
   function askConfirmation(title: string, text: string, action: () => void) {
     setConfirmation({ title, message: text, action: () => {
       setConfirmation(null);
@@ -637,6 +706,11 @@ export default function TeacherCourseFormPage() {
               <Button variant="outline" type="button" disabled={!editable || saving || uploading} onClick={() => void saveCourse()}>
                 {saving ? "Đang lưu..." : "Lưu toàn bộ"}
               </Button>
+              {isEditing && courseId && (course.trang_thai === "DA_DANG" || course.trang_thai === "AN") && (
+                <Button variant="outline" type="button" disabled={revisionBusy || saving || uploading} onClick={() => void createRevision()}>
+                  {revisionBusy ? "Đang tạo bản sửa..." : "Tạo bản sửa"}
+                </Button>
+              )}
               {isEditing && courseId && course.trang_thai === "NHAP" && (
                 <Button variant="outline" className="teacher-danger-action" type="button" disabled={saving || deleting || uploading} onClick={() => askConfirmation("Xóa bản nháp", "Khóa học nháp sẽ bị gỡ khỏi danh sách. Bạn có chắc muốn xóa?", () => void deleteDraft())}>
                   <Trash2 aria-hidden="true" size={15} />
@@ -652,9 +726,25 @@ export default function TeacherCourseFormPage() {
           {!editable && course.trang_thai !== "CHO_DUYET" && <p className="teacher-readonly-message" role="status">Không thể sửa khóa học ở trạng thái hiện tại.</p>}
           {message && <p className="teacher-form-message" role="status">{message}</p>}
           {editor.rubricUnavailable && <p className="teacher-form-message" role="alert">Chưa lưu được tiêu chí chấm điểm vì database chưa có bảng tương ứng.</p>}
+          {!isEditing && editable && <section className="teacher-template-picker" aria-labelledby="teacher-template-title">
+            <div className="teacher-template-heading">
+              <p className="settings-eyebrow">BẮT ĐẦU NHANH</p>
+              <h2 id="teacher-template-title">Chọn mẫu khóa học</h2>
+              <p>Mẫu điền sẵn thông tin và curriculum. Bạn vẫn cần chỉnh sửa, lưu và gửi duyệt.</p>
+            </div>
+            <div className="teacher-template-grid">
+              {courseTemplates.map((template) => <button key={template.id} type="button" className="teacher-template-card" disabled={saving || uploading} onClick={() => applyTemplate(template)}>
+                <span className="teacher-template-meta">{template.duration} · {getCourseLevelLabel(template.level)}</span>
+                <strong>{template.name}</strong>
+                <span>{template.description}</span>
+                <small>{template.chapters.length} chương · {template.chapters.reduce((total, chapter) => total + chapter.lessons.length, 0)} bài học</small>
+              </button>)}
+            </div>
+          </section>}
           <nav className="settings-tabs teacher-editor-tabs" aria-label="Mục khóa học">
             <button type="button" className={`settings-tab${activeTab === "basic" ? " active" : ""}`} aria-current={activeTab === "basic" ? "page" : undefined} onClick={() => setActiveTab("basic")}>Thông tin cơ bản</button>
             <button type="button" className={`settings-tab${activeTab === "content" ? " active" : ""}`} aria-current={activeTab === "content" ? "page" : undefined} onClick={() => setActiveTab("content")}>Nội dung bài học ({chapterCount} chương)</button>
+            <button type="button" className={`settings-tab${activeTab === "preview" ? " active" : ""}`} aria-current={activeTab === "preview" ? "page" : undefined} onClick={() => setActiveTab("preview")}><Eye size={15} aria-hidden="true" /> Xem trước</button>
             <button className="settings-tab" type="button" disabled aria-disabled="true" title="Tính năng đang phát triển">Học viên ghi danh</button>
             <button className="settings-tab" type="button" disabled aria-disabled="true" title="Tính năng đang phát triển">Trạng thái và lịch sử</button>
           </nav>
@@ -676,6 +766,18 @@ export default function TeacherCourseFormPage() {
                   <textarea id="course-description" rows={4} maxLength={5000} value={course.mo_ta} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.mo_ta)} aria-describedby={errors.mo_ta ? "mo_ta-error" : undefined} onChange={(event) => setCourseField("mo_ta", event.target.value)} />
                   <span className="teacher-character-count">{course.mo_ta.length}/5000</span>
                   {fieldError("mo_ta")}
+                </label>
+                <label className="teacher-form-field" htmlFor="course-outcomes">
+                  <span>Kết quả học tập</span>
+                  <textarea id="course-outcomes" rows={4} value={course.ket_qua.join("\n")} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.ket_qua)} aria-describedby={errors.ket_qua ? "ket_qua-error" : "course-outcomes-hint"} onChange={(event) => setCourseField("ket_qua", event.target.value.split(/\r?\n/))} />
+                  <span className="teacher-field-help" id="course-outcomes-hint">Mỗi dòng là một kết quả, tối đa 8 dòng.</span>
+                  {fieldError("ket_qua")}
+                </label>
+                <label className="teacher-form-field" htmlFor="course-sample-feedback">
+                  <span>Phản hồi mẫu</span>
+                  <textarea id="course-sample-feedback" rows={3} maxLength={1000} value={course.phan_hoi_mau} disabled={!editable || saving || uploading} aria-invalid={Boolean(errors.phan_hoi_mau)} onChange={(event) => setCourseField("phan_hoi_mau", event.target.value)} />
+                  <span className="teacher-character-count">{course.phan_hoi_mau.length}/1000</span>
+                  {fieldError("phan_hoi_mau")}
                 </label>
                 <div className="teacher-form-grid">
                   <label className="teacher-form-field" htmlFor="course-level">
@@ -733,6 +835,17 @@ export default function TeacherCourseFormPage() {
                     {fieldError("anh_dai_dien")}
                   </label>
                   <p className="teacher-field-help">Tỉ lệ 16:9, JPG, PNG hoặc WEBP, tối đa 5 MB.</p>
+                  <label className="teacher-form-field" htmlFor="course-cover-style">
+                    <span>Kiểu bìa dự phòng</span>
+                    <select id="course-cover-style" value={course.kieu_bia} disabled={!editable || saving || uploading} onChange={(event) => setCourseField("kieu_bia", event.target.value)}>
+                      <option value="auto">Tự động theo khóa học</option>
+                      <option value="forest">Xanh rừng</option>
+                      <option value="clay">Đất nung</option>
+                      <option value="indigo">Xanh chàm</option>
+                      <option value="sun">Vàng nắng</option>
+                    </select>
+                    <span className="teacher-field-help">Dùng khi chưa có ảnh bìa hoặc ảnh không tải được.</span>
+                  </label>
                   {!isCourseMediaConfigured && <p className="teacher-field-help" role="status">Tải tệp chưa được cấu hình.</p>}
                   {isCourseMediaConfigured && <p className="teacher-field-help">Chọn ảnh để xem trước. Ảnh được tải lên khi bạn bấm Lưu toàn bộ.</p>}
                   {uploadMessage && <p className="teacher-field-error" role="alert">{uploadMessage}</p>}
@@ -740,7 +853,7 @@ export default function TeacherCourseFormPage() {
                 <section className="settings-card teacher-editor-card teacher-publish-checklist">
                   <div className="teacher-card-heading">
                     <h2>Trước khi xuất bản</h2>
-                    <p>{checklist.filter((item) => item.complete).length}/4 mục đã hoàn thành.</p>
+                    <p>{checklist.filter((item) => item.complete).length}/{checklist.length} mục đã hoàn thành.</p>
                   </div>
                   <div className="teacher-check-progress" role="progressbar" aria-valuenow={checklist.filter((item) => item.complete).length} aria-valuemin={0} aria-valuemax={4}>
                     <span style={{ width: `${checklist.filter((item) => item.complete).length * 25}%` }} />
@@ -749,7 +862,7 @@ export default function TeacherCourseFormPage() {
                 </section>
               </aside>
             </div>
-          ) : (
+          ) : activeTab === "content" ? (
             <div className="teacher-content-grid">
               <section className="settings-card teacher-editor-card teacher-course-structure">
                 <div className="teacher-card-heading">
@@ -891,6 +1004,48 @@ export default function TeacherCourseFormPage() {
                   <div className="teacher-empty-editor"><h2>Chọn nội dung để chỉnh sửa</h2><p>Thêm chương để bắt đầu xây dựng khóa học.</p></div>
                 )}
               </section>
+            </div>
+          ) : (
+            <div className="teacher-preview-layout">
+              <article className="settings-card teacher-preview-course">
+                <div className="teacher-preview-cover">
+                  {course.anh_dai_dien ? <img src={course.anh_dai_dien} alt={`Ảnh bìa ${course.tieu_de || "khóa học"}`} /> : <span aria-hidden="true">{course.tieu_de.slice(0, 1).toUpperCase() || "L"}</span>}
+                  <em>Xem trước nội bộ</em>
+                </div>
+                <p className="teacher-preview-topic">{course.chu_de.toUpperCase() || "CHỦ ĐỀ KHÓA HỌC"}</p>
+                <h2>{course.tieu_de || "Tên khóa học của bạn"}</h2>
+                <div className="teacher-preview-meta">
+                  <span>{getCourseLevelLabel(course.cap_do)}</span>
+                  {course.thoi_luong && <span>{course.thoi_luong}</span>}
+                  <span>{chapterCount} chương · {lessonCount} bài</span>
+                  {course.gia_vnd === 0 ? <strong>Miễn phí</strong> : course.gia_vnd ? <strong>{course.gia_vnd.toLocaleString("vi-VN")} ₫</strong> : null}
+                </div>
+                <p className="teacher-preview-description">{course.mo_ta || "Mô tả khóa học sẽ xuất hiện ở đây. Hãy viết ngắn gọn kết quả học viên đạt được."}</p>
+                {course.phan_hoi_mau.trim() && <blockquote className="teacher-preview-feedback">{course.phan_hoi_mau}</blockquote>}
+                <div className="teacher-preview-instructor">
+                  <span aria-hidden="true">{getInitials(displayName)}</span>
+                  <div><small>GIẢNG VIÊN</small><strong>{displayName}</strong></div>
+                </div>
+                <section className="teacher-preview-outcomes">
+                  <h3>Bạn sẽ luyện được gì</h3>
+                  <ul>{(course.ket_qua.filter((item) => item.trim()).length ? course.ket_qua.filter((item) => item.trim()) : getCourseOutcomes({ tieu_de: course.tieu_de, chu_de: course.chu_de, cap_do: course.cap_do })).map((item) => <li key={item}>{item}</li>)}</ul>
+                </section>
+                <section className="teacher-preview-curriculum">
+                  <h3>Cấu trúc khóa học</h3>
+                  {course.chuong.length ? course.chuong.map((chapter) => <div key={chapter.localId}><strong>{chapter.thu_tu}. {chapter.tieu_de || "Chương chưa đặt tên"}</strong><span>{chapter.bai_hoc.length} bài học</span><ul>{chapter.bai_hoc.map((lesson) => <li key={lesson.localId}>{lesson.tieu_de || "Bài học chưa đặt tên"}</li>)}</ul></div>) : <p>Chưa có chương. Thêm nội dung hoặc chọn một mẫu để bắt đầu.</p>}
+                </section>
+              </article>
+              <aside className="teacher-preview-aside">
+                <div className="teacher-preview-note">Đây là bản xem trước nội bộ. Khóa học chỉ xuất hiện công khai sau khi bạn gửi duyệt và được quản trị viên publish.</div>
+                <dl>
+                  <div><dt>Trạng thái</dt><dd>{getCourseStatusLabel(course.trang_thai)}</dd></div>
+                  <div><dt>Hoàn thiện</dt><dd>{checklist.filter((item) => item.complete).length}/{checklist.length} mục</dd></div>
+                  <div><dt>Ngày khai giảng</dt><dd>{course.ngay_khai_giang || "Chưa đặt"}</dd></div>
+                </dl>
+                <div className="teacher-preview-checklist">
+                  {checklist.map((item) => <p key={item.label} className={item.complete ? "complete" : ""}><span>{item.complete ? "✓" : "○"}</span>{item.label}</p>)}
+                </div>
+              </aside>
             </div>
           )}
           {hasUnsavedChanges && <p className="teacher-unsaved-indicator" role="status">Có thay đổi chưa được lưu.</p>}

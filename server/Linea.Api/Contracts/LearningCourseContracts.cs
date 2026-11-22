@@ -22,6 +22,12 @@ public sealed class SaveLearningCourseRequest
     public string? DurationText { get; set; }
     [JsonPropertyName("ngay_khai_giang")]
     public DateOnly? StartDate { get; set; }
+    [JsonPropertyName("ket_qua")]
+    public List<string>? Outcomes { get; set; }
+    [JsonPropertyName("phan_hoi_mau"), StringLength(1000)]
+    public string? SampleFeedback { get; set; }
+    [JsonPropertyName("kieu_bia"), RegularExpression("^(auto|forest|clay|indigo|sun)$")]
+    public string? CoverStyle { get; set; }
 }
 
 public sealed record LearningCourseResponse(
@@ -35,11 +41,14 @@ public sealed record LearningCourseResponse(
     [property: JsonPropertyName("gia_vnd")] long PriceVnd,
     [property: JsonPropertyName("thoi_luong")] string? DurationText,
     [property: JsonPropertyName("ngay_khai_giang")] DateOnly? StartDate,
+    [property: JsonPropertyName("ket_qua")] IReadOnlyList<string> Outcomes,
+    [property: JsonPropertyName("phan_hoi_mau")] string? SampleFeedback,
+    [property: JsonPropertyName("kieu_bia")] string CoverStyle,
     [property: JsonPropertyName("trang_thai")] string Status,
     [property: JsonPropertyName("ngay_tao")] DateTimeOffset CreatedAt)
 {
     public static LearningCourseResponse From(LearningCourse course) => new(
         course.Id, course.TeacherId, course.Title, course.Description, course.Level,
         course.Topic, course.CoverImage, course.PriceVnd, course.DurationText, course.StartDate,
-        course.Status, course.CreatedAt);
+        course.Outcomes, course.SampleFeedback, course.CoverStyle, course.Status, course.CreatedAt);
 }
