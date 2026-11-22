@@ -19,6 +19,7 @@
     "test:a11y": "node tests/a11y.browser.mjs",
     "test:roles": "node tests/roles.browser.mjs",
     "test:teacher-profiles": "node tests/teacher-profiles.browser.mjs",
+    "test:public-proof": "node tests/public-proof.browser.mjs",
     "test:learning": "node tests/learning.browser.mjs",
     "test:public-header": "node tests/public-header.browser.mjs",
     "test:student-courses": "node tests/student-courses.browser.mjs",
