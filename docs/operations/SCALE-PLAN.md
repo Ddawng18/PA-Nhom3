@@ -1,4 +1,4 @@
-# LINEA — Scale and performance plan
+﻿# LINEA — Scale and performance plan
 
 ## Current shape
 
@@ -44,7 +44,7 @@ A/B tests should only start after measurement exists:
 - hero promise;
 - primary CTA copy;
 - course-card proof (cover, teacher, trial lesson);
-- pricing placement and FAQ order.
+- checkout CTA placement on course detail.
 
 Every experiment needs a hypothesis, assignment mechanism, success metric, guardrail metric, sample-size estimate and stop rule.
 

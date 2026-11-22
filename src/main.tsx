@@ -1,4 +1,4 @@
-import { lazy, StrictMode, Suspense, type ReactNode } from "react";
+﻿import { lazy, StrictMode, Suspense, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider } from "react-router-dom";
 import AuthProvider from "./auth/AuthProvider";
@@ -44,7 +44,6 @@ const TeacherOverviewPage = lazy(() => import("./pages/TeacherOverviewPage"));
 const TeacherSubmissionsQueuePage = lazy(() => import("./pages/TeacherSubmissionsQueuePage"));
 const TeacherStudentsPage = lazy(() => import("./pages/TeacherStudentsPage"));
 const TeacherProfilePage = lazy(() => import("./pages/TeacherProfilePage"));
-const PricingFaqPage = lazy(() => import("./pages/PricingFaqPage"));
 const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
 
 function RouteFallback() {
@@ -133,7 +132,6 @@ const router = createBrowserRouter(createRoutesFromElements(
             }
           />
           <Route path="/teachers/:teacherSlug" element={withFallback(<TeacherProfilePage />)} />
-          <Route path="/pricing" element={withFallback(<PricingFaqPage />)} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/orders" element={withFallback(<ProtectedRoute><DemoOrdersPage /></ProtectedRoute>)} />
           <Route path="/admin/manage" element={withFallback(<ProtectedRoute><AdminRoleGuard><AdminManagementPage /></AdminRoleGuard></ProtectedRoute>)} />
