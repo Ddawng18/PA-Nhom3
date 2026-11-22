@@ -118,7 +118,7 @@ try {
     if (requireConfirmation) {
       await page.getByRole("heading", { name: "Kiểm tra email của bạn" }).waitFor();
       assert.equal(new URL(page.url()).pathname, "/register");
-      assert.equal(await page.evaluate(key => localStorage.getItem(key) || sessionStorage.getItem(key), key), null);
+      assert.equal(await page.evaluate(key => localStorage.getItem(key) || window.sessionStorage.getItem(key), key), null);
       assert.equal(signupPayload.data.display_name, "Học viên thử");
       assert.equal(signupRedirect, origin + "/auth/callback");
       await page.getByRole("button", { name: "Gửi lại email xác nhận" }).click();

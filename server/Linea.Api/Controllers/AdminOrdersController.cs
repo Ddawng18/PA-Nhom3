@@ -15,7 +15,7 @@ public sealed class AdminOrdersController(
     AdminOrderService orders) : ControllerBase
 {
     private static readonly IReadOnlySet<string> Statuses =
-        new HashSet<string>(StringComparer.Ordinal) { "PENDING", "SUCCEEDED", "FAILED", "CANCELLED" };
+        new HashSet<string>(StringComparer.Ordinal) { "PENDING", "SUCCEEDED", "FAILED", "CANCELLED", "PAID_REVIEW" };
 
     [HttpGet]
     public async Task<IActionResult> List(

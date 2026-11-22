@@ -869,3 +869,21 @@
   .cd-invoice-dialog { position: absolute; inset: 0; width: 100%; margin: 0; border: 0; box-shadow: none; }
   .cd-invoice-actions { display: none; }
 }
+
+.cd-invoice-items dd {
+  max-width: 260px;
+}
+
+.cd-invoice-items ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: right;
+}
+
+.cd-invoice-items li {
+  font-size: 11px;
+  line-height: 1.45;
+}
