@@ -9,6 +9,8 @@ import {
   validateRejectReason,
   type ApprovalSection,
 } from "../logic/approvals";
+import { useAuth } from "../auth/useAuth";
+import { downloadTeacherCv } from "../lib/teacherProfileApi";
 import { useApprovals } from "../hooks/useApprovals";
 import AdminCourseDetails from "./AdminCourseDetails";
 import "../styles/approvals.css";
@@ -25,6 +27,7 @@ type PendingDialog = {
 const statusOptions = [
   ["CHO_DUYET", "Đang chờ duyệt"],
   ["CAN_BO_SUNG", "Cần bổ sung"],
+  ["DA_RUT", "Đã rút hồ sơ"],
   ["DA_DUYET", "Đã duyệt"],
   ["TU_CHOI", "Bị từ chối"],
 ];
@@ -195,6 +198,8 @@ function TeacherRow({
   data: ApprovalData;
   onDialog: (action: DialogAction, id: number, name: string, opener: HTMLButtonElement) => void;
 }) {
+  const { session } = useAuth();
+  const [cvError, setCvError] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const name = item.displayName?.trim() || item.email || "Giáo viên LINEA";
@@ -276,6 +281,27 @@ function TeacherRow({
                 <h3>Kinh nghiệm</h3>
                 <p>{detail.experience}</p>
               </section>
+              {detail.details && [
+                ["Lĩnh vực chuyên môn", detail.details.specialties],
+                ["Ngôn ngữ giảng dạy", detail.details.languages],
+                ["Phương pháp giảng dạy", detail.details.teachingApproach],
+              ].map(([label, value]) => value && (
+                <section key={label}><h3>{label}</h3><p>{value}</p></section>
+              ))}
+              {Boolean(detail.details?.cvTags?.length) && <section>
+                <h3>Thẻ CV</h3>
+                <ul>{detail.details?.cvTags?.map(tag => <li key={tag}>{tag}</li>)}</ul>
+              </section>}
+              {detail.hasCv && session && (
+                <section>
+                  <h3>CV</h3>
+                  <button className="appr-button appr-button-quiet" type="button" onClick={() => {
+                    setCvError("");
+                    void downloadTeacherCv(session.access_token, detail.id).catch(cause => setCvError(cause.message));
+                  }}>Tải CV PDF</button>
+                  {cvError && <p role="alert">{cvError}</p>}
+                </section>
+              )}
               {detail.rejectionReason && (
                 <section>
                   <h3>Lý do từ chối</h3>

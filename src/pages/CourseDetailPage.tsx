@@ -5,7 +5,7 @@ import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
 import CatalogCourseCard from "../components/CatalogCourseCard";
 import CourseCover from "../components/CourseCover";
-import { demoTeachers } from "../data/demoTeachers";
+import CourseArtworkGallery from "../components/CourseArtworkGallery";
 import { getCourseFeedback, getCourseOutcomes, getCourseSample } from "../data/courseProof";
 import { isDemoCourse } from "../logic/demoCourses";
 import { setPageMeta } from "../lib/seo";
@@ -191,7 +191,6 @@ export default function CourseDetailPage() {
         const sample = getCourseSample(course, chapters[0]?.bai_hoc[0]?.tieu_de);
         const outcomes = course.ket_qua?.length ? course.ket_qua : getCourseOutcomes(course);
         const sampleFeedback = course.phan_hoi_mau || getCourseFeedback(course);
-        const demoTeacher = demoTeachers.find((teacher) => teacher.name.toLocaleLowerCase("vi") === teacherName.toLocaleLowerCase("vi"));
         const primaryAction = enrolled ? (
           <Link className="cd-button cd-button-primary" to={`/courses/${courseId}/learn`}>
             {completed ? "Xem lại khóa học" : "Tiếp tục học"}
@@ -235,9 +234,7 @@ export default function CourseDetailPage() {
                     <div className="cd-instructor-copy">
                       <p className="cd-proof-label">GIẢNG VIÊN</p>
                       <strong>{teacherName}</strong>
-                      <small>{demoTeacher ? "Hồ sơ mẫu đang hiển thị trên LINEA." : "Hồ sơ giảng viên đang được hoàn thiện cho bản thử nghiệm."}</small>
                     </div>
-                    {demoTeacher && <Link className="cd-instructor-link" to={`/teachers/${demoTeacher.slug}`}>Xem hồ sơ mẫu →</Link>}
                   </div>
                 </div>
 
@@ -333,6 +330,8 @@ export default function CourseDetailPage() {
                   </div>
                 )}
               </section>
+
+              <CourseArtworkGallery teacher={state.data.anh_giang_vien} student={state.data.anh_hoc_vien} />
 
               {related.length > 0 && (
                 <section className="cd-related" aria-label="Khóa học cùng chủ đề">

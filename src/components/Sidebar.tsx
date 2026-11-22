@@ -30,6 +30,8 @@ type SidebarProps = {
   initials: string;
 };
 
+const teacherApplication = { label: "Bạn muốn làm giáo viên?", icon: PenTool, to: "/teacher/onboarding" };
+
 const studentNavigation = [
   { label: "Tổng quan", icon: LayoutDashboard, to: "/dashboard" },
   { label: "Lộ trình", icon: Compass, to: "/onboarding" },
@@ -41,7 +43,6 @@ const studentNavigation = [
   { label: "Tác phẩm", icon: FolderHeart, to: "/artworks" },
   { label: "Cộng đồng", icon: Users, to: "/community" },
   { label: "Cài đặt", icon: Settings, to: "/settings" },
-  { label: "Hồ sơ giáo viên", icon: PenTool, to: "/teacher/onboarding" },
 ];
 
 const teacherNavigation = [
@@ -50,7 +51,6 @@ const teacherNavigation = [
   { label: "Bài chờ chấm", icon: ClipboardList, to: "/teacher/submissions" },
   { label: "Học viên", icon: GraduationCap, to: "/teacher/students" },
   { label: "Tạo khóa học", icon: Sparkles, to: "/teacher/courses/new" },
-  { label: "Hồ sơ giáo viên", icon: PenTool, to: "/teacher/onboarding" },
   { label: "Cộng đồng", icon: Users, to: "/community" },
   { label: "Cài đặt", icon: Settings, to: "/settings" },
 ];
@@ -58,7 +58,6 @@ const teacherNavigation = [
 const adminNavigation = [
   { label: "Tổng quan", icon: LayoutDashboard, to: "/admin" },
   { label: "Quản trị", icon: Users, to: "/admin/manage" },
-  { label: "Hồ sơ mẫu", icon: PenTool, to: "/admin/demo-teachers" },
   { label: "Kiểm duyệt cộng đồng", icon: ShieldAlert, to: "/admin/community" },
   { label: "Cộng đồng", icon: Users, to: "/community" },
   { label: "Cài đặt", icon: Settings, to: "/settings" },
@@ -133,7 +132,7 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
     ? adminNavigation
     : role === "teacher"
       ? teacherNavigation
-      : studentNavigation;
+      : role === "student" ? [...studentNavigation, teacherApplication] : studentNavigation;
   const homePath = role ? dashboardByRole[role] : "/";
   const navigationLinks = (afterSelect?: () => void) => navigationItems.map(({ label, icon: Icon, to }) => (
     <NavLink className={({ isActive }) => `settings-nav-item${isActive ? " active" : ""}`}

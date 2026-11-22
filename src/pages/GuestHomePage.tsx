@@ -3,23 +3,19 @@ import { BookOpen, ClipboardCheck, GraduationCap, Palette, TrendingUp, Users } f
 import { Link } from "react-router-dom";
 import CatalogCourseCard from "../components/CatalogCourseCard";
 import PublicHeader from "../components/PublicHeader";
-import TeacherShowcase from "../components/TeacherShowcase";
-import { useDemoTeachers } from "../hooks/useDemoTeachers";
 import { listCatalogCourses, type CatalogCourse } from "../lib/catalogApi";
 import { setPageMeta } from "../lib/seo";
 import { parseCatalogQuery } from "../logic/catalog";
 import "../styles/guest-home.css";
 
 export default function GuestHomePage() {
-  const demoTeachers = useDemoTeachers();
   const [featured, setFeatured] = useState<CatalogCourse[] | null>(null);
   const [featuredError, setFeaturedError] = useState(false);
-  const feedbackTeacher = demoTeachers[0];
 
   useEffect(() => {
     setPageMeta({
       title: "LINEA · Học vẽ theo cách của bạn",
-      description: "Lộ trình học vẽ, studio luyện tập, phản hồi bài tập và hồ sơ giảng viên mẫu trong một không gian học tập.",
+      description: "Lộ trình học vẽ, studio luyện tập và phản hồi bài tập trong một không gian học tập.",
     });
   }, []);
 
@@ -75,11 +71,10 @@ export default function GuestHomePage() {
               <li><span>03</span><div><h3>Nhận phản hồi</h3><p>Đọc nhận xét theo bài, rồi áp dụng vào lần vẽ tiếp theo.</p></div></li>
             </ol>
             <blockquote className="guest-feedback-quote">
-              {feedbackTeacher?.feedbackExample ?? "“Bố cục đã rõ. Hãy chọn một điểm nhấn duy nhất và giảm chi tiết ở vùng phụ.”"}
+              Bố cục đã rõ. Hãy chọn một điểm nhấn duy nhất và giảm chi tiết ở vùng phụ.
             </blockquote>
             <p className="guest-feedback-source">
-              Ví dụ phản hồi từ <Link to="/teachers/nmratist">hồ sơ mẫu NmRAtist</Link>. Đây là dữ liệu minh họa,
-              không phải đánh giá bài nộp thật.
+              Ví dụ nhận xét bài vẽ
             </p>
           </div>
         </section>
@@ -145,7 +140,6 @@ export default function GuestHomePage() {
           </ul>
         </section>
 
-        <TeacherShowcase />
 
         <section className="guest-steps" aria-labelledby="guest-steps-title">
           <p className="guest-section-label">CÁCH HỌC</p>

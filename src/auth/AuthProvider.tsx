@@ -94,6 +94,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     },
     signUpWithEmail: async ({ email, password, displayName }) => {
       if (!supabase) return unavailable();
+      const confirmEmail = await authClient.getEmailConfirmationRequired();
+      if (confirmEmail !== true) {
+        return { error: "Đăng ký đang tạm dừng vì chưa kiểm tra được chế độ xác nhận email. Vui lòng thử lại sau." };
+      }
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -102,10 +106,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
-      return {
-        error: error ? getAuthErrorMessage(error.message) : null,
-        needsEmailConfirmation: !error && !data.session,
-      };
+      if (error) return { error: getAuthErrorMessage(error.message, error.code) };
+      if (data.session) {
+        await supabase.auth.signOut({ scope: "local" });
+        return { error: "Cấu hình xác nhận email vừa thay đổi. Vui lòng liên hệ hỗ trợ." };
+      }
+      return { error: null };
     },
     resendConfirmation: async (email) => {
       if (!supabase) return unavailable();
@@ -114,14 +120,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         email,
         options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
-      return { error: error ? getAuthErrorMessage(error.message) : null };
+      return { error: error ? getAuthErrorMessage(error.message, error.code) : null };
     },
     resetPassword: async (email) => {
       if (!supabase) return unavailable();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
-      return { error: error ? getAuthErrorMessage(error.message) : null };
+      return { error: error ? getAuthErrorMessage(error.message, error.code) : null };
     },
     updatePassword: async (newPassword) => {
       if (!supabase) return unavailable();

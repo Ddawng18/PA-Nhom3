@@ -284,6 +284,7 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
             ("teacher profile endpoints require authentication and a student role", TeacherProfileAuthGuardAsync),
             ("student submits a teacher profile and remains a student", StudentSubmitsTeacherProfileAsync),
             ("pending teacher profile blocks resubmission", PendingProfileBlocksResubmissionAsync),
+            ("student withdraws a pending teacher profile and resubmits it", WithdrawPendingTeacherProfileAsync),
             ("admin approves a teacher profile and promotes the account", AdminApprovesTeacherProfileAsync),
             ("admin rejects a teacher profile and the student resubmits", AdminRejectsAndStudentResubmitsAsync),
             ("admin requests changes and the student resubmits", AdminRequestsChangesAndStudentResubmitsAsync),
@@ -934,6 +935,38 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
             $"expected 409 for rejecting an approved profile, got {(int)rejectApprovedStatus}: {rejectApprovedBody}");
     }
 
+    private async Task WithdrawPendingTeacherProfileAsync()
+    {
+        var student = await RegisterStudentAsync("teacher-withdraw");
+        var (uploaded, uploadBody) = await UploadPortfolioAsync(student.Token, TinyPng, "art.png", "image/png");
+        Expect(uploaded == HttpStatusCode.Created, $"upload failed: {uploadBody}");
+        using var uploadJson = JsonDocument.Parse(uploadBody);
+        var path = GetString(uploadJson.RootElement, "filePath");
+        var introduction = new string('A', 60);
+        var experience = new string('B', 20);
+        var (submitted, submitBody) = await SubmitProfileAsync(student.Token, introduction, experience, [path]);
+        Expect(submitted == HttpStatusCode.Accepted, $"submission failed: {submitBody}");
+        using var submitJson = JsonDocument.Parse(submitBody);
+        var id = submitJson.RootElement.GetProperty("id").GetInt64();
+
+        var (withdrawn, withdrawBody) = await SendAsync(
+            HttpMethod.Post, "/api/teacher/profile/me/withdraw", token: student.Token);
+        Expect(withdrawn == HttpStatusCode.NoContent, $"withdrawal failed: {withdrawBody}");
+        var (approved, _) = await SendAsync(
+            HttpMethod.Post, $"/api/admin/teacher-profiles/{id}/approve", token: _adminToken);
+        Expect(approved == HttpStatusCode.Conflict, "a withdrawn profile can still be approved");
+
+        var (read, body) = await SendAsync(HttpMethod.Get, "/api/teacher/profile/me", token: student.Token);
+        Expect(read == HttpStatusCode.OK, $"withdrawn profile could not be read: {body}");
+        using var json = JsonDocument.Parse(body);
+        Expect(GetString(json.RootElement, "status") == "DA_RUT", "withdrawal status was not saved");
+        Expect(GetString(json.RootElement, "introduction") == introduction, "withdrawal lost the introduction");
+        Expect(json.RootElement.GetProperty("portfolioFiles").GetArrayLength() == 1, "withdrawal lost the portfolio");
+
+        var (resubmitted, response) = await SubmitProfileAsync(student.Token, introduction + " revised", experience, [path]);
+        Expect(resubmitted == HttpStatusCode.Accepted, $"withdrawn profile could not be resubmitted: {response}");
+    }
+
     private async Task AdminRejectsAndStudentResubmitsAsync()
     {
         var student = await RegisterStudentAsync("teacher-reject");
@@ -1032,6 +1065,10 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
                 "rejection promoted the account");
         }
 
+        var (withdrawStatus, withdrawBody) = await SendAsync(
+            HttpMethod.Post, "/api/teacher/profile/me/withdraw", token: student.Token);
+        Expect(withdrawStatus == HttpStatusCode.NoContent, $"rejected profile withdrawal failed: {withdrawBody}");
+
         var emailBeforeResubmit = EmailCount();
         var (resubmitStatus, resubmitBody) = await SubmitProfileAsync(
             student.Token,
@@ -1051,8 +1088,8 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
         Expect(string.IsNullOrEmpty(GetString(afterJson.RootElement, "rejectionReason")),
             "resubmission did not clear the current rejection reason");
         var history = afterJson.RootElement.GetProperty("history");
-        Expect(history.GetArrayLength() == 3,
-            $"expected 3 history entries, got {history.GetArrayLength()}");
+        Expect(history.GetArrayLength() == 4,
+            $"expected 4 history entries, got {history.GetArrayLength()}");
         Expect(history.EnumerateArray().Any(entry => GetString(entry, "reason") == reason),
             "old rejection reason was not preserved in history");
     }

@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Linea.Api.Controllers;
 
 [ApiController, Route("api/courses/{courseId:long}/editor"), Authorize]
-public sealed class CourseEditorController(AppDbContext db) : ControllerBase
+public sealed class CourseEditorController(AppDbContext db, IConfiguration configuration) : ControllerBase
 {
     public sealed record EditorRequest(
         List<ChapterRequest> Chapters,
@@ -20,7 +20,10 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
         List<AttachmentRequest> Attachments,
         List<RubricRequest> Rubrics,
         string ExpectedVersion,
-        SaveLearningCourseRequest? CourseInfo = null);
+        SaveLearningCourseRequest? CourseInfo = null,
+        ArtworkRequest? Artwork = null);
+
+    public sealed record ArtworkRequest(List<string> Teacher, List<string> Student);
 
     public sealed record ChapterRequest(long? Id, string Title, int Order);
     public sealed record LessonRequest(long? Id, long? ChapterId, string Title, int Order, string? TextContent,
@@ -38,7 +41,10 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
         // Administrators can inspect course content for moderation. Writes below
         // still require the current user to own the draft.
         var isAdmin = User.IsAdmin();
-        if (!await db.LearningCourses.AnyAsync(x => x.Id == courseId && (x.TeacherId == userId || isAdmin), ct)) return NotFound();
+        var artwork = await db.LearningCourses.AsNoTracking()
+            .Where(x => x.Id == courseId && (x.TeacherId == userId || isAdmin))
+            .Select(x => new { x.TeacherArtwork, x.StudentArtwork }).SingleOrDefaultAsync(ct);
+        if (artwork is null) return NotFound();
         var chapters = await db.CourseChapters.AsNoTracking().Where(x => x.CourseId == courseId).OrderBy(x => x.Order).ToListAsync(ct);
         var chapterIds = chapters.Select(x => x.Id).ToList();
         var lessons = await db.CourseLessons.AsNoTracking().Where(x => chapterIds.Contains(x.ChapterId)).OrderBy(x => x.Order).ToListAsync(ct);
@@ -51,6 +57,8 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
         await tx.CommitAsync(ct);
         return Ok(new {
             version,
+            anh_giang_vien = artwork.TeacherArtwork,
+            anh_hoc_vien = artwork.StudentArtwork,
             chapters = chapters.Select(x => new { ma_chuong = x.Id, ma_khoa_hoc = x.CourseId, tieu_de = x.Title, thu_tu = x.Order }),
             lessons = lessons.Select(x => new { ma_bai_hoc = x.Id, ma_chuong = x.ChapterId, tieu_de = x.Title, thu_tu = x.Order,
                 noi_dung_van_ban = x.TextContent, duong_dan_anh = x.ImagePath, lien_ket_video = x.VideoUrl, bat_buoc = x.Required }),
@@ -133,6 +141,18 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
         var currentVersion = await ComputeVersion(courseId, ct);
         if (!string.Equals(request.ExpectedVersion, currentVersion, StringComparison.Ordinal))
             return Conflict(new { detail = "Nội dung đã thay đổi. Tải lại trước khi lưu.", code = "EDITOR_VERSION_CONFLICT" });
+        if (request.Artwork is { } gallery)
+        {
+            var existingArtwork = course.TeacherArtwork.Concat(course.StudentArtwork).ToHashSet(StringComparer.Ordinal);
+            bool IsValid(List<string>? images) => images is not null && images.Count <= 5 &&
+                images.Distinct(StringComparer.Ordinal).Count() == images.Count &&
+                images.All(url => !string.IsNullOrWhiteSpace(url) && url.Length <= 500 &&
+                    (existingArtwork.Contains(url) || CourseMediaController.IsCourseArtworkUrl(configuration, courseId, url)));
+            if (!IsValid(gallery.Teacher) || !IsValid(gallery.Student))
+                return BadRequest(new { code = "INVALID_COURSE_ARTWORK", detail = "Mỗi nhóm được chọn tối đa 5 ảnh đã tải lên cho khóa học này." });
+            course.TeacherArtwork = gallery.Teacher;
+            course.StudentArtwork = gallery.Student;
+        }
         if (request.CourseInfo is { } courseInfo)
         {
             var normalizedTitle = courseInfo.Title.Trim().ToLowerInvariant();
@@ -233,16 +253,17 @@ public sealed class CourseEditorController(AppDbContext db) : ControllerBase
         return Ok(new { courseId, chapters = chapters.Count, lessons = lessons.Count,
             chapterIds = request.Chapters.Select(x => chapters[x.Id!.Value].Id).ToArray(),
             lessonIds = request.Lessons.Select(x => lessons[x.Id!.Value].Id).ToArray(),
-            assignmentIds = request.Assignments.Select(x => assignments[x.Id!.Value].Id).ToArray(), version });
+            assignmentIds = request.Assignments.Select(x => assignments[x.Id!.Value].Id).ToArray(),
+            artworkSaved = request.Artwork is not null, version });
     }
 
     private async Task<string> ComputeVersion(long courseId, CancellationToken ct)
     {
         var infoRows = await db.LearningCourses.AsNoTracking().Where(item => item.Id == courseId)
             .Select(item => new { item.Id, item.Title, item.Description, item.Level, item.Topic, item.CoverImage,
-                item.PriceVnd, item.Status, item.CoverStyle, item.Outcomes, item.SampleFeedback }).ToListAsync(ct);
+                item.PriceVnd, item.Status, item.CoverStyle, item.Outcomes, item.SampleFeedback, item.TeacherArtwork, item.StudentArtwork }).ToListAsync(ct);
         var info = infoRows.Select(item =>
-            $"{item.Id}|{item.Title}|{item.Description}|{item.Level}|{item.Topic}|{item.CoverImage}|{item.PriceVnd}|{item.Status}|{item.CoverStyle}|{string.Join(",", item.Outcomes)}|{item.SampleFeedback}").ToList();
+            $"{item.Id}|{item.Title}|{item.Description}|{item.Level}|{item.Topic}|{item.CoverImage}|{item.PriceVnd}|{item.Status}|{item.CoverStyle}|{string.Join(",", item.Outcomes)}|{item.SampleFeedback}|{string.Join(",", item.TeacherArtwork)}|{string.Join(",", item.StudentArtwork)}").ToList();
         var chapters = await db.CourseChapters.AsNoTracking().Where(item => item.CourseId == courseId)
             .OrderBy(item => item.Id).Select(item => $"{item.Id}|{item.Title}|{item.Order}").ToListAsync(ct);
         var lessons = await (from lesson in db.CourseLessons.AsNoTracking()
