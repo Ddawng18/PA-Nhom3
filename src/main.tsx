@@ -45,6 +45,7 @@ const TeacherSubmissionsQueuePage = lazy(() => import("./pages/TeacherSubmission
 const TeacherStudentsPage = lazy(() => import("./pages/TeacherStudentsPage"));
 const TeacherProfilePage = lazy(() => import("./pages/TeacherProfilePage"));
 const PricingFaqPage = lazy(() => import("./pages/PricingFaqPage"));
+const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
 
 function RouteFallback() {
   return <div className="route-fallback" role="status" aria-live="polite">Đang tải trang…</div>;
@@ -86,6 +87,14 @@ const router = createBrowserRouter(createRoutesFromElements(
             element={
               <ProtectedRoute>
                 <StudentRoleGuard><DashboardPage /></StudentRoleGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/onboarding"
+            element={
+              <ProtectedRoute>
+                <StudentRoleGuard><OnboardingPage /></StudentRoleGuard>
               </ProtectedRoute>
             }
           />
