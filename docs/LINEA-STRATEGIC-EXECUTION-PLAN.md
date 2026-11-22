@@ -372,6 +372,17 @@ M3 evidence and blockers: `docs/operations/PHASE-3-EVIDENCE.md` (22/11/2026).
 - [ ] Visitor → signup 5–7%; activated → paid pilot 3–5%; refund <5%.
 - [ ] Email lifecycle live and measured.
 
+**Implementation status (22/11/2026)**
+
+- [x] Existing single-course checkout covers DEMO, VNPAY sandbox and ZaloPay sandbox with entitlement on verified payment.
+- [x] Payment sandbox protocol suite: **28/28 checks pass**.
+- [x] SEO for course, teacher and pricing pages is live.
+- [x] Printable receipt/invoice is available from successful orders.
+- [ ] Refund is not implemented; the order status model has no refunded state.
+- [ ] Email lifecycle is not implemented or measured.
+- [ ] Paid-pilot conversion/refund metrics and creator clip/referral programs remain open.
+- [ ] Live sandbox checkout still needs a deployed backend and a test student account.
+
 ---
 
 ### P5 — Optimise
