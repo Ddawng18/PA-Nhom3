@@ -413,12 +413,6 @@
   font-size: 14px;
 }
 
-.cd-teacher-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
 .cd-instructor {
   display: flex;
   align-items: center;

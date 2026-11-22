@@ -57,6 +57,7 @@ builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddSingleton<SignedUrlService>();
 builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+builder.Services.AddScoped<LifecycleEmailService>();
 builder.Services.AddSingleton<IPortfolioStorage>(services =>
 {
     var configuration = services.GetRequiredService<IConfiguration>();

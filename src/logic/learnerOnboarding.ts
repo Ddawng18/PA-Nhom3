@@ -63,7 +63,3 @@ export function saveLearnerProfile(userId: string, profile: Omit<LearnerProfile,
     return false;
   }
 }
-
-export function getLevelLabel(level: LearnerLevel) {
-  return learnerLevels.find((item) => item.value === level)?.label ?? "Mới bắt đầu";
-}
