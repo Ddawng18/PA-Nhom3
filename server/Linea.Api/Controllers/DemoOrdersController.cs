@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Globalization;
 using System.Net;
 using Linea.Api.Data;
@@ -35,6 +36,7 @@ public sealed partial class DemoOrdersController(
         public string PaymentProvider { get; set; } = "DEMO";
         public string? ProviderTransactionId { get; set; }
         public string? PaymentUrl { get; set; }
+        [NotMapped]
         public List<OrderItemDto> Items { get; set; } = [];
     }
 
