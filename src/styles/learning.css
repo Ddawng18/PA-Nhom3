@@ -90,3 +90,99 @@
   .lesson-detail-layout { grid-template-columns: minmax(0, 1fr); }
   .lesson-detail-side { position: static; }
 }
+
+.assignment-deadline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  color: #62705f;
+  font-size: 12px;
+}
+
+.assignment-deadline strong {
+  color: #315a3b;
+  font-weight: 700;
+}
+
+.assignment-deadline.is-overdue,
+.assignment-deadline.is-overdue strong {
+  color: #a12626;
+}
+
+.assignment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+.assignment-studio-link {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid #dbe8d0;
+  border-radius: 999px;
+  background: #fffefa;
+  color: #315a3b;
+  font-size: 11px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.assignment-studio-link:hover {
+  background: #f2f8ea;
+}
+
+.lesson-completion-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 13px 15px;
+  border: 1px solid #cfe2c0;
+  border-radius: 12px;
+  background: #f2f9ea;
+  color: #315a3b;
+}
+
+.lesson-completion-notice > svg {
+  flex: 0 0 auto;
+}
+
+.lesson-completion-notice > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.lesson-completion-notice strong {
+  display: block;
+  font-size: 12px;
+}
+
+.lesson-completion-notice p {
+  margin: 2px 0 0;
+  color: #6b7b69;
+  font-size: 10px;
+}
+
+.lesson-completion-notice .button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding-inline: 12px;
+  font-size: 10px;
+}
+
+@media (max-width: 680px) {
+  .lesson-completion-notice {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .lesson-completion-notice .button {
+    width: 100%;
+  }
+}

@@ -115,4 +115,4 @@ This snapshot is a database baseline, not a substitute for firing funnel events.
    enable Google login.
 4. Confirm Supabase backup status and resolve the three remote-only migration versions.
 
-No Phase 1 scope has been started because the plan forbids starting it before M0 passes.
+P1 and P2 were subsequently authorised by the owner while these M0 evidence items remain open.

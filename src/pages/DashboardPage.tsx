@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
-import { ArrowRight, Bell, BookOpen, CheckCircle2, ClipboardList, Compass, Hourglass, Palette } from "lucide-react";
+﻿import { useEffect, useState } from "react";
+import { ArrowRight, Bell, BookOpen, CheckCircle2, ClipboardList, Compass, Hourglass, Palette, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import Sidebar from "../components/Sidebar";
 import ConstructionSketch from "../components/ConstructionSketch";
+import { loadDashboardSnapshot, saveDashboardSnapshot } from "../lib/dashboardCache";
 import { loadAssignments, loadMyCourses, learningError, type LearnerAssignment, type MyCourse } from "../lib/learningApi";
 import { getDisplayName, getInitials } from "../lib/userDisplay";
 import { getDeadlineLabel } from "../logic/dashboard";
+import { loadLearnerProfile } from "../logic/learnerOnboarding";
 import "../styles/settings.css";
 import "../styles/overview.css";
 
@@ -17,19 +19,58 @@ export default function DashboardPage() {
   const [courses, setCourses] = useState<Result<MyCourse[]>>({ status: "loading" });
   const [assignments, setAssignments] = useState<Result<LearnerAssignment[]>>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [stale, setStale] = useState(false);
+  const [notice, setNotice] = useState("");
   const token = session?.access_token;
+  const userId = user?.id;
   useEffect(() => {
-    if (!token) return;
+    if (!token || !userId) return;
     const controller = new AbortController();
-    setCourses({ status: "loading" }); setAssignments({ status: "loading" });
-    void loadMyCourses(token, controller.signal)
-      .then(data => { if (!controller.signal.aborted) setCourses({ status: "success", data }); })
-      .catch(error => { if (!controller.signal.aborted) setCourses({ status: "error", message: learningError(error) }); });
-    void loadAssignments(token, undefined, controller.signal)
-      .then(data => { if (!controller.signal.aborted) setAssignments({ status: "success", data }); })
-      .catch(error => { if (!controller.signal.aborted) setAssignments({ status: "error", message: learningError(error) }); });
-    return () => controller.abort();
-  }, [token, user?.id, attempt]);
+    const cached = loadDashboardSnapshot(userId);
+    if (cached) {
+      setCourses({ status: "success", data: cached.courses });
+      setAssignments({ status: "success", data: cached.assignments });
+      setStale(true);
+      setNotice("Đang hiển thị dữ liệu lưu gần nhất trong khi làm mới.");
+    } else {
+      setCourses({ status: "loading" });
+      setAssignments({ status: "loading" });
+      setStale(false);
+      setNotice("");
+    }
+    let timedOut = false;
+    const timer = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 8000);
+    void Promise.all([
+      loadMyCourses(token, controller.signal),
+      loadAssignments(token, undefined, controller.signal),
+    ]).then(([courseData, assignmentData]) => {
+      if (controller.signal.aborted) return;
+      setCourses({ status: "success", data: courseData });
+      setAssignments({ status: "success", data: assignmentData });
+      saveDashboardSnapshot(userId, courseData, assignmentData);
+      setStale(false);
+      setNotice("");
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted && !timedOut) return;
+      if (cached) {
+        setCourses({ status: "success", data: cached.courses });
+        setAssignments({ status: "success", data: cached.assignments });
+        setStale(true);
+        setNotice("Kết nối đang chậm. Đang hiển thị dữ liệu lưu gần nhất.");
+      } else {
+        const message = timedOut ? "Máy chủ phản hồi chậm. Vui lòng thử lại." : learningError(error);
+        setCourses({ status: "error", message });
+        setAssignments({ status: "error", message });
+      }
+    }).finally(() => window.clearTimeout(timer));
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [token, userId, attempt]);
   if (!user) return null;
   const name = getDisplayName(user);
   const courseItems = courses.status === "success" ? courses.data : [];
@@ -42,6 +83,12 @@ export default function DashboardPage() {
   const pending = workItems.filter(a => !a.submission).sort((a, b) => (a.deadline ? Date.parse(a.deadline) : Infinity) - (b.deadline ? Date.parse(b.deadline) : Infinity));
   const reviewed = workItems.filter(a => a.submission?.grade).sort((a, b) => Date.parse(b.submission!.grade!.gradedAt) - Date.parse(a.submission!.grade!.gradedAt)).slice(0, 2);
   const waiting = workItems.filter(a => a.submission && !a.submission.grade).length;
+  const hasProfile = Boolean(user && loadLearnerProfile(user.id));
+  const nextAction = pending[0]
+    ? { eyebrow: "SẮP TỚI HẠN", label: pending[0].lessonTitle, detail: pending[0].deadline ? `Hạn ${new Date(pending[0].deadline).toLocaleDateString("vi-VN")}` : "Chưa có hạn nộp", to: `/courses/${pending[0].courseId}/learn/${pending[0].lessonId}` }
+    : featured
+      ? { eyebrow: "TIẾP TỤC LỘ TRÌNH", label: featured.title, detail: `${featured.percent}% · ${featured.completedLessons}/${featured.totalLessons} bài`, to: `/courses/${featured.id}/learn` }
+      : { eyebrow: "BẮT ĐẦU", label: "Chọn khóa học đầu tiên", detail: "Khám phá các khóa đang mở", to: "/courses" };
   const error = courses.status === "error" || assignments.status === "error";
   const value = (state: Result<unknown>, n: number) => state.status === "loading" ? "…" : state.status === "error" ? "—" : String(n);
 
@@ -56,10 +103,20 @@ export default function DashboardPage() {
         <Link to="/progress" className="overview-stat"><span className="overview-stat-icon"><CheckCircle2 size={20} aria-hidden="true" /></span><span><strong>{value(courses, finished.length)}</strong><small>Khóa hoàn thành</small></span><ArrowRight className="overview-stat-arrow" size={17} aria-hidden="true" /></Link>
       </section>
       </div>
+      {!hasProfile && <section className="overview-onboarding-prompt" aria-labelledby="overview-onboarding-title">
+        <span className="overview-onboarding-icon"><Sparkles size={20} aria-hidden="true" /></span>
+        <div><h2 id="overview-onboarding-title">Thiết lập lộ trình đầu tiên</h2><p>Chọn mục tiêu, trình độ và thời gian luyện tập để nhận bài học gợi ý.</p></div>
+        <Link to="/onboarding">Thiết lập ngay <ArrowRight size={15} aria-hidden="true" /></Link>
+      </section>}
+      <section className="overview-next" aria-labelledby="overview-next-title">
+        <p className="overview-next-eyebrow" id="overview-next-title">VIỆC NÊN LÀM TIẾP THEO · {nextAction.eyebrow}</p>
+        <Link className="overview-next-link" to={nextAction.to}><span><strong>{nextAction.label}</strong><small>{nextAction.detail}</small></span><ArrowRight size={18} aria-hidden="true" /></Link>
+      </section>
+      {stale && notice && <div className="overview-alert overview-alert-cached" role="status"><span>{notice}</span><button type="button" onClick={() => setAttempt(n => n + 1)}>Làm mới</button></div>}
       {error && <div className="overview-alert" role="alert"><span>Một phần dữ liệu chưa tải được. {courses.status === "error" ? courses.message : assignments.status === "error" ? assignments.message : ""}</span><button type="button" onClick={() => setAttempt(n => n + 1)}>Thử lại</button></div>}
       <div className="overview-grid"><div className="overview-primary">
         {courses.status === "loading" || courses.status === "error" || !featured ? <section className="overview-panel" aria-labelledby="overview-courses"><div className="overview-section-head"><div><h2 id="overview-courses">Tiếp tục học</h2></div><Link to="/my-courses">Tất cả khóa học <ArrowRight size={16} aria-hidden="true" /></Link></div>
-          {courses.status === "loading" ? <p className="overview-empty" role="status">Đang tải khóa học...</p> : courses.status === "error" ? <p className="overview-empty">Chưa thể hiển thị khóa học.</p> : <div className="overview-empty"><p>{active.length ? "Khóa học của bạn hiện chưa khả dụng." : "Bạn chưa có khóa học đang học."}</p><Link className="overview-button" to="/courses">Khám phá khóa học <ArrowRight size={16} aria-hidden="true" /></Link></div>}
+          {courses.status === "loading" ? <div className="overview-skeleton" role="status" aria-label="Đang tải khóa học"><span /><span /><span /></div> : courses.status === "error" ? <p className="overview-empty">Chưa thể hiển thị khóa học.</p> : <div className="overview-empty"><p>{active.length ? "Khóa học của bạn hiện chưa khả dụng." : "Bạn chưa có khóa học đang học."}</p><Link className="overview-button" to="/courses">Khám phá khóa học <ArrowRight size={16} aria-hidden="true" /></Link></div>}
           </section> : <section className="overview-featured" aria-labelledby="overview-courses">
           <div className="overview-featured-top"><h2 id="overview-courses">Tiếp tục học</h2><Link className="overview-featured-all" to="/my-courses">Tất cả khóa học <ArrowRight size={16} aria-hidden="true" /></Link></div>
           <h3>{featured.title}</h3>

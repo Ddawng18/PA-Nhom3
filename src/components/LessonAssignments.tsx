@@ -1,8 +1,10 @@
-import Button from "./ui/Button";
+﻿import Button from "./ui/Button";
 import FormField from "./ui/FormField";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { learningError, loadAssignments, submitAssignment, type LearnerAssignment } from "../lib/learningApi";
 import SubmissionImage from "./SubmissionImage";
+import { getDeadlineLabel } from "../logic/dashboard";
 
 export function AssignmentCard({ assignment, token, onSaved }: { assignment: LearnerAssignment; token: string; onSaved: () => void }) {
   const [file, setFile] = useState<File | null>(null);
@@ -16,6 +18,7 @@ export function AssignmentCard({ assignment, token, onSaved }: { assignment: Lea
     return () => URL.revokeObjectURL(url);
   }, [file]);
   const deadlinePassed = Boolean(assignment.deadline && Date.parse(assignment.deadline) < Date.now());
+  const deadlineLabel = assignment.deadline ? getDeadlineLabel(assignment.deadline, new Date()) : "Không có hạn nộp";
   const graded = assignment.submission?.grade;
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -33,14 +36,14 @@ export function AssignmentCard({ assignment, token, onSaved }: { assignment: Lea
   return <article className="settings-card assignment-card">
     <h3>Bài tập #{assignment.id} {assignment.required ? "· Bắt buộc" : "· Tự chọn"}</h3>
     <p className="learning-text">{assignment.prompt}</p>
-    <p>{assignment.deadline ? `Hạn nộp: ${new Date(assignment.deadline).toLocaleString("vi-VN")}` : "Không giới hạn hạn nộp"}</p>
+    <p className={`assignment-deadline${deadlinePassed ? " is-overdue" : ""}`}><strong>{deadlineLabel}</strong>{assignment.deadline && <span> · {new Date(assignment.deadline).toLocaleString("vi-VN")}</span>}</p>
     {assignment.submission && <><p>Đã nộp: {new Date(assignment.submission.updatedAt).toLocaleString("vi-VN")} · {graded ? "Đã chấm" : "Chờ chấm"}</p>
       <SubmissionImage key={`${assignment.submission.id}:${assignment.submission.updatedAt}`} token={token} id={assignment.submission.id} /></>}
     {graded ? <section aria-label="Kết quả chấm"><h4>Điểm: {graded.score}/10</h4><p className="learning-text">{graded.feedback}</p><p>Chấm lúc {new Date(graded.gradedAt).toLocaleString("vi-VN")}</p></section>
       : deadlinePassed ? <p>Đã hết hạn nộp bài.</p> : <form onSubmit={e => void submit(e)}>
         <FormField id={`lesson-file-${assignment.id}`} label="Ảnh bài tập (JPG/PNG/WEBP, tối đa 10 MB)" required><input id={`lesson-file-${assignment.id}`} type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} required onChange={e => { setFile(e.target.files?.[0] ?? null); setError(""); setMessage(""); }} /></FormField>
         {preview && <img className="assignment-preview" src={preview} alt="Ảnh đã chọn để nộp" />}
-        <Button type="submit" disabled={busy || !file}>{busy ? "Đang nộp..." : assignment.submission ? "Nộp lại ảnh" : "Nộp bài"}</Button>
+        <div className="assignment-actions"><Button type="submit" disabled={busy || !file}>{busy ? "Đang nộp..." : assignment.submission ? "Nộp lại ảnh" : "Nộp bài"}</Button><Link className="assignment-studio-link" to={`/studio?assignmentId=${assignment.id}&courseId=${assignment.courseId}&lessonId=${assignment.lessonId}`}>Vẽ trong Studio</Link></div>
         <p>Có thể thay ảnh trước hạn, khi giáo viên chưa chấm.</p>
       </form>}
     {error && <p className="settings-error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}
