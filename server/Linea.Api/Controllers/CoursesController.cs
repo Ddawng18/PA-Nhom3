@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Linea.Api.Controllers;
 
 [ApiController, Route("api/courses")]
-public sealed class CoursesController(AppDbContext db, LearningProgressService progressService) : ControllerBase
+public sealed class CoursesController(AppDbContext db, LearningProgressService progressService, LifecycleEmailService lifecycle) : ControllerBase
 {
     [HttpGet("mine"), Authorize]
     public async Task<IActionResult> Mine(CancellationToken ct)
@@ -200,16 +200,17 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
         var enrolled = await db.CourseEnrollments
             .SingleOrDefaultAsync(item => item.CourseId == courseId && item.UserId == userId && (item.Status == "DANG_HOC" || item.Status == "HOAN_THANH"), cancellationToken);
         if (enrolled is null) return Forbid();
-        var lessonBelongs = await (
+        var lessonTitle = await (
             from item in db.CourseLessons
             join chapter in db.CourseChapters on item.ChapterId equals chapter.Id
             where item.Id == lessonId && chapter.CourseId == courseId
-            select item.Id).AnyAsync(cancellationToken);
-        if (!lessonBelongs) return NotFound();
+            select item.Title).SingleOrDefaultAsync(cancellationToken);
+        if (lessonTitle is null) return NotFound();
 
         var now = DateTimeOffset.UtcNow;
         var progress = await db.LessonProgress
             .SingleOrDefaultAsync(item => item.UserId == userId && item.LessonId == lessonId, cancellationToken);
+        var wasCompleted = progress?.Status == "DA_HOAN_THANH";
         if (progress is null)
         {
             db.LessonProgress.Add(new LessonProgress {
@@ -228,6 +229,8 @@ public sealed class CoursesController(AppDbContext db, LearningProgressService p
 
         await progressService.RefreshAsync(userId, courseId, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        if (!wasCompleted && request.Status == "DA_HOAN_THANH")
+            await lifecycle.SendFirstLessonAsync(userId, lessonId, lessonTitle, cancellationToken);
         return Ok(new { ma_bai_hoc = lessonId, trang_thai = progress?.Status ?? request.Status });
     }
 
