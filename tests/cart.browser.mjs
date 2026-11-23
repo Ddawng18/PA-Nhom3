@@ -53,9 +53,10 @@ try {
   await page.getByRole("link", { name: /Giỏ hàng, 1 khóa học/ }).click();
   await page.getByRole("heading", { name: "Khóa học của bạn" }).waitFor();
   await page.getByText("Màu kỹ thuật số cho minh họa").waitFor();
-  await page.getByRole("button", { name: "Đăng nhập để thanh toán" }).waitFor();
+  await page.getByRole("button", { name: "Đăng nhập để ghi danh" }).waitFor();
+  await page.getByText("Cơ bản", { exact: true }).waitFor();
 
-  await page.getByRole("button", { name: "Đăng nhập để thanh toán" }).click();
+  await page.getByRole("button", { name: "Đăng nhập để ghi danh" }).click();
   await page.waitForURL(/\/login$/);
   assert.equal(new URL(page.url()).pathname, "/login");
 

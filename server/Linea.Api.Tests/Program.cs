@@ -292,6 +292,7 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
             ("signed portfolio URLs serve images and reject tampering", SignedPortfolioUrlsAsync),
             ("Supabase storage builds upload, validation and signed URL requests", SupabaseStorageRequestsAsync),
             ("portfolio upload rejects invalid type and oversized files", PortfolioUploadValidationAsync),
+            ("catalog search normalizes Vietnamese before filtering and pagination", CatalogSearchAsync),
             ("course API enforces ownership, validation and draft privacy", CourseAccessAsync),
             ("course review updates canonical data, history and notifications atomically", CourseWorkflowAsync),
             ("D05 progress completes after required submission without grading", ProgressD05Async)
@@ -1507,6 +1508,42 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
         tieu_de = title, mo_ta = new string('A', 60), cap_do = "CO_BAN", chu_de = "Digital Art",
         anh_dai_dien = "", ma_giao_vien = Guid.NewGuid(), trang_thai = "DA_DANG"
     };
+
+    private async Task CatalogSearchAsync()
+    {
+        await using var db = CreateDb();
+        var topic = $"qa-search-{Guid.NewGuid():N}";
+        var courses = new[]
+        {
+            new LearningCourse { TeacherId = _firstTeacherStudentId, Title = "Minh họa đường nét", Topic = topic, Status = "DA_DANG" },
+            new LearningCourse { TeacherId = _firstTeacherStudentId, Title = "MINH   HỌA ĐƯỜNG NÉT".Normalize(NormalizationForm.FormD), Topic = topic, Status = "DA_DANG" },
+            new LearningCourse { TeacherId = _firstTeacherStudentId, Title = "Minh họa đường nét nháp", Topic = topic, Status = "NHAP" },
+        };
+        db.LearningCourses.AddRange(courses);
+        await db.SaveChangesAsync();
+        try
+        {
+            foreach (var term in new[] { "Minh họa", "  Minh hoa  ", "MINH   HOA", "minh\thoa", "duong net", "ĐƯỜNG NÉT", "Minh họa".Normalize(NormalizationForm.FormD), "%", "_", "x' OR 1=1 --", "khongtontai" })
+            {
+                var expected = term is "%" or "_" or "x' OR 1=1 --" or "khongtontai" ? 0 : 2;
+                var path = $"/api/catalog/courses?search={Uri.EscapeDataString(term)}&chu_de={topic}&pageSize=1&page=2";
+                var (status, body) = await SendAsync(HttpMethod.Get, path);
+                Expect(status == HttpStatusCode.OK, $"catalog search failed for {term}: {body}");
+                using var json = JsonDocument.Parse(body);
+                var root = json.RootElement;
+                Expect(root.GetProperty("totalCount").GetInt32() == expected, $"wrong filtered total for {term}: {body}");
+                var items = root.GetProperty("items");
+                Expect(items.GetArrayLength() == (expected == 0 ? 0 : 1), $"wrong page size for {term}");
+                if (expected > 0)
+                    Expect(items[0].GetProperty("ma_khoa_hoc").GetInt64() == courses[0].Id, $"search lost ordering/pagination for {term}");
+            }
+        }
+        finally
+        {
+            var ids = courses.Select(course => course.Id).ToArray();
+            await db.LearningCourses.Where(course => ids.Contains(course.Id)).ExecuteDeleteAsync();
+        }
+    }
 
     private async Task CourseAccessAsync()
     {

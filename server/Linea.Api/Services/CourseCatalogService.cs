@@ -34,9 +34,21 @@ public sealed class CourseCatalogService(
         var query = published;
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var term = search.Trim().ToLowerInvariant();
+            var term = search.Trim();
             if (term.Length > 100) term = term[..100];
-            query = query.Where(course => course.Title.ToLower().Contains(term));
+            // Normalize both operands in PostgreSQL before counting/paging. NFD removes
+            // Vietnamese tone marks; đ needs its own mapping. strpos keeps %/_ literal.
+            query = db.LearningCourses.FromSqlInterpolated($"""
+                select * from public.khoa_hoc
+                where strpos(
+                    btrim(regexp_replace(regexp_replace(
+                        replace(normalize(lower(tieu_de), NFD), 'đ', 'd'),
+                        U&'[\0300-\036f]', '', 'g'), '[[:space:]]+', ' ', 'g')),
+                    btrim(regexp_replace(regexp_replace(
+                        replace(normalize(lower({term}), NFD), 'đ', 'd'),
+                        U&'[\0300-\036f]', '', 'g'), '[[:space:]]+', ' ', 'g'))
+                ) > 0
+                """).AsNoTracking().Where(course => course.Status == "DA_DANG");
         }
         var topicFilter = (topic ?? "")
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
