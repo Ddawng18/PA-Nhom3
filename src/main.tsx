@@ -186,7 +186,7 @@ const router = createBrowserRouter(createRoutesFromElements(
 ));
 
 function App() {
-  return <AuthProvider><CartProvider><UserRoleProvider><RouterProvider router={router} /><CookieConsent /></UserRoleProvider></CartProvider></AuthProvider>;
+  return <AuthProvider><UserRoleProvider><CartProvider><RouterProvider router={router} /><CookieConsent /></CartProvider></UserRoleProvider></AuthProvider>;
 }
 
 const root = document.getElementById("root");

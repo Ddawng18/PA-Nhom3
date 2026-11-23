@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useAuth } from "../auth/useAuth";
+import { useUserRole } from "../hooks/useUserRole";
 import { addCartItem, clearCart, loadCart, mergeCart, removeCartItem } from "../lib/cartApi";
 
 const GUEST_KEY = "linea-cart-guest-v1";
@@ -10,6 +11,7 @@ type CartContextValue = {
   count: number;
   loading: boolean;
   error: string;
+  canUseCart: boolean;
   add: (courseId: number) => Promise<boolean>;
   remove: (courseId: number) => Promise<void>;
   clear: () => Promise<void>;
@@ -38,11 +40,19 @@ function clearGuest() {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
   const token = session?.access_token;
+  const { role, loading: roleLoading } = useUserRole();
+  const canUseCart = !token || (!roleLoading && (role === "student" || role === "admin"));
   const [courseIds, setCourseIds] = useState<number[]>(() => readGuest());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
+    if (!canUseCart) {
+      setCourseIds([]);
+      setLoading(false);
+      setError("");
+      return;
+    }
     if (!token) {
       setCourseIds(readGuest());
       return;
@@ -57,12 +67,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, canUseCart]);
 
   useEffect(() => {
     let cancelled = false;
+    if (!canUseCart) {
+      setCourseIds([]);
+      setLoading(false);
+      setError("");
+      return;
+    }
     if (!token) {
       setCourseIds(readGuest());
+      setLoading(false);
+      setError("");
       return;
     }
     setLoading(true);
@@ -85,9 +103,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
     void load();
     return () => { cancelled = true; };
-  }, [token]);
+  }, [token, canUseCart]);
 
   async function add(courseId: number) {
+    if (!canUseCart) return false;
     if (!Number.isSafeInteger(courseId) || courseId <= 0) return false;
     if (!token) {
       const next = Array.from(new Set([...readGuest(), courseId])).slice(0, MAX_ITEMS);
@@ -107,6 +126,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function remove(courseId: number) {
+    if (!canUseCart) return;
     if (!token) {
       const next = readGuest().filter(id => id !== courseId);
       setCourseIds(next);
@@ -122,6 +142,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function clear() {
+    if (!canUseCart) return;
     if (!token) {
       setCourseIds([]);
       clearGuest();
@@ -141,7 +162,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("focus", sync);
   }, [refresh]);
 
-  return <CartContext.Provider value={{ courseIds, count: courseIds.length, loading, error, add, remove, clear, refresh }}>{children}</CartContext.Provider>;
+  return <CartContext.Provider value={{ courseIds, count: courseIds.length, loading, error, canUseCart, add, remove, clear, refresh }}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {
