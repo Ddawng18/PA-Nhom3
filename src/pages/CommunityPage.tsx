@@ -161,6 +161,7 @@ function CommunityPost({ post, detail, onUpdated, onDeleted, onComment }: {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const own = Boolean(user && post.authorId === user.id);
+  const preview = Array.from(post.body).slice(0, 400).join("");
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!session || busy || !own) return;
@@ -191,7 +192,8 @@ function CommunityPost({ post, detail, onUpdated, onDeleted, onComment }: {
       {post.imageUrl && !removeImage && !image && <div className="community-image-preview"><img src={post.imageUrl} alt="Ảnh hiện tại" loading="lazy" /><button type="button" disabled={busy} onClick={() => setRemoveImage(true)}>Gỡ ảnh hiện tại</button></div>}
       <ImagePicker id={`edit-image-${post.id}`} file={image} setFile={setImage} disabled={busy} />
       <div className="community-post-actions"><Button type="submit" disabled={busy}>{busy ? "Đang lưu..." : "Lưu thay đổi"}</Button><button type="button" disabled={busy} onClick={() => { setEditing(false); setImage(null); setNotice(""); }}>Hủy</button></div>
-    </form> : <><h2><Link to={`/community/${post.id}`}>{post.title}</Link></h2><p className="community-post-content">{post.body}</p>
+    </form> : <><h2><Link to={`/community/${post.id}`}>{post.title}</Link></h2><p className={`community-post-content${detail ? "" : " community-post-preview"}`}>{detail ? post.body : `${preview}${preview.length < post.body.length ? "…" : ""}`}</p>
+      {!detail && <Link className="community-read-more" to={`/community/${post.id}`} aria-label={`Đọc tiếp: ${post.title}`}>Đọc tiếp</Link>}
       {post.imageUrl && <a href={post.imageUrl} target="_blank" rel="noopener noreferrer"><img className="community-post-image" src={post.imageUrl} alt={`Ảnh đính kèm: ${post.title}`} loading="lazy" /></a>}
     </>}
     {notice && <p role="status">{notice}</p>}

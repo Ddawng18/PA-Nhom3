@@ -28,7 +28,7 @@ export default function StudentLearningOverviewPage({ mode }: { mode: "progress"
       <button className="button button-outline" onClick={() => setAttempt(v => v + 1)}>Tải lại</button>
       {loading ? <p role="status">Đang tải...</p> : error ? <p role="alert" className="settings-error">{error}</p> : mode === "progress" ? <>
         <p>Đã hoàn thành {courses.filter(c => c.status === "HOAN_THANH").length}/{courses.length} khóa · Đã chấm {assignments.filter(a => a.submission?.grade).length}/{assignments.length} bài tập.</p>
-        {courses.length === 0 && <Link to="/my-courses">Khám phá khóa học để bắt đầu</Link>}
+        {courses.length === 0 && <Link to="/courses">Khám phá khóa học để bắt đầu</Link>}
         <div className="progress-grid">
           {courses.map(c => <section className="settings-card progress-card" key={c.id} aria-labelledby={`progress-${c.id}`}>
             <p className="settings-eyebrow">{c.status === "HOAN_THANH" ? "ĐÃ HOÀN THÀNH" : "ĐANG HỌC"}</p>
