@@ -10,3 +10,20 @@
 .onboarding-file { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
 .onboarding-content [role=alert] { color: #b91c1c; }
 @media (max-width: 600px) { .onboarding-content { padding: 20px 12px; } }
+
+.onboarding-section { display: grid; gap: 16px; }
+.onboarding-section + .onboarding-section { border-top: 1px solid #e2e8f0; padding-top: 24px; }
+.onboarding-section h2 { margin: 0; font-size: 1.125rem; }
+.onboarding-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.onboarding-fields input { min-width: 0; }
+@media (max-width: 600px) { .onboarding-fields { grid-template-columns: minmax(0, 1fr); } }
+
+.onboarding-tag-input { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.onboarding-tag-input input { flex: 1 1 180px; min-width: 0; }
+.onboarding-tag-list { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 8px 0 0; }
+.onboarding-tag-list li { display: flex; align-items: center; gap: 6px; background: #eef3ea; border-radius: 999px; padding: 4px 10px; }
+.onboarding-tag-list button { background: transparent; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 2px 4px; }
+
+.onboarding-selected-files { list-style: none; margin: 0; padding: 0; }
+.onboarding-file { align-items: center; }
+.onboarding-file > span { overflow-wrap: anywhere; }

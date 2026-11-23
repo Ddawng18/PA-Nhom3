@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { createUuid } from "../logic/uuid";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
 import CatalogCourseCard from "../components/CatalogCourseCard";
+import CourseCover from "../components/CourseCover";
+import AddToCartButton from "../components/AddToCartButton";
+import CourseArtworkGallery from "../components/CourseArtworkGallery";
+import { getCourseFeedback, getCourseOutcomes, getCourseSample } from "../data/courseProof";
+import { isDemoCourse } from "../logic/demoCourses";
+import { setPageMeta } from "../lib/seo";
 import { AdminApiError, AdminApiTimeoutError } from "../lib/adminApi";
 import { getCatalogCourse, type CatalogDetail } from "../lib/catalogApi";
 import { enrollInCourse } from "../lib/courseApi";
@@ -38,7 +44,6 @@ export default function CourseDetailPage() {
   const [learning, setLearning] = useState<LearningCourse | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
-  const [coverFailed, setCoverFailed] = useState(false);
   const [order, setOrder] = useState<DemoOrder | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const paymentDialogRef = useRef<HTMLDialogElement>(null);
@@ -52,17 +57,25 @@ export default function CourseDetailPage() {
   useEffect(() => {
     const controller = new AbortController();
     setState({ status: "loading" });
-    setCoverFailed(false);
     void getCatalogCourse(courseId, controller.signal)
       .then((data) => {
         if (controller.signal.aborted) return;
-        document.title = `${data.khoa_hoc.tieu_de} · LINEA`;
+        setPageMeta({
+          title: `${data.khoa_hoc.tieu_de} · LINEA`,
+          description: data.khoa_hoc.mo_ta || "Khóa học vẽ trên LINEA với bài học mẫu và phản hồi bài tập.",
+          image: sanitizeCoverUrl(data.khoa_hoc.anh_dai_dien),
+          type: "article",
+        });
         setState({ status: "success", data });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        if (error instanceof AdminApiError && error.status === 404) setState({ status: "not-found" });
-        else setState({ status: "error", message: getLoadErrorMessage(error) });
+        if (error instanceof AdminApiError && error.status === 404) {
+          setPageMeta({ title: "Không tìm thấy khóa học · LINEA", description: "Khóa học không tồn tại hoặc chưa được đăng trên LINEA." });
+          setState({ status: "not-found" });
+        } else {
+          setState({ status: "error", message: getLoadErrorMessage(error) });
+        }
       });
     return () => controller.abort();
   }, [courseId, attempt]);
@@ -168,7 +181,6 @@ export default function CourseDetailPage() {
       )}
       {state.status === "success" && (() => {
         const { khoa_hoc: course, chuong: chapters, khoa_hoc_cung_chu_de: related } = state.data;
-        const coverUrl = sanitizeCoverUrl(course.anh_dai_dien);
         const price = formatPriceLabel(course.gia_vnd);
         const students = formatStudentCount(course.so_hoc_vien);
         const level = getCourseLevelLabel(course.cap_do);
@@ -176,23 +188,27 @@ export default function CourseDetailPage() {
         const completed = learning?.trang_thai_ghi_danh === "HOAN_THANH";
         const teacherName = course.ten_giao_vien ?? "Giảng viên LINEA";
         const startDate = formatStartDate(course.ngay_khai_giang);
+        const paid = course.gia_vnd !== null && course.gia_vnd > 0;
+        const sample = getCourseSample(course, chapters[0]?.bai_hoc[0]?.tieu_de);
+        const outcomes = course.ket_qua?.length ? course.ket_qua : getCourseOutcomes(course);
+        const sampleFeedback = course.phan_hoi_mau || getCourseFeedback(course);
+        const primaryAction = enrolled ? (
+          <Link className="cd-button cd-button-primary" to={`/courses/${courseId}/learn`}>
+            {completed ? "Xem lại khóa học" : "Tiếp tục học"}
+          </Link>
+        ) : user && paid ? (
+          <button className="cd-button cd-button-primary" type="button" disabled={busy}
+            onClick={openPaymentInfo}>{busy ? "Đang xử lý..." : order?.status === "PENDING" ? "Xem thông tin thanh toán" : "Thanh toán"}</button>
+        ) : user ? (
+          <button className="cd-button cd-button-primary" type="button" disabled={busy}
+            onClick={() => void enroll()}>
+            {busy ? "Đang ghi danh..." : "Ghi danh khóa học"}
+          </button>
+        ) : (
+          <Link className="cd-button cd-button-primary" to="/login">Đăng nhập để ghi danh</Link>
+        );
         return (
           <>
-            <section className="cd-hero">
-              <div className="cd-hero-inner">
-                <p className="cd-hero-eyebrow">{course.chu_de.toUpperCase()} · LINEA</p>
-                <h1>{course.tieu_de}</h1>
-                <div className="cd-hero-meta">
-                  <span className="cd-pill">{level}</span>
-                  {course.so_bai_hoc > 0 && <span>{formatLessonCount(course.so_bai_hoc)}</span>}
-                  {course.so_chuong > 0 && <span>{course.so_chuong} chương</span>}
-                  {course.thoi_luong && <span>{course.thoi_luong}</span>}
-                  {startDate && <span>Khai giảng {startDate}</span>}
-                  {students && <span>{students}</span>}
-                </div>
-              </div>
-            </section>
-
             <main className="cd-main">
               <nav className="cd-breadcrumb" aria-label="Đường dẫn">
                 <Link to="/courses">Khám phá</Link>
@@ -201,52 +217,44 @@ export default function CourseDetailPage() {
               </nav>
 
               <section className="cd-summary">
-                <div className="cd-cover">
-                  {coverUrl && !coverFailed ? (
-                    <img src={coverUrl} alt="" onError={() => setCoverFailed(true)} />
-                  ) : (
-                    <span aria-hidden="true">{course.tieu_de.slice(0, 1).toUpperCase()}</span>
-                  )}
-                </div>
-                <div className="cd-info">
-                  <p className="cd-topic">{course.chu_de.toUpperCase()}</p>
-                  <h2>{course.tieu_de}</h2>
-                  <p className="cd-description">{course.mo_ta}</p>
-                  <p className="cd-facts">
+                <div className="cd-lead">
+                  <div className="cd-cover">
+                    <CourseCover course={course} />
+                  </div>
+                  <p className="cd-topic">{course.chu_de.toUpperCase()} {isDemoCourse(course) && <span className="cd-demo-badge">Khóa học mẫu</span>}</p>
+                  <h1>{course.tieu_de}</h1>
+                  <div className="cd-meta">
                     <span className="cd-pill">{level}</span>
-                    <span>{teacherName}</span>
-                  </p>
+                    {course.so_bai_hoc > 0 && <span>{formatLessonCount(course.so_bai_hoc)}</span>}
+                    {course.so_chuong > 0 && <span>{course.so_chuong} chương</span>}
+                    {students && <span>{students}</span>}
+                  </div>
+                  <p className="cd-description">{course.mo_ta}</p>
+                  <div className="cd-instructor">
+                    <span className="cd-avatar" aria-hidden="true">{getInitials(course.ten_giao_vien)}</span>
+                    <div className="cd-instructor-copy">
+                      <p className="cd-proof-label">GIẢNG VIÊN</p>
+                      <strong>{teacherName}</strong>
+                    </div>
+                  </div>
+                </div>
 
-                  <div className="cd-buy">
+                <aside className="cd-buy">
                     {price && <p className="cd-price">{price}</p>}
-                    {course.gia_vnd !== null && course.gia_vnd > 0 && <div className="cd-payment-note">
+                    {paid && <div className="cd-payment-note">
                       <span className="cd-payment-note-icon" aria-hidden="true">✓</span>
                       <span><strong>Thanh toán thử nghiệm</strong><small>Chưa có thông tin ngân hàng để nhận tiền thật.</small></span>
                     </div>}
-                    {enrolled && learning && (
-                      <label className="cd-progress">
-                        Tiến độ bài học: {learning.phan_tram}%
-                        <progress value={learning.phan_tram} max={100} />
-                      </label>
-                    )}
                     {actionError && <p className="cd-error" role="alert">{actionError}</p>}
                     {order?.status === "PENDING" && <p className="cd-order-pending-note" role="status">Đơn #{order.id} đang chờ thanh toán.</p>}
-                    {enrolled ? (
-                      <Link className="cd-button cd-button-primary" to={`/courses/${courseId}/learn`}>
-                        {completed ? "Xem lại khóa học" : "Tiếp tục học"}
-                      </Link>
-                    ) : user && course.gia_vnd !== null && course.gia_vnd > 0 ? (
-                      <button className="cd-button cd-button-primary" type="button" disabled={busy}
-                        onClick={openPaymentInfo}>{busy ? "Đang xử lý..." : order?.status === "PENDING" ? "Xem thông tin thanh toán" : "Thanh toán"}</button>
-                    ) : user ? (
-                      <button className="cd-button cd-button-primary" type="button" disabled={busy}
-                        onClick={() => void enroll()}>
-                        {busy ? "Đang ghi danh..." : "Ghi danh khóa học"}
-                      </button>
-                    ) : (
-                      <Link className="cd-button cd-button-primary" to="/login">Đăng nhập để ghi danh</Link>
-                    )}
-                  </div>
+                    {primaryAction}
+                    {!enrolled && <AddToCartButton courseId={course.ma_khoa_hoc} />}
+                    <dl className="cd-facts-list">
+                      {course.so_bai_hoc > 0 && <div><dt>Số bài học</dt><dd>{formatLessonCount(course.so_bai_hoc)}</dd></div>}
+                      {course.so_chuong > 0 && <div><dt>Số chương</dt><dd>{course.so_chuong} chương</dd></div>}
+                      {course.thoi_luong && <div><dt>Thời lượng</dt><dd>{course.thoi_luong}</dd></div>}
+                      {startDate && <div><dt>Khai giảng</dt><dd>{startDate}</dd></div>}
+                    </dl>
                   <dialog className="cd-payment-dialog" ref={paymentDialogRef} aria-labelledby="cd-payment-title" aria-describedby="cd-payment-warning" onClose={() => setPaymentDialogOpen(false)}>
                     {order?.status === "PENDING" && <div className="cd-payment-dialog-content">
                       <button className="cd-payment-close" type="button" aria-label="Đóng thông tin thanh toán" onClick={() => paymentDialogRef.current?.close()}>×</button>
@@ -265,49 +273,71 @@ export default function CourseDetailPage() {
                       <button className="cd-button cd-button-primary" type="button" onClick={() => paymentDialogRef.current?.close()}>Đã hiểu</button>
                     </div>}
                   </dialog>
+                </aside>
+              </section>
+
+              <section className="cd-proof" aria-labelledby="cd-proof-title">
+                <div className="cd-outcomes">
+                  <p className="cd-proof-label">SAU KHÓA HỌC</p>
+                  <h2 id="cd-proof-title">Bạn sẽ luyện được gì</h2>
+                  <ul>
+                    {outcomes.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
                 </div>
-              </section>
-
-              <section className="cd-columns">
-                <article className="cd-card">
-                  <h3>NỘI DUNG KHÓA HỌC</h3>
-                  {chapters.length === 0 ? (
-                    <p className="cd-muted">Khóa học chưa có nội dung bài học.</p>
-                  ) : (
-                    <ol className="cd-chapters">
-                      {chapters.map((chapter, index) => (
-                        <li key={chapter.ma_chuong}>
-                          <span className="cd-chapter-index">{String(index + 1).padStart(2, "0")}</span>
-                          <div>
-                            <strong>{chapter.tieu_de}</strong>
-                            <small>{formatLessonCount(chapter.bai_hoc.length)}</small>
-                            {chapter.bai_hoc.length > 0 && (
-                              <ul>
-                                {chapter.bai_hoc.map((lesson) => <li key={lesson.ma_bai_hoc}>{lesson.tieu_de}</li>)}
-                              </ul>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                </article>
-
-                <article className="cd-card cd-teacher">
-                  <h3>GIẢNG VIÊN</h3>
-                  <div className="cd-teacher-row">
-                    <span className="cd-avatar" aria-hidden="true">{getInitials(course.ten_giao_vien)}</span>
-                    <div>
-                      <strong>{teacherName}</strong>
-                      <small>Giảng viên khóa học</small>
-                    </div>
+                <figure className="cd-sample" id="sample-lesson">
+                  <p className="cd-proof-label">BÀI HỌC MẪU · XEM TRƯỚC</p>
+                  <h2>{sample.title}</h2>
+                  <p>{sample.intro}</p>
+                  <div className="cd-sample-exercise">
+                    <strong>Bài tập nhỏ</strong>
+                    <p>{sample.exercise}</p>
                   </div>
-                </article>
+                  <ul className="cd-sample-checklist">
+                    {sample.checklist.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                  <figcaption>Nội dung minh họa để xem trước; bài học đầy đủ nằm trong lớp.</figcaption>
+                </figure>
+                <figure className="cd-feedback">
+                  <p className="cd-proof-label">VÍ DỤ PHẢN HỒI</p>
+                  <blockquote>{sampleFeedback}</blockquote>
+                  <figcaption>Phản hồi mẫu, không phải đánh giá bài nộp thật.</figcaption>
+                </figure>
               </section>
+
+              <div className="cd-mobile-cta">
+                <div><strong>{price ?? "Miễn phí"}</strong><small>{level}</small></div>
+                {primaryAction}
+              </div>
+
+              <section className="cd-content">
+                <h2>NỘI DUNG KHÓA HỌC</h2>
+                {chapters.length === 0 ? (
+                  <p className="cd-muted">Khóa học chưa có nội dung bài học.</p>
+                ) : (
+                  <div className="cd-chapters">
+                    {chapters.map((chapter, index) => (
+                      <details className="cd-chapter" key={chapter.ma_chuong} open={index === 0}>
+                        <summary>
+                          <span className="cd-chapter-index">{String(index + 1).padStart(2, "0")}</span>
+                          <span className="cd-chapter-title">{chapter.tieu_de}</span>
+                          <span className="cd-chapter-count">{formatLessonCount(chapter.bai_hoc.length)}</span>
+                        </summary>
+                        {chapter.bai_hoc.length > 0 && (
+                          <ul>
+                            {chapter.bai_hoc.map((lesson) => <li key={lesson.ma_bai_hoc}>{lesson.tieu_de}</li>)}
+                          </ul>
+                        )}
+                      </details>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <CourseArtworkGallery teacher={state.data.anh_giang_vien} student={state.data.anh_hoc_vien} />
 
               {related.length > 0 && (
                 <section className="cd-related" aria-label="Khóa học cùng chủ đề">
-                  <h3>Khóa học cùng chủ đề</h3>
+                  <h2>Khóa học cùng chủ đề</h2>
                   <div className="cd-related-grid" role="list">
                     {related.map((item) => <CatalogCourseCard key={item.ma_khoa_hoc} course={item} />)}
                   </div>

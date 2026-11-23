@@ -7,23 +7,9 @@ import LessonAssignments from "../components/LessonAssignments";
 import { enrollInCourse } from "../lib/courseApi";
 import { loadLearningCourse, loadLesson, updateLesson, learningError, type LearningCourse, type LessonContent } from "../lib/learningApi";
 import { getCourseLevelLabel } from "../logic/courseEditor";
+import { embedVideo, safeHttps } from "../logic/videoEmbed";
 import "../styles/settings.css";
 import "../styles/learning.css";
-
-function safeHttps(value: string | null) {
-  try { const url = new URL(value ?? ""); return url.protocol === "https:" ? url.href : undefined; } catch { return undefined; }
-}
-function embedVideo(value: string | null) {
-  const href = safeHttps(value); if (!href) return undefined;
-  const url = new URL(href);
-  const hosts = ["youtube.com", "www.youtube.com", "m.youtube.com", "www.youtube-nocookie.com"];
-  const videoId = url.hostname === "youtu.be" ? url.pathname.slice(1) : hosts.includes(url.hostname)
-    ? url.searchParams.get("v") ?? url.pathname.match(/^\/(?:embed|shorts)\/([^/]+)$/)?.[1] : undefined;
-  if (videoId && /^[\w-]{11}$/.test(videoId)) return `https://www.youtube-nocookie.com/embed/${videoId}`;
-  if (url.hostname === "player.vimeo.com" && /^\/video\/\d+$/.test(url.pathname)) return url.href;
-  if (url.hostname === "vimeo.com" && /^\/\d+$/.test(url.pathname)) return `https://player.vimeo.com/video${url.pathname}`;
-  return undefined;
-}
 
 function chapterStats(chapter: LearningCourse["chuong"][number]) {
   const total = chapter.bai_hoc.length;
@@ -67,6 +53,8 @@ function CourseLearningView() {
   const [attempt, setAttempt] = useState(0);
   const [lessonAttempt, setLessonAttempt] = useState(0);
   const [openChapter, setOpenChapter] = useState<number | null>(null);
+  const [completionNotice, setCompletionNotice] = useState("");
+  const [nextLessonId, setNextLessonId] = useState<number | null>(null);
   useEffect(() => {
     if (!token) return;
     const controller = new AbortController(); setLoading(true); setCourse(null); setError(""); setActionError("");
@@ -77,7 +65,7 @@ function CourseLearningView() {
   }, [token, courseId, attempt]);
   const enrolled = Boolean(course?.da_ghi_danh);
   useEffect(() => {
-    setLesson(null); setLessonError("");
+    setLesson(null); setLessonError(""); setCompletionNotice("");
     if (!token || !lessonId || !enrolled) return;
     const controller = new AbortController(); setLessonLoading(true);
     async function load() {
@@ -119,7 +107,10 @@ function CourseLearningView() {
     try {
       await updateLesson(token!, courseId, lessonId!, "DA_HOAN_THANH");
       const updated = await loadLearningCourse(token!, courseId);
+      const next = lessons[currentIndex + 1];
       setCourse(updated); setLesson(l => l ? { ...l, trang_thai: "DA_HOAN_THANH" } : l);
+      setNextLessonId(next?.ma_bai_hoc ?? null);
+      setCompletionNotice(next ? "Đã lưu hoàn thành bài học. Bài tiếp theo đã sẵn sàng." : "Đã lưu hoàn thành bài học cuối cùng của khóa.");
     } catch (e) { setActionError(learningError(e)); } finally { setBusy(false); }
   }
   return <div className="settings-shell"><Sidebar user={user} displayName={name} initials={name.slice(0, 2).toUpperCase()} />
@@ -160,6 +151,13 @@ function CourseLearningView() {
               {lessonAttemptLabel && <button className="button button-primary" disabled={busy || lesson.trang_thai === "DA_HOAN_THANH"} onClick={() => void complete()}>{busy ? "Đang lưu..." : lessonAttemptLabel}</button>}
               {currentIndex >= 0 && currentIndex < lessons.length - 1 && <Link className="button button-outline" to={`/courses/${courseId}/learn/${lessons[currentIndex + 1].ma_bai_hoc}`}>Bài tiếp theo →</Link>}
             </nav>}
+            {completionNotice && <section className="lesson-completion-notice" role="status">
+              <CheckCircle2 aria-hidden="true" size={20} />
+              <div><strong>{completionNotice}</strong><p>Tiến độ đã được lưu vào tài khoản của bạn.</p></div>
+              {nextLessonId
+                ? <Link className="button button-outline" to={`/courses/${courseId}/learn/${nextLessonId}`}>Sang bài tiếp theo</Link>
+                : <Link className="button button-outline" to={`/courses/${courseId}/complete`}>Xem kết quả khóa học</Link>}
+            </section>}
             {lesson && <LessonAssignments key={lesson.ma_bai_hoc} token={token} lessonId={lesson.ma_bai_hoc} onChanged={() => { void loadLearningCourse(token, courseId).then(setCourse).catch(e => setActionError(learningError(e))); }} />}
           </div>
           <aside className="lesson-player-card lesson-detail-side" aria-labelledby="lesson-chapter-heading">

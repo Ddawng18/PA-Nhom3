@@ -20,6 +20,7 @@ public sealed class TeacherProfileController(
     AccountDirectory accounts,
     ILogger<TeacherProfileController> logger) : ControllerBase
 {
+    private const int MaxCvBytes = 5 * 1024 * 1024;
     private const int MinIntroductionLength = 50;
     private const int MaxIntroductionLength = 1000;
     private const int MinExperienceLength = 10;
@@ -58,10 +59,109 @@ public sealed class TeacherProfileController(
             profile,
             history,
             "/api/teacher/profile/me/portfolio",
-            "/api/teacher/profile/me/portfolio"));
+            "/api/teacher/profile/me/portfolio",
+            await db.TeacherProfileCvs.AnyAsync(item => item.ProfileId == profile.Id, cancellationToken)));
+    }
+
+    [HttpGet("{id:long}/cv")]
+    public async Task<IActionResult> DownloadCv(long id, CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var userId)) return Unauthorized();
+        var isAdmin = User.IsInRole("admin");
+        var pdf = await (
+            from cv in db.TeacherProfileCvs.AsNoTracking()
+            join profile in db.TeacherProfiles on cv.ProfileId equals profile.Id
+            where profile.Id == id && (isAdmin || profile.UserId == userId)
+            select cv.Content
+        ).SingleOrDefaultAsync(cancellationToken);
+        if (pdf is null) return NotFound();
+
+        Response.Headers.CacheControl = "private, no-store";
+        Response.Headers.XContentTypeOptions = "nosniff";
+        return File(pdf, "application/pdf", "CV-giao-vien.pdf");
+    }
+
+    [HttpDelete("me/cv")]
+    public Task<IActionResult> DeleteCv(CancellationToken cancellationToken) =>
+        DeleteAttachment(null, cancellationToken);
+
+    [HttpDelete("me/portfolio/{imageId:long}")]
+    public Task<IActionResult> DeletePortfolioImage(long imageId, CancellationToken cancellationToken) =>
+        DeleteAttachment(imageId, cancellationToken);
+
+    private async Task<IActionResult> DeleteAttachment(long? imageId, CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var userId)) return Unauthorized();
+        if (CheckSubmitRole() is { } roleError) return roleError;
+
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        // Serialize attachment changes with submission and review of this profile.
+        var profile = await db.TeacherProfiles
+            .FromSqlInterpolated($"select * from public.ho_so_giao_vien where ma_nguoi_dung = {userId} for update")
+            .AsNoTracking()
+            .SingleOrDefaultAsync(cancellationToken);
+        if (profile is null)
+            return ApiProblem(StatusCodes.Status404NotFound, "NOT_FOUND", "Bạn chưa gửi hồ sơ giáo viên.");
+        if (profile.Status is not (TeacherProfileStatus.DaRut or TeacherProfileStatus.CanBoSung))
+            return ApiProblem(StatusCodes.Status409Conflict, "INVALID_STATUS_TRANSITION",
+                "Hãy rút hồ sơ trước khi xóa tệp đã gửi.");
+
+        if (imageId is { } id)
+        {
+            await db.PortfolioImages.Where(item => item.ProfileId == profile.Id && item.Id == id)
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+        else
+        {
+            await db.TeacherProfileCvs.Where(item => item.ProfileId == profile.Id)
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("me/withdraw")]
+    public async Task<IActionResult> Withdraw(CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var userId)) return Unauthorized();
+        if (CheckSubmitRole() is { } roleError) return roleError;
+
+        var profile = await db.TeacherProfiles.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.UserId == userId, cancellationToken);
+        if (profile is null)
+            return ApiProblem(StatusCodes.Status404NotFound, "NOT_FOUND", "Bạn chưa gửi hồ sơ giáo viên.");
+        if (profile.Status == TeacherProfileStatus.DaRut) return NoContent();
+        if (profile.Status is not (TeacherProfileStatus.ChoDuyet or TeacherProfileStatus.TuChoi))
+            return ApiProblem(StatusCodes.Status409Conflict, "INVALID_STATUS_TRANSITION",
+                "Chỉ có thể rút hồ sơ đang chờ duyệt hoặc đã bị từ chối.");
+
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var affected = await db.TeacherProfiles
+            .Where(item => item.Id == profile.Id && item.Status == profile.Status &&
+                           item.SubmittedAt == profile.SubmittedAt)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Status, TeacherProfileStatus.DaRut),
+                cancellationToken);
+        if (affected == 0)
+            return ApiProblem(StatusCodes.Status409Conflict, "INVALID_STATUS_TRANSITION",
+                "Trạng thái hồ sơ vừa thay đổi. Vui lòng tải lại.");
+
+        db.StatusHistory.Add(new StatusHistoryEntry
+        {
+            ObjectType = HistoryObjectTypes.HoSoGiaoVien,
+            ObjectId = profile.Id.ToString(),
+            PreviousStatus = profile.Status,
+            Status = TeacherProfileStatus.DaRut,
+            ActorId = userId,
+            OccurredAt = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return NoContent();
     }
 
     [HttpPost("me/submit")]
+    [RequestSizeLimit(8 * 1024 * 1024)]
     [ProducesResponseType<SubmitTeacherProfileResponse>(StatusCodes.Status202Accepted)]
     public async Task<IActionResult> Submit(
         [FromBody] SubmitTeacherProfileRequest request,
@@ -76,6 +176,39 @@ public sealed class TeacherProfileController(
         if (roleError is not null)
         {
             return roleError;
+        }
+
+        if (request.CvPdf is { } pdf &&
+            (pdf.Length is < 8 or > MaxCvBytes || !pdf.AsSpan().StartsWith("%PDF-"u8)))
+        {
+            return ApiProblem(StatusCodes.Status400BadRequest, "INVALID_CV",
+                "CV phải là tệp PDF tối đa 5 MB.");
+        }
+
+        var tags = request.Details?.CvTags?
+            .Select(TextSanitizer.ToPlainText)
+            .Where(tag => tag.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (request.Details?.CvTags?.Length > 10 || tags?.Any(tag => tag.Length > 30) == true)
+        {
+            return ApiProblem(StatusCodes.Status400BadRequest, "VALIDATION_ERROR",
+                "CV được gắn tối đa 10 thẻ, mỗi thẻ không quá 30 ký tự.");
+        }
+
+        var details = request.Details is { } input
+            ? new TeacherApplicationDetails(
+                tags,
+                TextSanitizer.ToPlainText(input.Specialties),
+                TextSanitizer.ToPlainText(input.Languages),
+                TextSanitizer.ToPlainText(input.TeachingApproach))
+            : null;
+        if (details is { } form &&
+            (form.Specialties?.Length > 250 ||
+             form.Languages?.Length > 160 || form.TeachingApproach?.Length > 1500))
+        {
+            return ApiProblem(StatusCodes.Status400BadRequest, "VALIDATION_ERROR",
+                "Một hoặc nhiều mục thông tin giáo viên vượt quá giới hạn ký tự.");
         }
 
         var introduction = TextSanitizer.ToPlainText(request.Introduction);
@@ -106,8 +239,10 @@ public sealed class TeacherProfileController(
                 "Hồ sơ giáo viên của bạn đã được duyệt.");
         }
 
+        details ??= profile is null ? new(null, null, null, null) : TeacherApplicationDetails.From(profile);
+
         var canResubmit = profile is null ||
-                          profile.Status is TeacherProfileStatus.TuChoi or TeacherProfileStatus.CanBoSung;
+                          profile.Status is TeacherProfileStatus.TuChoi or TeacherProfileStatus.CanBoSung or TeacherProfileStatus.DaRut;
         if (!canResubmit)
         {
             return ApiProblem(StatusCodes.Status409Conflict, "INVALID_STATUS_TRANSITION",
@@ -137,6 +272,10 @@ public sealed class TeacherProfileController(
                 UserId = userId,
                 Introduction = introduction,
                 Experience = experience,
+                CvTags = details.CvTags,
+                Specialties = details.Specialties,
+                Languages = details.Languages,
+                TeachingApproach = details.TeachingApproach,
                 Status = TeacherProfileStatus.ChoDuyet,
                 SubmittedAt = now
             };
@@ -166,10 +305,14 @@ public sealed class TeacherProfileController(
             var affected = await db.TeacherProfiles
                 .Where(item =>
                     item.Id == profile.Id &&
-                    (item.Status == TeacherProfileStatus.TuChoi || item.Status == TeacherProfileStatus.CanBoSung))
+                    item.Status == profile.Status && item.SubmittedAt == profile.SubmittedAt)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(item => item.Introduction, introduction)
                     .SetProperty(item => item.Experience, experience)
+                    .SetProperty(item => item.CvTags, details.CvTags)
+                    .SetProperty(item => item.Specialties, details.Specialties)
+                    .SetProperty(item => item.Languages, details.Languages)
+                    .SetProperty(item => item.TeachingApproach, details.TeachingApproach)
                     .SetProperty(item => item.Status, TeacherProfileStatus.ChoDuyet)
                     .SetProperty(item => item.SubmittedAt, now)
                     .SetProperty(item => item.ReviewedAt, (DateTimeOffset?)null)
@@ -188,6 +331,15 @@ public sealed class TeacherProfileController(
             await db.PortfolioImages
                 .Where(image => image.ProfileId == profile.Id)
                 .ExecuteDeleteAsync(cancellationToken);
+        }
+
+        if (request.CvPdf is { } cvPdf)
+        {
+            var existingCv = await db.TeacherProfileCvs.FindAsync([profile.Id], cancellationToken);
+            if (existingCv is null)
+                db.TeacherProfileCvs.Add(new TeacherProfileCv { ProfileId = profile.Id, Content = cvPdf });
+            else
+                existingCv.Content = cvPdf;
         }
 
         foreach (var path in validPaths!)
@@ -453,7 +605,8 @@ public sealed class TeacherProfileController(
             .ToListAsync(cancellationToken);
         var count = entries.Count(entry =>
             (entry.PreviousStatus == TeacherProfileStatus.TuChoi ||
-             entry.PreviousStatus == TeacherProfileStatus.CanBoSung) &&
+             entry.PreviousStatus == TeacherProfileStatus.CanBoSung ||
+             entry.PreviousStatus == TeacherProfileStatus.DaRut) &&
             entry.Status == TeacherProfileStatus.ChoDuyet &&
             entry.OccurredAt >= since);
         return count >= ResubmissionLimit;

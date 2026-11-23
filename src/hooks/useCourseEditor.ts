@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { useAuth } from "../auth/useAuth";
 import { getCourse, saveCourseInfo, submitCourse } from "../lib/courseApi";
@@ -19,6 +19,9 @@ const courseSchema = z.object({
   gia_vnd: z.number().int().nonnegative().optional(),
   thoi_luong: z.string().nullable().optional(),
   ngay_khai_giang: z.string().nullable().optional(),
+  ket_qua: z.array(z.string()).optional(),
+  phan_hoi_mau: z.string().nullable().optional(),
+  kieu_bia: z.string().optional(),
   trang_thai: z.string(),
 });
 const chapterSchema = z.object({
@@ -99,6 +102,11 @@ export type CourseEditorModel = {
   gia_vnd?: number;
   thoi_luong?: string | null;
   ngay_khai_giang?: string | null;
+  ket_qua: string[];
+  phan_hoi_mau: string;
+  kieu_bia: string;
+  anh_giang_vien: string[];
+  anh_hoc_vien: string[];
   trang_thai: string;
   chuong: CourseEditorChapter[];
 };
@@ -127,7 +135,17 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
   });
   const [attempt, setAttempt] = useState(0);
 
+  const silentCourseId = useRef<string | undefined>(undefined);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+
   const reload = useCallback(() => setAttempt((value) => value + 1), []);
+  const refreshAfterSave = useCallback((savedCourseId: string) => {
+    silentCourseId.current = savedCourseId;
+    setRefreshing(true);
+    setRefreshError(null);
+    reload();
+  }, [reload]);
 
   useEffect(() => {
     let active = true;
@@ -137,13 +155,24 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
         active = false;
       };
     }
+    const silent = silentCourseId.current === courseId;
+    if (!silent) {
+      silentCourseId.current = undefined;
+      setRefreshing(false);
+      setRefreshError(null);
+    }
     if (!supabase) {
       setState({ course: null, version: null, loading: false, error: genericLoadError, notFound: false, rubricUnavailable: false });
       return () => {
         active = false;
       };
     }
-    setState({ course: null, version: null, loading: true, error: null, notFound: false, rubricUnavailable: false });
+    if (silent) {
+      setRefreshing(true);
+      setRefreshError(null);
+    } else {
+      setState({ course: null, version: null, loading: true, error: null, notFound: false, rubricUnavailable: false });
+    }
     void (async () => {
       try {
         if (!token) throw new Error(genericLoadError);
@@ -151,12 +180,17 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
         const parsedCourse = courseSchema.safeParse(courseRow);
         if (!parsedCourse.success) throw new Error(genericLoadError);
         if (parsedCourse.data.ma_giao_vien !== userId) {
-          if (active) setState({ course: null, version: null, loading: false, error: null, notFound: true, rubricUnavailable: false });
+          if (active) {
+            if (silent) setRefreshError("Tài khoản này không còn quyền chỉnh sửa khóa học.");
+            else setState({ course: null, version: null, loading: false, error: null, notFound: true, rubricUnavailable: false });
+          }
           return;
         }
         const course = parsedCourse.data;
         const snapshot = z.object({
           version: z.string(),
+          anh_giang_vien: z.array(z.string()).default([]),
+          anh_hoc_vien: z.array(z.string()).default([]),
           chapters: z.array(chapterSchema), lessons: z.array(lessonSchema),
           assignments: z.array(assignmentSchema), attachments: z.array(attachmentSchema),
           rubrics: z.array(rubricSchema),
@@ -188,11 +222,17 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
           }),
         }));
         if (active) {
+          if (silent) silentCourseId.current = undefined;
           const version = snapshot.version;
           setState({
             course: {
               ...course,
               anh_dai_dien: course.anh_dai_dien ?? "",
+              ket_qua: course.ket_qua ?? [],
+              phan_hoi_mau: course.phan_hoi_mau ?? "",
+              kieu_bia: course.kieu_bia ?? "auto",
+              anh_giang_vien: snapshot.anh_giang_vien,
+              anh_hoc_vien: snapshot.anh_hoc_vien,
               chuong: chapters,
             },
             version,
@@ -203,7 +243,15 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
           });
         }
       } catch (error) {
-        if (active) setState({ course: null, version: null, loading: false, error: error instanceof AdminApiError && error.status === 404 ? null : genericLoadError, notFound: error instanceof AdminApiError && error.status === 404, rubricUnavailable: false });
+        if (active) {
+          if (silent) {
+            setRefreshError("Khóa học đã được lưu. Hãy tải lại dữ liệu trước khi tiếp tục chỉnh sửa.");
+          } else {
+            setState({ course: null, version: null, loading: false, error: error instanceof AdminApiError && error.status === 404 ? null : genericLoadError, notFound: error instanceof AdminApiError && error.status === 404, rubricUnavailable: false });
+          }
+        }
+      } finally {
+        if (active && silent) setRefreshing(false);
       }
     })();
     return () => {
@@ -347,6 +395,9 @@ export function useCourseEditor(courseId: string | undefined, userId: string) {
   return {
     ...state,
     reload,
+    refreshAfterSave,
+    refreshing,
+    refreshError,
     saveCourse,
     saveChapter,
     saveLesson,

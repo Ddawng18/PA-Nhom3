@@ -19,6 +19,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<CourseRubricContent> CourseRubrics => Set<CourseRubricContent>();
 
     public DbSet<TeacherProfile> TeacherProfiles => Set<TeacherProfile>();
+    public DbSet<TeacherProfileCv> TeacherProfileCvs => Set<TeacherProfileCv>();
 
     public DbSet<PortfolioImage> PortfolioImages => Set<PortfolioImage>();
 
@@ -78,6 +79,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         learningCourse.Property(item => item.PriceVnd).HasColumnName("gia_vnd");
         learningCourse.Property(item => item.DurationText).HasColumnName("thoi_luong").HasMaxLength(50);
         learningCourse.Property(item => item.StartDate).HasColumnName("ngay_khai_giang");
+        learningCourse.Property(item => item.Outcomes).HasColumnName("ket_qua").HasColumnType("text[]");
+        learningCourse.Property(item => item.SampleFeedback).HasColumnName("phan_hoi_mau");
+        learningCourse.Property(item => item.TeacherArtwork).HasColumnName("anh_giang_vien").HasColumnType("text[]");
+        learningCourse.Property(item => item.StudentArtwork).HasColumnName("anh_hoc_vien").HasColumnType("text[]");
+        learningCourse.Property(item => item.CoverStyle).HasColumnName("kieu_bia").HasMaxLength(20).IsRequired();
+        learningCourse.Property(item => item.RevisionOf).HasColumnName("ma_ban_goc");
         learningCourse.Property(item => item.Status).HasColumnName("trang_thai").HasMaxLength(20).IsRequired();
         learningCourse.Property(item => item.CreatedAt).HasColumnName("ngay_tao").IsRequired();
         learningCourse.HasIndex(item => item.TeacherId);
@@ -181,6 +188,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         teacherProfile.Property(item => item.UserId).HasColumnName("ma_nguoi_dung").IsRequired();
         teacherProfile.Property(item => item.Introduction).HasColumnName("gioi_thieu").IsRequired();
         teacherProfile.Property(item => item.Experience).HasColumnName("kinh_nghiem").IsRequired();
+        teacherProfile.Property(item => item.CvTags).HasColumnName("cv_tags").HasColumnType("text[]");
+        teacherProfile.Property(item => item.Specialties).HasColumnName("chuyen_mon").HasMaxLength(250);
+        teacherProfile.Property(item => item.Languages).HasColumnName("ngon_ngu").HasMaxLength(160);
+        teacherProfile.Property(item => item.TeachingApproach).HasColumnName("phuong_phap").HasMaxLength(1500);
         teacherProfile.Property(item => item.Status).HasColumnName("trang_thai").HasMaxLength(20).IsRequired();
         teacherProfile.Property(item => item.RejectionReason).HasColumnName("ly_do_tu_choi");
         teacherProfile.Property(item => item.SupplementReason).HasColumnName("ly_do_bo_sung");
@@ -193,6 +204,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         teacherProfile.HasMany(item => item.PortfolioImages)
             .WithOne(item => item.Profile!)
             .HasForeignKey(item => item.ProfileId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        var teacherCv = modelBuilder.Entity<TeacherProfileCv>();
+        teacherCv.ToTable("cv_ho_so_giao_vien");
+        teacherCv.HasKey(item => item.ProfileId);
+        teacherCv.Property(item => item.ProfileId).HasColumnName("ma_ho_so");
+        teacherCv.Property(item => item.Content).HasColumnName("noi_dung");
+        teacherCv.HasOne<TeacherProfile>().WithOne()
+            .HasForeignKey<TeacherProfileCv>(item => item.ProfileId)
             .OnDelete(DeleteBehavior.Cascade);
 
         var portfolioImage = modelBuilder.Entity<PortfolioImage>();

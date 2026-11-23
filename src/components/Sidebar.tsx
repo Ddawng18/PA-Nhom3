@@ -1,12 +1,14 @@
-import {
+﻿import {
   BookOpen,
   ChartNoAxesColumnIncreasing,
+  Compass,
   ClipboardList,
   FolderHeart,
   GraduationCap,
   LayoutDashboard,
   PenTool,
   Settings,
+  ShoppingCart,
   ShieldAlert,
   Sparkles,
   Users,
@@ -29,9 +31,13 @@ type SidebarProps = {
   initials: string;
 };
 
+const teacherApplication = { label: "Bạn muốn làm giáo viên?", icon: PenTool, to: "/teacher/onboarding" };
+
 const studentNavigation = [
   { label: "Tổng quan", icon: LayoutDashboard, to: "/dashboard" },
+  { label: "Lộ trình", icon: Compass, to: "/onboarding" },
   { label: "Khóa học", icon: BookOpen, to: "/my-courses" },
+  { label: "Giỏ hàng", icon: ShoppingCart, to: "/cart" },
   { label: "Studio", icon: PenTool, to: "/studio" },
   { label: "Bài luyện tập", icon: Sparkles, to: "/assignments" },
   { label: "Tiến độ", icon: ChartNoAxesColumnIncreasing, to: "/progress" },
@@ -39,7 +45,6 @@ const studentNavigation = [
   { label: "Tác phẩm", icon: FolderHeart, to: "/artworks" },
   { label: "Cộng đồng", icon: Users, to: "/community" },
   { label: "Cài đặt", icon: Settings, to: "/settings" },
-  { label: "Hồ sơ giáo viên", icon: PenTool, to: "/teacher/onboarding" },
 ];
 
 const teacherNavigation = [
@@ -48,7 +53,6 @@ const teacherNavigation = [
   { label: "Bài chờ chấm", icon: ClipboardList, to: "/teacher/submissions" },
   { label: "Học viên", icon: GraduationCap, to: "/teacher/students" },
   { label: "Tạo khóa học", icon: Sparkles, to: "/teacher/courses/new" },
-  { label: "Hồ sơ giáo viên", icon: PenTool, to: "/teacher/onboarding" },
   { label: "Cộng đồng", icon: Users, to: "/community" },
   { label: "Cài đặt", icon: Settings, to: "/settings" },
 ];
@@ -130,7 +134,7 @@ export default function Sidebar({ user, displayName, initials }: SidebarProps) {
     ? adminNavigation
     : role === "teacher"
       ? teacherNavigation
-      : studentNavigation;
+      : role === "student" ? [...studentNavigation, teacherApplication] : studentNavigation;
   const homePath = role ? dashboardByRole[role] : "/";
   const navigationLinks = (afterSelect?: () => void) => navigationItems.map(({ label, icon: Icon, to }) => (
     <NavLink className={({ isActive }) => `settings-nav-item${isActive ? " active" : ""}`}

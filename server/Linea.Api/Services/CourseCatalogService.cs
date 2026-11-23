@@ -34,9 +34,21 @@ public sealed class CourseCatalogService(
         var query = published;
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var term = search.Trim().ToLowerInvariant();
+            var term = search.Trim();
             if (term.Length > 100) term = term[..100];
-            query = query.Where(course => course.Title.ToLower().Contains(term));
+            // Normalize both operands in PostgreSQL before counting/paging. NFD removes
+            // Vietnamese tone marks; đ needs its own mapping. strpos keeps %/_ literal.
+            query = db.LearningCourses.FromSqlInterpolated($"""
+                select * from public.khoa_hoc
+                where strpos(
+                    btrim(regexp_replace(regexp_replace(
+                        replace(normalize(lower(tieu_de), NFD), 'đ', 'd'),
+                        U&'[\0300-\036f]', '', 'g'), '[[:space:]]+', ' ', 'g')),
+                    btrim(regexp_replace(regexp_replace(
+                        replace(normalize(lower({term}), NFD), 'đ', 'd'),
+                        U&'[\0300-\036f]', '', 'g'), '[[:space:]]+', ' ', 'g'))
+                ) > 0
+                """).AsNoTracking().Where(course => course.Status == "DA_DANG");
         }
         var topicFilter = (topic ?? "")
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -111,7 +123,7 @@ public sealed class CourseCatalogService(
         var related = await EnrichAsync(
             relatedRows.Select(row => (row.Course, row.Chapters, row.Lessons, row.Students)).ToList(),
             cancellationToken);
-        return new CatalogDetailResponse(detail, outline, related);
+        return new CatalogDetailResponse(detail, outline, related, course.TeacherArtwork, course.StudentArtwork);
     }
 
     private async Task<List<CatalogCourseItem>> EnrichAsync(
@@ -137,7 +149,7 @@ public sealed class CourseCatalogService(
             teacherNames.TryGetValue(row.Course.TeacherId, out var name) ? name : null,
             prices.TryGetValue(row.Course.Id, out var price) ? price : null,
             row.Chapters, row.Lessons, row.Students, row.Course.DurationText, row.Course.StartDate,
-            row.Course.CreatedAt)).ToList();
+            row.Course.CreatedAt, row.Course.Outcomes, row.Course.SampleFeedback, row.Course.CoverStyle)).ToList();
     }
 
     private async Task<Dictionary<long, long>> LoadPricesAsync(

@@ -17,7 +17,10 @@ public sealed record CatalogCourseItem(
     [property: JsonPropertyName("so_hoc_vien")] int StudentCount,
     [property: JsonPropertyName("thoi_luong")] string? DurationText,
     [property: JsonPropertyName("ngay_khai_giang")] DateOnly? StartDate,
-    [property: JsonPropertyName("ngay_tao")] DateTimeOffset CreatedAt);
+    [property: JsonPropertyName("ngay_tao")] DateTimeOffset CreatedAt,
+    [property: JsonPropertyName("ket_qua")] IReadOnlyList<string> Outcomes,
+    [property: JsonPropertyName("phan_hoi_mau")] string? SampleFeedback,
+    [property: JsonPropertyName("kieu_bia")] string CoverStyle);
 
 public sealed record CatalogTopic(
     [property: JsonPropertyName("chu_de")] string Topic,
@@ -45,4 +48,6 @@ public sealed record CatalogChapter(
 public sealed record CatalogDetailResponse(
     [property: JsonPropertyName("khoa_hoc")] CatalogCourseItem Course,
     [property: JsonPropertyName("chuong")] IReadOnlyList<CatalogChapter> Chapters,
-    [property: JsonPropertyName("khoa_hoc_cung_chu_de")] IReadOnlyList<CatalogCourseItem> Related);
+    [property: JsonPropertyName("khoa_hoc_cung_chu_de")] IReadOnlyList<CatalogCourseItem> Related,
+    [property: JsonPropertyName("anh_giang_vien")] IReadOnlyList<string> TeacherArtwork,
+    [property: JsonPropertyName("anh_hoc_vien")] IReadOnlyList<string> StudentArtwork);

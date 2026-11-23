@@ -55,6 +55,11 @@ export const courseInfoSchema = z.object({
   ngay_khai_giang: z.string().trim()
     .refine(value => !value || /^\d{4}-\d{2}-\d{2}$/.test(value), "Ngày khai giảng không hợp lệ.")
     .default(""),
+  ket_qua: z.array(z.string().trim().min(5, "Mỗi kết quả cần ít nhất 5 ký tự.").max(300, "Mỗi kết quả tối đa 300 ký tự."))
+    .max(8, "Tối đa 8 kết quả.")
+    .default([]),
+  phan_hoi_mau: z.string().trim().max(1000, "Phản hồi mẫu tối đa 1.000 ký tự.").default(""),
+  kieu_bia: z.enum(["auto", "forest", "clay", "indigo", "sun"]).default("auto"),
 });
 
 export type CourseInfo = z.infer<typeof courseInfoSchema>;
@@ -100,6 +105,17 @@ export const lessonSchema = z.object({
 
 export function validateLesson(value: unknown) {
   return lessonSchema.safeParse(value);
+}
+
+/** Converts an API timestamp to the wall time expected by a datetime-local input. */
+export function formatLocalDateTime(value: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+
+  const pad = (part: number) => String(part).padStart(2, "0");
+  const year = String(date.getFullYear()).padStart(4, "0");
+  return `${year}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 export const assignmentSchema = z.object({

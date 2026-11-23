@@ -1,4 +1,5 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Globalization;
 using System.Net;
 using Linea.Api.Data;
@@ -20,6 +21,7 @@ public sealed partial class DemoOrdersController(
     IConfiguration configuration) : ControllerBase
 {
     public sealed record CreateOrder(long CourseId, [Required, StringLength(100, MinimumLength = 1)] string IdempotencyKey);
+    public sealed record CreateCheckout(List<long>? CourseIds, [Required, StringLength(100, MinimumLength = 1)] string IdempotencyKey);
     public sealed record ConfirmOrder([Required] string Result);
     public sealed record CreateOrderResponse(long Id, long CourseId, string CourseTitle, long PriceVnd,
         string Status, DateTimeOffset CreatedAt, string? PaymentUrl, string PaymentProvider);
@@ -34,6 +36,16 @@ public sealed partial class DemoOrdersController(
         public string PaymentProvider { get; set; } = "DEMO";
         public string? ProviderTransactionId { get; set; }
         public string? PaymentUrl { get; set; }
+        [NotMapped]
+        public List<OrderItemDto> Items { get; set; } = [];
+    }
+
+    public sealed class OrderItemDto
+    {
+        public long OrderId { get; set; }
+        public long CourseId { get; set; }
+        public string CourseTitle { get; set; } = "";
+        public long PriceVnd { get; set; }
     }
 
     [HttpGet]
@@ -48,6 +60,15 @@ public sealed partial class DemoOrdersController(
             JOIN public.khoa_hoc k ON k.ma_khoa_hoc = o.ma_khoa_hoc
             WHERE o.ma_nguoi_dung = {user} ORDER BY o.ma_don_hang DESC LIMIT 100
             """).ToListAsync(ct);
+        if (rows.Count != 0)
+        {
+            var orderIds = string.Join(",", rows.Select(row => row.Id));
+            var items = await db.Database.SqlQuery<OrderItemDto>($"""
+                SELECT ma_don_hang AS "OrderId", ma_khoa_hoc AS "CourseId", ten_khoa_hoc AS "CourseTitle", don_gia_vnd AS "PriceVnd"
+                FROM public.chi_tiet_don_hang WHERE ma_don_hang IN ({orderIds}) ORDER BY ma_don_hang, thu_tu
+                """).ToListAsync(ct);
+            foreach (var row in rows) row.Items = items.Where(item => item.OrderId == row.Id).ToList();
+        }
         return Ok(rows);
     }
 
@@ -112,6 +133,81 @@ public sealed partial class DemoOrdersController(
             """).ToListAsync(ct);
         await tx.CommitAsync(ct);
         return await CreateResponseAsync(rows[0], user, ct);
+    }
+
+    [HttpPost("checkout")]
+    public async Task<IActionResult> Checkout(CreateCheckout request, CancellationToken ct)
+    {
+        if (!User.TryGetUserId(out var user)) return Unauthorized();
+        var courseIds = (request.CourseIds ?? []).Where(id => id > 0).Distinct().Take(20).ToList();
+        if (courseIds.Count == 0) return BadRequest(new { code = "CART_EMPTY" });
+        var paymentMode = PaymentMode;
+        if (paymentMode is not ("DEMO" or "VNPAY_SANDBOX" or "ZALOPAY_SANDBOX"))
+            return StatusCode(503, new { code = "PAYMENT_MODE_UNSUPPORTED" });
+        if (paymentMode == "VNPAY_SANDBOX" && !vnPay.IsConfigured)
+            return StatusCode(503, new { code = "PAYMENT_NOT_CONFIGURED" });
+        if (paymentMode == "ZALOPAY_SANDBOX" && !zaloPay.IsConfigured)
+            return StatusCode(503, new { code = "PAYMENT_NOT_CONFIGURED" });
+        var key = request.IdempotencyKey?.Trim();
+        if (string.IsNullOrEmpty(key) || key.Length > 100) return BadRequest(new { code = "INVALID_KEY" });
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlInterpolatedAsync($"select pg_advisory_xact_lock(hashtextextended({$"order:{user}:{key}"}, 0))", ct);
+        var existing = await db.Database.SqlQuery<OrderRow>($"""
+            SELECT o.ma_don_hang AS "Id", o.ma_khoa_hoc AS "CourseId", k.tieu_de AS "CourseTitle",
+                   o.gia_vnd AS "PriceVnd", o.trang_thai AS "Status", o.ngay_tao AS "CreatedAt", o.payment_provider AS "PaymentProvider",
+                   o.provider_transaction_id AS "ProviderTransactionId", o.payment_url AS "PaymentUrl"
+            FROM public.don_hang_demo o
+            JOIN public.khoa_hoc k ON k.ma_khoa_hoc = o.ma_khoa_hoc
+            WHERE o.ma_nguoi_dung = {user} AND o.idempotency_key = {key}
+            """).ToListAsync(ct);
+        if (existing.Count != 0)
+        {
+            await tx.CommitAsync(ct);
+            return await CreateResponseAsync(existing[0], user, ct);
+        }
+
+        var courses = await db.LearningCourses.AsNoTracking()
+            .Where(course => courseIds.Contains(course.Id))
+            .ToListAsync(ct);
+        var unavailable = courseIds.Except(courses.Where(course => course.Status == "DA_DANG").Select(course => course.Id)).ToList();
+        if (unavailable.Count != 0)
+            return Conflict(new { code = "CART_CHANGED", unavailable });
+        var enrolled = await db.CourseEnrollments.AsNoTracking()
+            .Where(item => item.UserId == user && courseIds.Contains(item.CourseId) && item.Status != "DA_HUY")
+            .Select(item => item.CourseId).ToListAsync(ct);
+        if (enrolled.Count != 0)
+            return Conflict(new { code = "ALREADY_ENROLLED", courseIds = enrolled });
+        foreach (var id in courseIds)
+            await db.Database.SqlQuery<long>($"SELECT ma_khoa_hoc AS \"Value\" FROM public.khoa_hoc WHERE ma_khoa_hoc = {id} FOR UPDATE").ToListAsync(ct);
+
+        var total = courses.Sum(course => course.PriceVnd);
+        var first = courses.First(course => course.Id == courseIds[0]);
+        var provider = total == 0 ? "DEMO" : paymentMode;
+        var rows = await db.Database.SqlQuery<OrderRow>($"""
+            INSERT INTO public.don_hang_demo (ma_nguoi_dung, ma_khoa_hoc, gia_vnd, trang_thai, idempotency_key, payment_provider)
+            VALUES ({user}, {first.Id}, {total}, 'PENDING', {key}, {provider})
+            RETURNING ma_don_hang AS "Id", ma_khoa_hoc AS "CourseId", {first.Title} AS "CourseTitle",
+                      gia_vnd AS "PriceVnd", trang_thai AS "Status", ngay_tao AS "CreatedAt",
+                      payment_provider AS "PaymentProvider", provider_transaction_id AS "ProviderTransactionId", payment_url AS "PaymentUrl"
+            """).ToListAsync(ct);
+        var order = rows[0];
+        for (var index = 0; index < courseIds.Count; index++)
+        {
+            var course = courses.First(item => item.Id == courseIds[index]);
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO public.chi_tiet_don_hang(ma_don_hang, ma_khoa_hoc, ten_khoa_hoc, don_gia_vnd, thu_tu)
+                VALUES ({order.Id}, {course.Id}, {course.Title}, {course.PriceVnd}, {index + 1})
+                """, ct);
+        }
+        if (total == 0)
+        {
+            var error = await FinalizePendingOrderAsync(tx, order, user, "SUCCEEDED", ct);
+            if (error is not null) return Conflict(new { code = error });
+            return Ok(new { id = order.Id, status = "SUCCEEDED", totalVnd = 0, items = courseIds });
+        }
+        await tx.CommitAsync(ct);
+        return await CreateResponseAsync(order, user, ct);
     }
 
     [HttpPost("{id:long}/confirm")]
@@ -246,21 +342,51 @@ public sealed partial class DemoOrdersController(
         string result,
         CancellationToken ct)
     {
-        await db.Database.ExecuteSqlInterpolatedAsync($"select pg_advisory_xact_lock(hashtextextended({$"learner:{user}:{order.CourseId}"}, 0))", ct);
-        await db.Database.SqlQuery<long>($"SELECT ma_khoa_hoc AS \"Value\" FROM public.khoa_hoc WHERE ma_khoa_hoc = {order.CourseId} FOR UPDATE").ToListAsync(ct);
+        var items = await db.Database.SqlQuery<OrderItemRow>($"""
+            SELECT ma_khoa_hoc AS "CourseId", ten_khoa_hoc AS "CourseTitle", don_gia_vnd AS "PriceVnd"
+            FROM public.chi_tiet_don_hang WHERE ma_don_hang = {order.Id} ORDER BY thu_tu
+            """).ToListAsync(ct);
+        if (items.Count == 0)
+            items = [new OrderItemRow { CourseId = order.CourseId, CourseTitle = order.CourseTitle, PriceVnd = order.PriceVnd }];
+        var courseIds = items.Select(item => item.CourseId).Distinct().ToList();
+        foreach (var courseId in courseIds)
+        {
+            await db.Database.SqlQuery<long>($"SELECT ma_khoa_hoc AS \"Value\" FROM public.khoa_hoc WHERE ma_khoa_hoc = {courseId} FOR UPDATE").ToListAsync(ct);
+            await db.Database.ExecuteSqlInterpolatedAsync($"select pg_advisory_xact_lock(hashtextextended({$"learner:{user}:{courseId}"}, 0))", ct);
+        }
         if (result == "SUCCEEDED")
         {
-            if (!await db.LearningCourses.AnyAsync(c => c.Id == order.CourseId && c.Status == "DA_DANG", ct)) return "COURSE_UNAVAILABLE";
-            var enrollment = await db.CourseEnrollments.SingleOrDefaultAsync(e => e.UserId == user && e.CourseId == order.CourseId, ct);
-            if (enrollment is null) db.CourseEnrollments.Add(new CourseEnrollment { UserId = user, CourseId = order.CourseId });
-            else if (enrollment.Status == "DA_HUY") { enrollment.Status = "DANG_HOC"; enrollment.CompletedAt = null; }
+            var available = await db.LearningCourses.AsNoTracking()
+                .Where(course => courseIds.Contains(course.Id) && course.Status == "DA_DANG")
+                .Select(course => course.Id).ToListAsync(ct);
+            if (available.Count != courseIds.Count)
+            {
+                await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE public.don_hang_demo SET trang_thai = 'PAID_REVIEW', ngay_xac_nhan = now() WHERE ma_don_hang = {order.Id} AND trang_thai = 'PENDING'", ct);
+                await tx.CommitAsync(ct);
+                order.Status = "PAID_REVIEW";
+                return "COURSE_UNAVAILABLE";
+            }
+            foreach (var courseId in courseIds)
+            {
+                var enrollment = await db.CourseEnrollments.SingleOrDefaultAsync(e => e.UserId == user && e.CourseId == courseId, ct);
+                if (enrollment is null) db.CourseEnrollments.Add(new CourseEnrollment { UserId = user, CourseId = courseId });
+                else if (enrollment.Status == "DA_HUY") { enrollment.Status = "DANG_HOC"; enrollment.CompletedAt = null; }
+            }
             await db.SaveChangesAsync(ct);
-            await progress.RefreshAsync(user, order.CourseId, ct);
+            foreach (var courseId in courseIds)
+                await progress.RefreshAsync(user, courseId, ct);
         }
         await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE public.don_hang_demo SET trang_thai = {result}, ngay_xac_nhan = now() WHERE ma_don_hang = {order.Id} AND trang_thai = 'PENDING'", ct);
         await tx.CommitAsync(ct);
         order.Status = result;
         return null;
+    }
+
+    private sealed class OrderItemRow
+    {
+        public long CourseId { get; set; }
+        public string CourseTitle { get; set; } = "";
+        public long PriceVnd { get; set; }
     }
 
     private sealed class PaymentOrderRow

@@ -43,6 +43,13 @@ export const profileHistorySchema = z.object({
   occurredAt: dateTime,
 });
 
+export const teacherApplicationDetailsSchema = z.object({
+  cvTags: z.array(z.string()).nullish(),
+  specialties: nullableString,
+  languages: nullableString,
+  teachingApproach: nullableString,
+});
+
 export const teacherProfileDetailSchema = z.object({
   id: z.number().int(),
   userId: z.string(),
@@ -60,6 +67,8 @@ export const teacherProfileDetailSchema = z.object({
   reviewedAt: dateTime.nullable(),
   portfolioFiles: z.array(portfolioFileSchema),
   history: z.array(profileHistorySchema),
+  details: teacherApplicationDetailsSchema.optional(),
+  hasCv: z.boolean().optional(),
 });
 
 export const approveTeacherResponseSchema = z.object({
@@ -154,11 +163,7 @@ function getErrorDetails(payload: unknown): { code?: string; message: string } {
   };
 }
 
-export async function requestAdminApi(
-  path: string,
-  options: ApiRequestOptions,
-  params?: Record<string, string | number | undefined>
-): Promise<unknown> {
+export function getApiRequestUrl(path: string, params?: Record<string, string | number | undefined>) {
   const base = import.meta.env.VITE_API_URL;
   if (!base?.trim()) throw new Error("Chưa cấu hình địa chỉ máy chủ.");
   const url = buildApiUrl(base, path, params);
@@ -166,7 +171,15 @@ export async function requestAdminApi(
   // opened through a LAN/VPN address where localhost means the viewer's PC.
   const apiUrl = new URL(url);
   const useDevProxy = import.meta.env.DEV && ["localhost", "127.0.0.1", "[::1]"].includes(apiUrl.hostname);
-  const requestUrl = useDevProxy ? `${apiUrl.pathname}${apiUrl.search}` : url;
+  return useDevProxy ? `${apiUrl.pathname}${apiUrl.search}` : url;
+}
+
+export async function requestAdminApi(
+  path: string,
+  options: ApiRequestOptions,
+  params?: Record<string, string | number | undefined>
+): Promise<unknown> {
+  const requestUrl = getApiRequestUrl(path, params);
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 30_000);
   const abortParent = () => controller.abort();

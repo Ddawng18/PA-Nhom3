@@ -1,12 +1,30 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BookOpen, ClipboardCheck, GraduationCap, Palette, TrendingUp, Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import CatalogCourseCard from "../components/CatalogCourseCard";
 import PublicHeader from "../components/PublicHeader";
+import { listCatalogCourses, type CatalogCourse } from "../lib/catalogApi";
+import { setPageMeta } from "../lib/seo";
+import { parseCatalogQuery } from "../logic/catalog";
 import "../styles/guest-home.css";
 
 export default function GuestHomePage() {
+  const [featured, setFeatured] = useState<CatalogCourse[] | null>(null);
+  const [featuredError, setFeaturedError] = useState(false);
+
   useEffect(() => {
-    document.title = "LINEA · Học vẽ theo cách của bạn";
+    setPageMeta({
+      title: "LINEA · Học vẽ theo cách của bạn",
+      description: "Lộ trình học vẽ, studio luyện tập và phản hồi bài tập trong một không gian học tập.",
+    });
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void listCatalogCourses(parseCatalogQuery(""), controller.signal)
+      .then((data) => { if (!controller.signal.aborted) setFeatured(data.items.slice(0, 3)); })
+      .catch(() => { if (!controller.signal.aborted) setFeaturedError(true); });
+    return () => controller.abort();
   }, []);
 
   return (
@@ -24,6 +42,59 @@ export default function GuestHomePage() {
             <Link className="guest-cta" to="/register">Bắt đầu luyện vẽ</Link>
             <Link className="guest-secondary-cta" to="/courses">Khám phá khóa học</Link>
           </div>
+        </section>
+
+        <section className="guest-proof" aria-labelledby="guest-proof-title">
+          <figure className="guest-proof-visual">
+            <img
+              src="/linea-studies-1200.jpg"
+              srcSet="/linea-studies-800.jpg 800w, /linea-studies-1200.jpg 1200w"
+              sizes="(max-width: 899px) 100vw, 50vw"
+              width={1200}
+              height={849}
+              alt="Bàn luyện vẽ với hình khối, sắc độ và bài vẽ minh họa"
+              loading="lazy"
+              decoding="async"
+            />
+            <figcaption>Hình minh họa không gian luyện tập</figcaption>
+          </figure>
+          <div className="guest-proof-copy">
+            <p className="guest-section-label guest-section-label-left">MỘT VÒNG LUYỆN TẬP</p>
+            <h2 className="guest-section-title guest-section-title-left" id="guest-proof-title">Từ quan sát đến phản hồi</h2>
+            <p className="guest-proof-intro">
+              Mỗi bài học đi theo một vòng ngắn: nhìn kỹ, dựng hình, luyện tập và nhận một gợi ý
+              đủ cụ thể để làm lại tốt hơn.
+            </p>
+            <ol className="guest-loop-list">
+              <li><span>01</span><div><h3>Quan sát & dựng khối</h3><p>Chia hình phức tạp thành các khối lớn trước khi thêm chi tiết.</p></div></li>
+              <li><span>02</span><div><h3>Luyện trong Studio</h3><p>Thử nét, sắc độ và bố cục ngay trên trình duyệt.</p></div></li>
+              <li><span>03</span><div><h3>Nhận phản hồi</h3><p>Đọc nhận xét theo bài, rồi áp dụng vào lần vẽ tiếp theo.</p></div></li>
+            </ol>
+            <blockquote className="guest-feedback-quote">
+              Bố cục đã rõ. Hãy chọn một điểm nhấn duy nhất và giảm chi tiết ở vùng phụ.
+            </blockquote>
+            <p className="guest-feedback-source">
+              Ví dụ nhận xét bài vẽ
+            </p>
+          </div>
+        </section>
+
+        <section className="guest-featured" aria-labelledby="guest-featured-title">
+          <div className="guest-featured-heading">
+            <div>
+              <p className="guest-section-label guest-section-label-left">KHÓA HỌC NỔI BẬT</p>
+              <h2 className="guest-section-title guest-section-title-left" id="guest-featured-title">Bắt đầu từ một bài nhỏ</h2>
+            </div>
+            <Link className="guest-text-link" to="/courses">Xem tất cả khóa học →</Link>
+          </div>
+          {featured === null && !featuredError && <p className="guest-featured-status" role="status">Đang tải khóa học...</p>}
+          {featuredError && <p className="guest-featured-status">Chưa tải được danh sách khóa học. <Link to="/courses">Xem trang khóa học</Link>.</p>}
+          {featured && featured.length === 0 && <p className="guest-featured-status">Khóa học sẽ sớm được mở. <Link to="/register">Tạo tài khoản</Link> để nhận cập nhật.</p>}
+          {featured && featured.length > 0 && (
+            <div className="guest-course-grid" role="list">
+              {featured.map((course) => <CatalogCourseCard key={course.ma_khoa_hoc} course={course} />)}
+            </div>
+          )}
         </section>
 
         <section className="guest-features" aria-labelledby="guest-features-title">
@@ -69,20 +140,6 @@ export default function GuestHomePage() {
           </ul>
         </section>
 
-        <section className="guest-showcase" aria-labelledby="guest-showcase-title">
-          <p className="guest-section-label">KHÓA HỌC MẪU</p>
-          <h2 className="guest-section-title" id="guest-showcase-title">Một cách bắt đầu nhẹ nhàng</h2>
-          <article className="guest-showcase-card">
-            <div className="guest-showcase-art" aria-hidden="true">M</div>
-            <div className="guest-showcase-copy">
-              <p className="guest-eyebrow">MÀU SẮC · CƠ BẢN · 8 BÀI</p>
-              <h3>Màu kỹ thuật số cho minh họa</h3>
-              <p>Làm quen với vòng màu, sắc độ và cách phối màu cho nhân vật qua bài tập nhỏ mỗi ngày.</p>
-              <p className="guest-showcase-meta">Giảng viên minh họa: NmRAtist</p>
-              <Link className="button button-primary" to="/courses">Xem khóa học</Link>
-            </div>
-          </article>
-        </section>
 
         <section className="guest-steps" aria-labelledby="guest-steps-title">
           <p className="guest-section-label">CÁCH HỌC</p>

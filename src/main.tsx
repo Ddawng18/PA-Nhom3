@@ -1,9 +1,10 @@
-import { lazy, StrictMode, Suspense, type ReactNode } from "react";
+﻿import { lazy, StrictMode, Suspense, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider } from "react-router-dom";
 import AuthProvider from "./auth/AuthProvider";
 import CookieConsent from "./components/CookieConsent";
 import UserRoleProvider from "./auth/UserRoleProvider";
+import { CartProvider } from "./context/CartProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoleGuard from "./components/AdminRoleGuard";
 import TeacherRoleGuard from "./components/TeacherRoleGuard";
@@ -41,6 +42,8 @@ const AdminCommunityPage = lazy(() => import("./pages/AdminCommunityPage"));
 const TeacherOverviewPage = lazy(() => import("./pages/TeacherOverviewPage"));
 const TeacherSubmissionsQueuePage = lazy(() => import("./pages/TeacherSubmissionsQueuePage"));
 const TeacherStudentsPage = lazy(() => import("./pages/TeacherStudentsPage"));
+const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
+const CartPage = lazy(() => import("./pages/CartPage"));
 
 function RouteFallback() {
   return <div className="route-fallback" role="status" aria-live="polite">Đang tải trang…</div>;
@@ -52,13 +55,14 @@ function withFallback(element: ReactNode) {
 
 const router = createBrowserRouter(createRoutesFromElements(
   <>
-          <Route path="/teacher/onboarding" element={withFallback(<ProtectedRoute><TeacherOnboardingPage /></ProtectedRoute>)} />
+          <Route path="/teacher/onboarding" element={withFallback(<ProtectedRoute><StudentRoleGuard><TeacherOnboardingPage /></StudentRoleGuard></ProtectedRoute>)} />
           <Route path="/teacher" element={withFallback(<ProtectedRoute><TeacherRoleGuard><TeacherOverviewPage /></TeacherRoleGuard></ProtectedRoute>)} />
           <Route path="/teacher/submissions" element={withFallback(<ProtectedRoute><TeacherRoleGuard><TeacherSubmissionsQueuePage /></TeacherRoleGuard></ProtectedRoute>)} />
           <Route path="/teacher/students" element={withFallback(<ProtectedRoute><TeacherRoleGuard><TeacherStudentsPage /></TeacherRoleGuard></ProtectedRoute>)} />
           <Route path="/admin" element={withFallback(<ProtectedRoute><AdminRoleGuard><AdminOverviewPage /></AdminRoleGuard></ProtectedRoute>)} />
           <Route path="/admin/audit" element={withFallback(<ProtectedRoute><AdminRoleGuard><AdminAuditPage /></AdminRoleGuard></ProtectedRoute>)} />
           <Route path="/admin/community" element={withFallback(<ProtectedRoute><AdminRoleGuard><AdminCommunityPage /></AdminRoleGuard></ProtectedRoute>)} />
+          <Route path="/admin/demo-teachers/*" element={<Navigate to="/admin" replace />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
@@ -80,6 +84,14 @@ const router = createBrowserRouter(createRoutesFromElements(
             element={
               <ProtectedRoute>
                 <StudentRoleGuard><DashboardPage /></StudentRoleGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/onboarding"
+            element={
+              <ProtectedRoute>
+                <StudentRoleGuard><OnboardingPage /></StudentRoleGuard>
               </ProtectedRoute>
             }
           />
@@ -117,7 +129,9 @@ const router = createBrowserRouter(createRoutesFromElements(
               </ProtectedRoute>
             }
           />
+          <Route path="/teachers/:teacherSlug" element={<Navigate to="/courses" replace />} />
           <Route path="/courses" element={<CoursesPage />} />
+          <Route path="/cart" element={withFallback(<CartPage />)} />
           <Route path="/orders" element={withFallback(<ProtectedRoute><DemoOrdersPage /></ProtectedRoute>)} />
           <Route path="/admin/manage" element={withFallback(<ProtectedRoute><AdminRoleGuard><AdminManagementPage /></AdminRoleGuard></ProtectedRoute>)} />
           <Route path="/studio" element={withFallback(<StudioPage />)} />
@@ -172,7 +186,7 @@ const router = createBrowserRouter(createRoutesFromElements(
 ));
 
 function App() {
-  return <AuthProvider><UserRoleProvider><RouterProvider router={router} /><CookieConsent /></UserRoleProvider></AuthProvider>;
+  return <AuthProvider><CartProvider><UserRoleProvider><RouterProvider router={router} /><CookieConsent /></UserRoleProvider></CartProvider></AuthProvider>;
 }
 
 const root = document.getElementById("root");

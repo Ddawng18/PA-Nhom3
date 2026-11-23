@@ -27,7 +27,7 @@ try {
     try { if ((await fetch(origin)).ok) break; } catch { /* starting */ }
     await new Promise(resolve => setTimeout(resolve, 250));
   }
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL });
   for (const remember of [false, true]) {
     const context = await browser.newContext();
     let logoutCalls = 0;
@@ -82,6 +82,63 @@ try {
     assert.equal(logoutCalls, 1);
     await context.close();
   }
+  for (const requireConfirmation of [true, false]) {
+    const context = await browser.newContext();
+    let signupPayload;
+    let signupRedirect;
+    let resendPayload;
+    let callbackExchanges = 0;
+    await context.route("https://linea-auth-test.supabase.co/**", route => {
+      const url = new URL(route.request().url());
+      if (url.pathname.endsWith("/settings")) return route.fulfill({ json: { mailer_autoconfirm: !requireConfirmation } });
+      if (url.pathname.endsWith("/signup")) {
+        signupPayload = route.request().postDataJSON();
+        signupRedirect = url.searchParams.get("redirect_to");
+        return route.fulfill({ json: { user: session.user } });
+      }
+      if (url.pathname.endsWith("/resend")) {
+        resendPayload = route.request().postDataJSON();
+        return route.fulfill({ json: {} });
+      }
+      if (url.pathname.endsWith("/token") && url.searchParams.get("grant_type") === "pkce") {
+        callbackExchanges++;
+        return route.fulfill({ json: session });
+      }
+      if (url.pathname === "/rest/v1/nguoi_dung") return route.fulfill({ json: [{ role: "student" }] });
+      return route.fulfill({ json: url.pathname.endsWith("/user") ? session.user : {} });
+    });
+    await context.route("**/api/**", route => route.fulfill({ json: {} }));
+    const page = await context.newPage();
+    await page.goto(origin + "/register");
+    await page.locator('[name="display-name"]').fill("Học viên thử");
+    await page.locator('[name="email"]').fill(session.user.email);
+    await page.locator('[name="password"]').fill("BrowserTest123");
+    await page.locator('[name="confirm-password"]').fill("BrowserTest123");
+    await page.getByRole("button", { name: "Tạo tài khoản & tiếp tục" }).click();
+    if (requireConfirmation) {
+      await page.getByRole("heading", { name: "Kiểm tra email của bạn" }).waitFor();
+      assert.equal(new URL(page.url()).pathname, "/register");
+      assert.equal(await page.evaluate(key => localStorage.getItem(key) || window.sessionStorage.getItem(key), key), null);
+      assert.equal(signupPayload.data.display_name, "Học viên thử");
+      assert.equal(signupRedirect, origin + "/auth/callback");
+      await page.getByRole("button", { name: "Gửi lại email xác nhận" }).click();
+      await page.getByText("Nếu tài khoản đang chờ xác nhận, bạn sẽ nhận được liên kết mới.").waitFor();
+      assert.equal(resendPayload.email, session.user.email);
+      assert.equal(resendPayload.type, "signup");
+
+      await page.goto(origin + "/dashboard");
+      await page.waitForURL("**/login");
+      await page.goto(origin + "/auth/callback?code=verified-email");
+      await page.waitForURL("**/dashboard");
+      assert.equal(callbackExchanges, 1);
+    } else {
+      await page.getByRole("alert").filter({ hasText: "Đăng ký đang tạm dừng" }).waitFor();
+      assert.equal(new URL(page.url()).pathname, "/register");
+      assert.equal(signupPayload, undefined);
+    }
+    await context.close();
+  }
+  console.log("PASS signup waits for email confirmation, resend works, and auto-confirm is blocked");
   console.log("PASS Remember me, independent tabs, reload, recovery request and API 401 expiry");
 } finally {
   await browser?.close();

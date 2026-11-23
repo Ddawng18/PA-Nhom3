@@ -1,4 +1,4 @@
-// Lightweight WCAG smoke audit for public pages: names, labels, alt text, duplicate ids,
+﻿// Lightweight WCAG smoke audit for public pages: names, labels, alt text, duplicate ids,
 // landmarks and mobile overflow. Fails on critical markup issues, logs size warnings.
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";

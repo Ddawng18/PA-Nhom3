@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { registerSchema } from "../auth/schemas";
 import { getAuthErrorMessage } from "../auth/errors";
 import { useAuth } from "../auth/useAuth";
@@ -29,13 +29,13 @@ export default function RegisterForm() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState<{ type: "error" | "info"; text: string } | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [confirmationEmail, setConfirmationEmail] = useState("");
   const [isResending, setIsResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const { signUpWithEmail, signInWithGoogle, resendConfirmation, configured } = useAuth();
-  const navigate = useNavigate();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,7 +50,6 @@ export default function RegisterForm() {
     const errors = getFieldErrors(values);
     setFieldErrors(errors);
     setMessage(null);
-    setConfirmationEmail(null);
     if (Object.keys(errors).length > 0) return;
 
     setIsSubmitting(true);
@@ -60,22 +59,10 @@ export default function RegisterForm() {
         email: values.email.trim(),
         password: values.password,
       });
-      if (result.error) {
-        setMessage({ type: "error", text: result.error });
-      } else if (result.needsEmailConfirmation) {
-        setConfirmationEmail(values.email.trim());
-        setMessage({
-          type: "info",
-          text: "Nếu tài khoản cần xác nhận, hãy kiểm tra hộp thư và mục thư rác. Nếu chưa nhận được, bạn có thể yêu cầu gửi lại.",
-        });
-      } else {
-        navigate("/", { replace: true });
-      }
+      if (result.error) setMessage(result.error);
+      else setConfirmationEmail(values.email.trim());
     } catch (error) {
-      setMessage({
-        type: "error",
-        text: getAuthErrorMessage(error instanceof Error ? error.message : undefined),
-      });
+      setMessage(getAuthErrorMessage(error instanceof Error ? error.message : undefined));
     } finally {
       setIsSubmitting(false);
     }
@@ -84,16 +71,32 @@ export default function RegisterForm() {
   async function handleResend() {
     if (!confirmationEmail || isResending) return;
     setIsResending(true);
+    setMessage(null);
+    setResendMessage("");
     try {
       const result = await resendConfirmation(confirmationEmail);
-      setMessage(result.error
-        ? { type: "error", text: result.error }
-        : { type: "info", text: "Nếu tài khoản cần xác nhận, hãy kiểm tra hộp thư và mục thư rác sau ít phút." });
+      if (result.error) setMessage(result.error);
+      else setResendMessage("Nếu tài khoản đang chờ xác nhận, bạn sẽ nhận được liên kết mới.");
     } catch (error) {
-      setMessage({ type: "error", text: getAuthErrorMessage(error instanceof Error ? error.message : undefined) });
+      setMessage(getAuthErrorMessage(error instanceof Error ? error.message : undefined));
     } finally {
       setIsResending(false);
     }
+  }
+
+  if (confirmationEmail) {
+    return <section className="register-panel" aria-labelledby="register-title">
+      <div className="form-heading">
+        <h1 id="register-title">Kiểm tra email của bạn</h1>
+        <p className="form-description">Mở liên kết xác nhận đã gửi tới <strong>{confirmationEmail}</strong> trên cùng trình duyệt để hoàn tất đăng ký. Nếu chưa thấy, hãy kiểm tra thư rác.</p>
+      </div>
+      {message && <p className="form-message form-message-error" role="alert">{message}</p>}
+      {resendMessage && <p className="form-message" role="status">{resendMessage}</p>}
+      <Button variant="outline" type="button" disabled={isResending} onClick={() => void handleResend()}>
+        {isResending ? "Đang gửi..." : "Gửi lại email xác nhận"}
+      </Button>
+      <p className="existing-account"><Link to="/login">Quay lại đăng nhập</Link></p>
+    </section>;
   }
 
   async function handleGoogleSignIn() {
@@ -102,9 +105,9 @@ export default function RegisterForm() {
     setMessage(null);
     try {
       const result = await signInWithGoogle();
-      if (result.error) setMessage({ type: "error", text: result.error });
+      if (result.error) setMessage(result.error);
     } catch (error) {
-      setMessage({ type: "error", text: getAuthErrorMessage(error instanceof Error ? error.message : undefined) });
+      setMessage(getAuthErrorMessage(error instanceof Error ? error.message : undefined));
     } finally {
       setIsGoogleSubmitting(false);
     }
@@ -142,7 +145,7 @@ export default function RegisterForm() {
             id="email"
             name="email"
             type="email"
-            autoComplete="email"
+            autoComplete="username"
             aria-invalid={Boolean(fieldErrors.email)}
             aria-describedby={fieldErrors.email ? "email-error" : undefined}
           />
@@ -205,20 +208,11 @@ export default function RegisterForm() {
             Ứng dụng chưa được cấu hình Supabase. Vui lòng thử lại sau.
           </p>
         )}
-        {message && (
-          <p className={`form-message form-message-${message.type}`} role={message.type === "error" ? "alert" : "status"}>
-            {message.text}
-          </p>
-        )}
-        {confirmationEmail && (
-          <button className="button button-outline" type="button" disabled={isResending} onClick={handleResend}>
-            {isResending ? "Đang xử lý..." : "Gửi lại email xác nhận"}
-          </button>
-        )}
+        {message && <p className="form-message form-message-error" role="alert">{message}</p>}
         <Button className="submit-button" type="submit" disabled={isSubmitting || !configured}>
           {isSubmitting ? "Đang xử lý..." : "Tạo tài khoản & tiếp tục"}
         </Button>
-        <p className="next-step">Bước tiếp theo: quay lại ghi danh khóa học đã chọn.</p>
+        <p className="next-step">Bạn cần xác nhận email trước khi đăng nhập.</p>
 
         <div className="form-divider" aria-label="hoặc">
           <span>hoặc</span>

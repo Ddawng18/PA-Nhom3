@@ -284,6 +284,7 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
             ("teacher profile endpoints require authentication and a student role", TeacherProfileAuthGuardAsync),
             ("student submits a teacher profile and remains a student", StudentSubmitsTeacherProfileAsync),
             ("pending teacher profile blocks resubmission", PendingProfileBlocksResubmissionAsync),
+            ("student withdraws a pending teacher profile and resubmits it", WithdrawPendingTeacherProfileAsync),
             ("admin approves a teacher profile and promotes the account", AdminApprovesTeacherProfileAsync),
             ("admin rejects a teacher profile and the student resubmits", AdminRejectsAndStudentResubmitsAsync),
             ("admin requests changes and the student resubmits", AdminRequestsChangesAndStudentResubmitsAsync),
@@ -291,6 +292,7 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
             ("signed portfolio URLs serve images and reject tampering", SignedPortfolioUrlsAsync),
             ("Supabase storage builds upload, validation and signed URL requests", SupabaseStorageRequestsAsync),
             ("portfolio upload rejects invalid type and oversized files", PortfolioUploadValidationAsync),
+            ("catalog search normalizes Vietnamese before filtering and pagination", CatalogSearchAsync),
             ("course API enforces ownership, validation and draft privacy", CourseAccessAsync),
             ("course review updates canonical data, history and notifications atomically", CourseWorkflowAsync),
             ("D05 progress completes after required submission without grading", ProgressD05Async)
@@ -934,6 +936,38 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
             $"expected 409 for rejecting an approved profile, got {(int)rejectApprovedStatus}: {rejectApprovedBody}");
     }
 
+    private async Task WithdrawPendingTeacherProfileAsync()
+    {
+        var student = await RegisterStudentAsync("teacher-withdraw");
+        var (uploaded, uploadBody) = await UploadPortfolioAsync(student.Token, TinyPng, "art.png", "image/png");
+        Expect(uploaded == HttpStatusCode.Created, $"upload failed: {uploadBody}");
+        using var uploadJson = JsonDocument.Parse(uploadBody);
+        var path = GetString(uploadJson.RootElement, "filePath");
+        var introduction = new string('A', 60);
+        var experience = new string('B', 20);
+        var (submitted, submitBody) = await SubmitProfileAsync(student.Token, introduction, experience, [path]);
+        Expect(submitted == HttpStatusCode.Accepted, $"submission failed: {submitBody}");
+        using var submitJson = JsonDocument.Parse(submitBody);
+        var id = submitJson.RootElement.GetProperty("id").GetInt64();
+
+        var (withdrawn, withdrawBody) = await SendAsync(
+            HttpMethod.Post, "/api/teacher/profile/me/withdraw", token: student.Token);
+        Expect(withdrawn == HttpStatusCode.NoContent, $"withdrawal failed: {withdrawBody}");
+        var (approved, _) = await SendAsync(
+            HttpMethod.Post, $"/api/admin/teacher-profiles/{id}/approve", token: _adminToken);
+        Expect(approved == HttpStatusCode.Conflict, "a withdrawn profile can still be approved");
+
+        var (read, body) = await SendAsync(HttpMethod.Get, "/api/teacher/profile/me", token: student.Token);
+        Expect(read == HttpStatusCode.OK, $"withdrawn profile could not be read: {body}");
+        using var json = JsonDocument.Parse(body);
+        Expect(GetString(json.RootElement, "status") == "DA_RUT", "withdrawal status was not saved");
+        Expect(GetString(json.RootElement, "introduction") == introduction, "withdrawal lost the introduction");
+        Expect(json.RootElement.GetProperty("portfolioFiles").GetArrayLength() == 1, "withdrawal lost the portfolio");
+
+        var (resubmitted, response) = await SubmitProfileAsync(student.Token, introduction + " revised", experience, [path]);
+        Expect(resubmitted == HttpStatusCode.Accepted, $"withdrawn profile could not be resubmitted: {response}");
+    }
+
     private async Task AdminRejectsAndStudentResubmitsAsync()
     {
         var student = await RegisterStudentAsync("teacher-reject");
@@ -1032,6 +1066,10 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
                 "rejection promoted the account");
         }
 
+        var (withdrawStatus, withdrawBody) = await SendAsync(
+            HttpMethod.Post, "/api/teacher/profile/me/withdraw", token: student.Token);
+        Expect(withdrawStatus == HttpStatusCode.NoContent, $"rejected profile withdrawal failed: {withdrawBody}");
+
         var emailBeforeResubmit = EmailCount();
         var (resubmitStatus, resubmitBody) = await SubmitProfileAsync(
             student.Token,
@@ -1051,8 +1089,8 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
         Expect(string.IsNullOrEmpty(GetString(afterJson.RootElement, "rejectionReason")),
             "resubmission did not clear the current rejection reason");
         var history = afterJson.RootElement.GetProperty("history");
-        Expect(history.GetArrayLength() == 3,
-            $"expected 3 history entries, got {history.GetArrayLength()}");
+        Expect(history.GetArrayLength() == 4,
+            $"expected 4 history entries, got {history.GetArrayLength()}");
         Expect(history.EnumerateArray().Any(entry => GetString(entry, "reason") == reason),
             "old rejection reason was not preserved in history");
     }
@@ -1470,6 +1508,42 @@ internal sealed class SmokeSuite(HttpClient client, string dbPath, string emailP
         tieu_de = title, mo_ta = new string('A', 60), cap_do = "CO_BAN", chu_de = "Digital Art",
         anh_dai_dien = "", ma_giao_vien = Guid.NewGuid(), trang_thai = "DA_DANG"
     };
+
+    private async Task CatalogSearchAsync()
+    {
+        await using var db = CreateDb();
+        var topic = $"qa-search-{Guid.NewGuid():N}";
+        var courses = new[]
+        {
+            new LearningCourse { TeacherId = _firstTeacherStudentId, Title = "Minh họa đường nét", Topic = topic, Status = "DA_DANG" },
+            new LearningCourse { TeacherId = _firstTeacherStudentId, Title = "MINH   HỌA ĐƯỜNG NÉT".Normalize(NormalizationForm.FormD), Topic = topic, Status = "DA_DANG" },
+            new LearningCourse { TeacherId = _firstTeacherStudentId, Title = "Minh họa đường nét nháp", Topic = topic, Status = "NHAP" },
+        };
+        db.LearningCourses.AddRange(courses);
+        await db.SaveChangesAsync();
+        try
+        {
+            foreach (var term in new[] { "Minh họa", "  Minh hoa  ", "MINH   HOA", "minh\thoa", "duong net", "ĐƯỜNG NÉT", "Minh họa".Normalize(NormalizationForm.FormD), "%", "_", "x' OR 1=1 --", "khongtontai" })
+            {
+                var expected = term is "%" or "_" or "x' OR 1=1 --" or "khongtontai" ? 0 : 2;
+                var path = $"/api/catalog/courses?search={Uri.EscapeDataString(term)}&chu_de={topic}&pageSize=1&page=2";
+                var (status, body) = await SendAsync(HttpMethod.Get, path);
+                Expect(status == HttpStatusCode.OK, $"catalog search failed for {term}: {body}");
+                using var json = JsonDocument.Parse(body);
+                var root = json.RootElement;
+                Expect(root.GetProperty("totalCount").GetInt32() == expected, $"wrong filtered total for {term}: {body}");
+                var items = root.GetProperty("items");
+                Expect(items.GetArrayLength() == (expected == 0 ? 0 : 1), $"wrong page size for {term}");
+                if (expected > 0)
+                    Expect(items[0].GetProperty("ma_khoa_hoc").GetInt64() == courses[0].Id, $"search lost ordering/pagination for {term}");
+            }
+        }
+        finally
+        {
+            var ids = courses.Select(course => course.Id).ToArray();
+            await db.LearningCourses.Where(course => ids.Contains(course.Id)).ExecuteDeleteAsync();
+        }
+    }
 
     private async Task CourseAccessAsync()
     {
