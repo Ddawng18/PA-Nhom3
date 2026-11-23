@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useAuth } from "../auth/useAuth";
 import { addCartItem, clearCart, loadCart, mergeCart, removeCartItem } from "../lib/cartApi";
 
@@ -41,7 +41,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [courseIds, setCourseIds] = useState<number[]>(() => readGuest());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const mergedFor = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!token) {
@@ -64,7 +63,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     if (!token) {
       setCourseIds(readGuest());
-      mergedFor.current = null;
       return;
     }
     setLoading(true);
@@ -85,10 +83,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) setLoading(false);
       }
     };
-    if (mergedFor.current !== token) {
-      mergedFor.current = token;
-      void load();
-    }
+    void load();
     return () => { cancelled = true; };
   }, [token]);
 

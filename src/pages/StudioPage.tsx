@@ -750,7 +750,7 @@ export default function StudioPage() {
           <button type="button" disabled={canvasBusy || !hasMotion} onClick={() => void exportGif()}>{exporting ? "Đang tạo GIF..." : "Tải GIF"}</button>
         </div>
       </div>
-      <p className="studio-note">Bản vẽ được lưu trên trình duyệt này.</p>
+      <p className="studio-note">Bản vẽ được lưu trên trình duyệt này, chưa đồng bộ vào Tác phẩm. Tải PNG/GIF để giữ bản sao trên thiết bị.</p>
       <span className="sr-only" aria-live="polite">{revision ? "Bản vẽ đã cập nhật" : ""}</span>
     </main>
   </div>;

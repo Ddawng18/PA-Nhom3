@@ -43,3 +43,17 @@
     gap: 10px;
   }
 }
+
+.community-post-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  line-clamp: 6;
+  overflow: hidden;
+}
+
+.community-read-more {
+  display: inline-block;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
