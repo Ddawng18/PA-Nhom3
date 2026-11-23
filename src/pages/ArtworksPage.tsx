@@ -18,12 +18,12 @@ export default function ArtworksPage() {
             <div>
               <p className="settings-eyebrow">KHÔNG GIAN SÁNG TẠO</p>
               <h1>Tác phẩm</h1>
-              <p>Lưu và xem lại những tác phẩm bạn đã hoàn thành trong quá trình học.</p>
+              <p>Studio hiện lưu bản vẽ trong trình duyệt trên thiết bị bạn đang dùng.</p>
             </div>
           </header>
           <EmptyState
-            title="Chưa có tác phẩm nào"
-            description="Tác phẩm của bạn sẽ xuất hiện tại đây sau khi được lưu từ Studio hoặc gửi trong bài luyện tập."
+            title="Thư viện tác phẩm chưa khả dụng"
+            description="Bản vẽ Studio và bài luyện tập đã nộp chưa được đồng bộ vào trang này. Bạn có thể mở lại bản vẽ trong cùng trình duyệt, tải PNG/GIF từ Studio hoặc xem bài đã nộp trong Bài luyện tập."
             action={<Link className="button button-primary" to="/studio">Mở Studio</Link>}
           />
         </div>

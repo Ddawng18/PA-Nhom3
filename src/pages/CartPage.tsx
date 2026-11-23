@@ -7,6 +7,7 @@ import { useCart } from "../context/CartProvider";
 import { checkoutCart, quoteCart, type CartQuote } from "../lib/cartApi";
 import { AdminApiError } from "../lib/adminApi";
 import { createUuid } from "../logic/uuid";
+import { getCourseLevelLabel } from "../logic/courseEditor";
 import { setPageMeta } from "../lib/seo";
 import "../styles/cart.css";
 
@@ -87,12 +88,13 @@ export default function CartPage() {
   const items = quote?.items ?? [];
   const payable = items.filter(item => item.available && !item.enrolled);
   const hasBlocked = items.some(item => !item.available || item.enrolled);
+  const freeOnly = payable.length > 0 && payable.every(item => item.priceVnd === 0);
 
   return <div className="register-page cart-page">
     <PublicHeader authLink={{ to: "/login", label: "Đăng nhập" }} />
     <main className="cart-main">
       <header className="cart-header">
-        <div><p className="guest-eyebrow">GIỎ HÀNG</p><h1>Khóa học của bạn</h1><p>Chọn nhiều khóa và thanh toán một lần. Giá được xác nhận lại từ LINEA.</p></div>
+        <div><p className="guest-eyebrow">GIỎ HÀNG</p><h1>Khóa học của bạn</h1><p>{freeOnly ? "Ghi danh các khóa miễn phí để bắt đầu học ngay." : "Chọn nhiều khóa và thanh toán một lần. Giá được xác nhận lại từ LINEA."}</p></div>
         <Link className="cart-continue" to="/courses">Tiếp tục khám phá <ArrowRight size={15} aria-hidden="true" /></Link>
       </header>
 
@@ -111,7 +113,7 @@ export default function CartPage() {
         <section className="cart-items" aria-label="Khóa học trong giỏ">
           {items.map(item => <article className="cart-item" key={item.courseId}>
             <div className="cart-item-main">
-              <p className="cart-item-topic">{item.level || "KHÓA HỌC"}</p>
+              <p className="cart-item-topic">{getCourseLevelLabel(item.level || "Khóa học")}</p>
               <h2><Link to={`/courses/${item.courseId}`}>{item.title}</Link></h2>
               <p className="cart-item-price">{item.priceVnd === 0 ? "Miễn phí" : `${item.priceVnd.toLocaleString("vi-VN")} ₫`}</p>
               {!item.available && <p className="cart-item-state is-blocked">Khóa học không còn mở để đăng ký.</p>}
@@ -125,15 +127,15 @@ export default function CartPage() {
         <aside className="cart-summary">
           <p className="guest-section-label guest-section-label-left">TÓM TẮT</p>
           <dl>
-            <div><dt>Khóa có thể mua</dt><dd>{payable.length}</dd></div>
-            <div><dt>Tổng thanh toán</dt><dd className="cart-total">{(quote?.totalVnd ?? 0).toLocaleString("vi-VN")} ₫</dd></div>
+            <div><dt>Khóa có thể ghi danh</dt><dd>{payable.length}</dd></div>
+            <div><dt>Tổng tiền</dt><dd className="cart-total">{(quote?.totalVnd ?? 0).toLocaleString("vi-VN")} ₫</dd></div>
           </dl>
           {hasBlocked && <p className="cart-summary-note">Một số khóa không thể thanh toán. Hãy xóa chúng để tiếp tục.</p>}
           {quote?.totalVnd === 0 && payable.length > 0 && <p className="cart-summary-note">Các khóa miễn phí sẽ được ghi danh ngay, không qua thanh toán.</p>}
           <button className="guest-cta cart-checkout" type="button" disabled={busy || !payable.length || hasBlocked} onClick={() => void checkout()}>
-            {busy ? "Đang xử lý..." : user ? "Thanh toán một lần" : "Đăng nhập để thanh toán"}
+            {busy ? "Đang xử lý..." : freeOnly ? (user ? "Ghi danh khóa học" : "Đăng nhập để ghi danh") : (user ? "Thanh toán một lần" : "Đăng nhập để thanh toán")}
           </button>
-          <p className="cart-summary-foot">Thanh toán sandbox hiện không thu tiền thật.</p>
+          {!freeOnly && <p className="cart-summary-foot">Thanh toán sandbox hiện không thu tiền thật.</p>}
         </aside>
       </div>}
     </main>
