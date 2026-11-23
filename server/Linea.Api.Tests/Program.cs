@@ -31,6 +31,7 @@ internal static class Program
     private static async Task<int> Main(string[] args)
     {
         if (args.Contains("--payment-unit")) return await PaymentUnitTests.RunAsync();
+        if (args.Contains("--bootstrap-regression")) return await BootstrapRegression.RunAsync();
         var apiProject = FindApiProject();
         var dbPath = Environment.GetEnvironmentVariable("TEST_DATABASE_URL");
         if (string.IsNullOrWhiteSpace(dbPath))
