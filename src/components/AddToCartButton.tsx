@@ -5,9 +5,11 @@ import { useCart } from "../context/CartProvider";
 type Props = { courseId: number; className?: string };
 
 export default function AddToCartButton({ courseId, className = "" }: Props) {
-  const { courseIds, add } = useCart();
+  const { courseIds, add, canUseCart } = useCart();
   const [busy, setBusy] = useState(false);
   const inCart = courseIds.includes(courseId);
+
+  if (!canUseCart) return null;
 
   if (inCart) {
     return <Link className={`add-to-cart is-added ${className}`.trim()} to="/cart" aria-label="Xem giỏ hàng">Trong giỏ</Link>;
