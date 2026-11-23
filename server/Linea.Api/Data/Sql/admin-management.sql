@@ -26,7 +26,8 @@ begin
 end $$;
 
 -- The runtime writes grading history with object type BAI_NOP and the demo
--- order flow writes DON_HANG. Extend the existing CHECK without relaxing it.
+-- order flow writes DON_HANG. Keep CONG_DONG from the community moderation
+-- migration when this bootstrap script runs again on an existing database.
 do $$
 declare existing_constraint record;
 begin
@@ -42,7 +43,7 @@ begin
 
   alter table public.lich_su_trang_thai
     add constraint lich_su_trang_thai_loai_doi_tuong_check
-    check (loai_doi_tuong in ('NGUOI_DUNG', 'HO_SO_GIAO_VIEN', 'KHOA_HOC', 'BAI_NOP', 'DON_HANG'));
+    check (loai_doi_tuong in ('NGUOI_DUNG', 'HO_SO_GIAO_VIEN', 'KHOA_HOC', 'BAI_NOP', 'DON_HANG', 'CONG_DONG'));
 end $$;
 
 create index if not exists ix_nguoi_dung_is_locked on public.nguoi_dung (is_locked);
