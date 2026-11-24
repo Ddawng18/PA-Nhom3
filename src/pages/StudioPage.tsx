@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useBlocker, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import PublicHeader from "../components/PublicHeader";
@@ -184,7 +184,6 @@ export default function StudioPage() {
   const [size, setSize] = useState(6);
   const [opacity, setOpacity] = useState(1);
   const [zoom, setZoom] = useState(1);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [revision, setRevision] = useState(0);
   const [notice, setNotice] = useState("");
   const [unexported, setUnexported] = useState(false);
@@ -335,12 +334,6 @@ export default function StudioPage() {
     }, motionDelay);
     return () => window.clearInterval(timer);
   }, [preview, isDrawing, restoring, revision, motionDelay]);
-
-  useEffect(() => {
-    const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
 
   useEffect(() => {
     if (!unexported) return;
@@ -557,15 +550,6 @@ export default function StudioPage() {
     image.onerror = () => { URL.revokeObjectURL(url); setNotice("Không thể đọc ảnh này."); setRestoring(false); };
     image.src = url;
   };
-  const toggleFullscreen = async () => {
-    if (!pageRef.current) return;
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await pageRef.current.requestFullscreen();
-    } catch {
-      setNotice("Trình duyệt không cho phép toàn màn hình.");
-    }
-  };
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -718,7 +702,6 @@ export default function StudioPage() {
           <button type="button" onClick={() => setZoom((value) => Math.min(2, value + 0.25))}>+</button>
           <button type="button" onClick={() => setZoom(1)}>Vừa</button>
         </span>
-        <button type="button" onClick={() => void toggleFullscreen()}>{isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}</button>
       </div>
       <div className="studio-palette">
         <div className="studio-brush-picks" role="group" aria-label="Kiểu bút">
@@ -733,8 +716,8 @@ export default function StudioPage() {
             onClick={() => { setColor(item.value); setTool("pen"); }}><span style={{ backgroundColor: item.value }} /></button>)}
         </div>
       </div>
-      <div className={`studio-canvas-wrap ${studioCanvasClass(background)}`}>
-        <div className="studio-stage" style={{ width: `${zoom * 100}%` }}>
+      <div className="studio-canvas-wrap">
+        <div className={`studio-stage ${studioCanvasClass(background)}`} style={{ width: `${zoom * 100}%` }}>
           <canvas ref={canvasRef} className="studio-canvas" width={WIDTH} height={HEIGHT} aria-label="Vùng vẽ. Dùng chuột hoặc cảm ứng để vẽ." onPointerDown={start} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop} />
           {preview && !restoring && (hasMotion || (isDrawing && texture.current?.animated)) &&
             <canvas ref={previewRef} className="studio-motion-preview" width={WIDTH} height={HEIGHT} aria-hidden="true" />}
