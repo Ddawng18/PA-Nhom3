@@ -62,10 +62,10 @@ public sealed partial class DemoOrdersController(
             """).ToListAsync(ct);
         if (rows.Count != 0)
         {
-            var orderIds = string.Join(",", rows.Select(row => row.Id));
+            var orderIds = rows.Select(row => row.Id).ToArray();
             var items = await db.Database.SqlQuery<OrderItemDto>($"""
                 SELECT ma_don_hang AS "OrderId", ma_khoa_hoc AS "CourseId", ten_khoa_hoc AS "CourseTitle", don_gia_vnd AS "PriceVnd"
-                FROM public.chi_tiet_don_hang WHERE ma_don_hang IN ({orderIds}) ORDER BY ma_don_hang, thu_tu
+                FROM public.chi_tiet_don_hang WHERE ma_don_hang = ANY({orderIds}) ORDER BY ma_don_hang, thu_tu
                 """).ToListAsync(ct);
             foreach (var row in rows) row.Items = items.Where(item => item.OrderId == row.Id).ToList();
         }
