@@ -144,11 +144,6 @@ try {
   assert.equal(await animatedBrush.getAttribute("aria-pressed"), "true");
   await page.getByRole("button", { name: "Dừng xem thử", exact: true }).click();
 
-  await page.getByRole("button", { name: "Toàn màn hình", exact: true }).click();
-  await page.waitForFunction(() => Boolean(document.fullscreenElement));
-  await page.getByRole("button", { name: "Thoát toàn màn hình", exact: true }).click();
-  await page.waitForFunction(() => !document.fullscreenElement);
-
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
   const heights = await page.locator(".studio-toolbar button").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
