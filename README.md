@@ -209,4 +209,4 @@ Xem [docs/deployment.md](docs/deployment.md) và [docs/operations/RELEASE-ROLLBA
 
 ## Phạm vi và giới hạn
 
-Đây là đồ án học tập. Những mục chưa nằm trong phạm vi MVP gồm thanh toán thật, chứng chỉ PDF tự động, kiểm thử tải quy mô lớn, ứng dụng native và đồng bộ Studio đám mây. Không dùng repository này để thu tiền thật hoặc lưu dữ liệu người dùng thật khi chưa có cấu hình bảo mật và vận hành đầy đủ.
+Đây là đồ án học tập. Những mục chưa nằm trong phạm vi MVP gồm thanh toán thật, chứng chỉ PDF tự động, kiểm thử tải quy mô lớn, ứng dụng native và đồng bộ Studio đám mây. Repoy này không dùng để thu tiền thật hoặc lưu dữ liệu người dùng thật.
