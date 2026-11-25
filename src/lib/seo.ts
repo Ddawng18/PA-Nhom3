@@ -1,4 +1,4 @@
-﻿export type PageMeta = {
+export type PageMeta = {
   title: string;
   description: string;
   image?: string | null;
@@ -28,7 +28,7 @@ function setCanonical(url: string) {
   element.setAttribute("href", url);
 }
 
-export function absoluteAssetUrl(value: string | null | undefined) {
+function absoluteAssetUrl(value: string | null | undefined) {
   if (!value) return `${window.location.origin}${defaultImage}`;
   if (/^https?:\/\//i.test(value)) return value;
   return `${window.location.origin}${value.startsWith("/") ? value : `/${value}`}`;

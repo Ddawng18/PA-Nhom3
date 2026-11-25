@@ -1,6 +1,6 @@
 # Thiết lập và xử lý lỗi local
 
-Thư mục chính: `D:\QLDA\PA-Nhom3`, nhánh `develop`.
+Thư mục chính: repository root, nhánh tích hợp `develop` (hoặc nhánh được nhóm chỉ định).
 
 ## Cấu hình
 

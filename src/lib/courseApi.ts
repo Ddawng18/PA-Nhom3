@@ -42,13 +42,6 @@ export async function createCourseRevision(token: string, id: string | number) {
     .parse(await requestAdminApi(`/api/courses/${encodeURIComponent(id)}/revision`, { token, method: "POST" }));
 }
 
-export async function listEnrolledCourses(token: string, signal?: AbortSignal) {
-  return z.array(z.object({
-    ma_khoa_hoc: z.number().int().safe(),
-    trang_thai: z.string(),
-  })).parse(await requestAdminApi("/api/courses/enrolled", { token, signal }));
-}
-
 export async function enrollInCourse(token: string, id: string | number) {
   return requestAdminApi(`/api/courses/${encodeURIComponent(id)}/enroll`, { token, method: "POST" });
 }

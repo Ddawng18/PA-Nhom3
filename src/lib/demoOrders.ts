@@ -6,9 +6,6 @@ export type DemoOrder = z.infer<typeof orderSchema>;
 export async function createDemoOrder(token: string, courseId: number, idempotencyKey: string) {
   return orderSchema.parse(await requestAdminApi("/api/demo-orders", { token, method: "POST", body: { courseId, idempotencyKey } }));
 }
-export async function confirmDemoOrder(token: string, id: number, result: "SUCCEEDED" | "FAILED" | "CANCELLED") {
-  return orderSchema.parse(await requestAdminApi(`/api/demo-orders/${id}/confirm`, { token, method: "POST", body: { result } }));
-}
 export async function listDemoOrders(token: string, signal?: AbortSignal) {
   return z.array(orderSchema).parse(await requestAdminApi("/api/demo-orders", { token, signal }));
 }

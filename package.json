@@ -56,19 +56,14 @@
     "vite": "^7.1.9",
     "vitest": "^4.1.11"
   },
-  "description": "Dự án chính: `D:\\QLDA\\PA-Nhom3`. Nhánh tích hợp: `develop`.\r Các thư mục `PA-Nhom3-checklist-1115`, `PA-Nhom3-handover-1115` và\r `PA-Nhom3-sprint6-review` là Git worktree phục vụ công việc riêng.",
-  "main": "eslint.config.js",
-  "directories": {
-    "doc": "docs",
-    "test": "tests"
-  },
+  "description": "LINEA — nền tảng học vẽ kỹ thuật số trực tuyến với khóa học, bài tập, phản hồi và quản trị vai trò.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Ddawng18/PA-Nhom3.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["linea", "education", "digital-art", "react", "aspnet-core", "supabase"],
+  "author": "PA-Nhom3",
+  "license": "UNLICENSED",
   "bugs": {
     "url": "https://github.com/Ddawng18/PA-Nhom3/issues"
   },
